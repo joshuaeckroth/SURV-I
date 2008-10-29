@@ -11,15 +11,15 @@ newtype Frames = Frames [Frame] 		deriving (Eq,Show)
 data Frame = Frame Frame_Attrs [Acquisition]
            deriving (Eq,Show)
 data Frame_Attrs = Frame_Attrs
-    { frameTime :: String
-    , frameNumber :: String
+    { frameTime :: Double
+    , frameNumber :: Int
     } deriving (Eq,Show)
 data Acquisition = Acquisition
     { acquisitionId :: String
-    , acquisitionX :: String
-    , acquisitionY :: String
-    , acquisitionWidth :: String
-    , acquisitionHeight :: String
+    , acquisitionX :: Double
+    , acquisitionY :: Double
+    , acquisitionWidth :: Double
+    , acquisitionHeight :: Double
     } deriving (Eq,Show)
 
 
@@ -48,12 +48,12 @@ instance XmlContent Frame where
 instance XmlAttributes Frame_Attrs where
     fromAttrs as =
         Frame_Attrs
-          { frameTime = definiteA fromAttrToStr "Frame" "time" as
-          , frameNumber = definiteA fromAttrToStr "Frame" "number" as
+          { frameTime = read $ definiteA fromAttrToStr "Frame" "time" as
+          , frameNumber = read $ definiteA fromAttrToStr "Frame" "number" as
           }
     toAttrs v = catMaybes 
-        [ toAttrFrStr "time" (frameTime v)
-        , toAttrFrStr "number" (frameNumber v)
+        [ toAttrFrStr "time" (show $ frameTime v)
+        , toAttrFrStr "number" (show $ frameNumber v)
         ]
 instance XmlContent Acquisition where
     fromElem (CElem (Elem "Acquisition" as []):rest) =
@@ -67,17 +67,17 @@ instance XmlAttributes Acquisition where
     fromAttrs as =
         Acquisition
           { acquisitionId = definiteA fromAttrToStr "Acquisition" "id" as
-          , acquisitionX = definiteA fromAttrToStr "Acquisition" "x" as
-          , acquisitionY = definiteA fromAttrToStr "Acquisition" "y" as
-          , acquisitionWidth = definiteA fromAttrToStr "Acquisition" "width" as
-          , acquisitionHeight = definiteA fromAttrToStr "Acquisition" "height" as
+          , acquisitionX = read $ definiteA fromAttrToStr "Acquisition" "x" as
+          , acquisitionY = read $ definiteA fromAttrToStr "Acquisition" "y" as
+          , acquisitionWidth = read $ definiteA fromAttrToStr "Acquisition" "width" as
+          , acquisitionHeight = read $ definiteA fromAttrToStr "Acquisition" "height" as
           }
     toAttrs v = catMaybes 
         [ toAttrFrStr "id" (acquisitionId v)
-        , toAttrFrStr "x" (acquisitionX v)
-        , toAttrFrStr "y" (acquisitionY v)
-        , toAttrFrStr "width" (acquisitionWidth v)
-        , toAttrFrStr "height" (acquisitionHeight v)
+        , toAttrFrStr "x" (show $ acquisitionX v)
+        , toAttrFrStr "y" (show $ acquisitionY v)
+        , toAttrFrStr "width" (show $ acquisitionWidth v)
+        , toAttrFrStr "height" (show $ acquisitionHeight v)
         ]
 
 
