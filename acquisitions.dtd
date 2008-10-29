@@ -1,0 +1,11 @@
+<!ELEMENT Frames (Frame)*>
+<!ELEMENT Frame (Acquisition)*>
+<!ATTLIST Frame time CDATA #REQUIRED
+                number CDATA #REQUIRED>
+<!ELEMENT Acquisition EMPTY>
+<!ATTLIST Acquisition id     CDATA #REQUIRED
+                      x      CDATA #REQUIRED
+                      y      CDATA #REQUIRED
+                      width  CDATA #REQUIRED
+                      height CDATA #REQUIRED>
+
