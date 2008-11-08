@@ -8,12 +8,16 @@ import Text.PrettyPrint.HughesPJ
 
 import AcquisitionTypes
 import AcquisitionFuncs
+import Reasoner
+import Vocabulary
+import WrappedInts.Types (HasInt(..))
 
 main =
     do
         args <- System.getArgs
         frames <- fReadXml $ head args :: IO Frames
-        putStrLn $ processAll frames
+        mind <- newMind confidenceBoost suggestStatus SparseTransitive (map HasInt [1..] :: [ConstrainerID])
+        -- putStrLn $ processAll frames
 
 processAll :: Frames -> String
 processAll (Frames frames) = processFrames frames
