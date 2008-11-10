@@ -6,7 +6,7 @@
 
 module Reasoner.Core
  ({-* Data types -}
-  TransitiveExplains(..), Mind, HypEvent(..), MindEvent(..),
+  TransitiveExplains(..), Mind, HypEvent(..), MindEvent(..), explainers,
   {-* Querying a 'Mind' -}
   showMind, showHypothesis, hypothesisStatus, unexplained, mindTrace, hypothesisTrace, setTrace,
   unacceptableHypotheses, refutedHypotheses, consideringHypotheses, acceptedHypotheses, irrefutableHypotheses,

@@ -1,8 +1,51 @@
-module AcquisitionTypes where
-
+module Acquisition where
+import Reasoner.Core
+import Reasoner.Types
+import Vocabulary
+import WrappedInts.IDSet (fromList)
 import Text.XML.HaXml.Xml2Haskell
 import Text.XML.HaXml.OneOfN
 import Char (isSpace)
+
+type AcquisitionID = HypothesisID
+
+generateAcquisitionHypotheses :: forall s r c.
+                                 (Ord r, Show r, Metric c)
+                              => [Acquisition]
+                              -> [HypothesisID]
+                              -> CategoryID
+                              -> Mind s r c
+                              -> ([AcquisitionID], [HypothesisID], Mind s r c)
+
+generateAcquisitionHypotheses = generateAcquisitionHypotheses' []
+
+generateAcquisitionHypotheses' :: forall s r c.
+                                  (Ord r, Show r, Metric c)
+                               => [AcquisitionID]
+                               -> [Acquisition]
+                               -> [HypothesisID]
+                               -> CategoryID
+                               -> Mind s r c
+                               -> ([AcquisitionID], [HypothesisID], Mind s r c)
+
+generateAcquisitionHypotheses' acqIDs []     hs _     mind = (acqIDs, hs, mind)
+generateAcquisitionHypotheses' acqIDs (a:as) hs catID mind =
+    generateAcquisitionHypotheses' newAcqIDs as newHs catID newMind
+        where
+          hypID     = 1 + (head hs)
+          newHs     = [hypID] ++ hs
+          newAcqIDs = acqIDs ++ [hypID]
+          newMind   = setFactual (fromList [hypID])
+                      (addHypothesis hypID catID (const Medium) mind)
+
+area :: Acquisition -> Double
+area Acquisition { acquisitionWidth = w, acquisitionHeight = h } = w * h
+
+distance :: Acquisition -> Acquisition -> Double
+distance Acquisition { acquisitionX = x1, acquisitionY = y1 }
+         Acquisition { acquisitionX = x2, acquisitionY = y2 } =
+    sqrt $ (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)
+
 
 
 {-Type decls-}

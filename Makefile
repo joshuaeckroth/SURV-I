@@ -1,7 +1,7 @@
 
 LDFLAGS = -L/usr/X11R6/lib -lX11 -lm
 CFLAGS = -g -Wall -ansi
-GHCFLAGS = -fglasgow-exts #-XScopedTypeVariables
+GHCFLAGS = -fglasgow-exts
 
 #all: decode play_events
 all: decode abducer
@@ -9,10 +9,15 @@ all: decode abducer
 decode: decode.c
 	$(CC) $(CFLAGS) decode.c $(LDFLAGS) -o $@
 
-abducer: abducer.hs AcquisitionTypes.hs AcquisitionFuncs.hs Abducer.hs Reasoner.hs Vocabulary.hs Reasoner/*.hs WrappedInts/*.hs
-	ghc -package HaXml $(GHCFLAGS) -o abducer AcquisitionTypes.hs \
-        AcquisitionFuncs.hs Reasoner.hs Vocabulary.hs \
-        Reasoner/*.hs WrappedInts/*.hs Abducer.hs abducer.hs
+abducer: abducer.hs Acquisition.hs Hypothesis.hs Abducer.hs Reasoner.hs Vocabulary.hs Reasoner/*.hs WrappedInts/*.hs
+	ghc -package HaXml $(GHCFLAGS) -o abducer WrappedInts/Types.hs WrappedInts/IDSet.hs WrappedInts/IDMap.hs \
+	Reasoner/Types.hs Reasoner/Core.hs Reasoner/Constrainers.hs \
+	Reasoner/Extra.hs Reasoner.hs Vocabulary.hs Acquisition.hs \
+        Hypothesis.hs \
+        Abducer.hs abducer.hs
+
+clean:
+	rm -f *.o *.hi Reasoner/*.o Reasoner/*.hi WrappedInts/*.o WrappedInts/*.hi
 
 #play_events: play_events.cpp xmlsp.cpp
 #	g++ $(CFLAGS) play_events.cpp xmlsp.cpp $(LDFLAGS) -o $@
