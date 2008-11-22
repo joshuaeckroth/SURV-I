@@ -3,15 +3,13 @@ import System
 import Text.XML.HaXml.Parse
 import Text.XML.HaXml.Pretty
 import Text.XML.HaXml.Xml2Haskell
-import Text.PrettyPrint.HughesPJ
-
-import AcquisitionTypes
-import AcquisitionFuncs
 import Abducer
+import Types
+import World
 
 main =
     do
-        args <- System.getArgs
-        frames <- fReadXml $ head args :: IO Frames
-        putStrLn $ processAll frames
-
+      let ws = return (newWorldState)
+      args <- System.getArgs
+      (Frames frames) <- fReadXml $ head args :: IO Frames
+      outputHuman (runAbducer frames ws)

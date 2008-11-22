@@ -1,56 +1,47 @@
 module Abducer where
-import IO
-import System
-import Control.Arrow ((>>>))
-import Text.XML.HaXml.Parse
-import Text.XML.HaXml.Pretty
-import Text.XML.HaXml.Xml2Haskell
-import Text.PrettyPrint.HughesPJ
-
+import Types
+import World
+import Frame
 import Acquisition
-import Hypothesis
-import Reasoner
+import Noise
+import Track
 import Vocabulary
-import WrappedInts.IDSet (fromList,toList)
+import Reasoner.Types
+import Reasoner.Core
 import WrappedInts.Types (HasInt(..))
 
+runAbducer :: [Frame] -> World WorldState -> World WorldState
+runAbducer frames world = world >>= runAbducer' frames
 
-processAll :: Frames -> String
-processAll (Frames frames) =
-    let
-        hs   = [HasInt 0] :: [HypothesisID]
-        mind = newMind confidenceBoost suggestStatus SparseTransitive (map HasInt [1..] :: [ConstrainerID])
-        in
-          processFrames frames hs mind
+runAbducer' :: [Frame] -> WorldState -> World WorldState
+runAbducer' []             ws = return ws
+runAbducer' (frame:frames) ws =
+    do
+      let catID = HasInt 0 :: CategoryID
+          ws'   = ws { acqIDs = [] }
 
-processFrames :: forall s r c.
-                 (Ord r, Show r, Metric c)
-              => [Frame]
-              -> [HypothesisID]
-              -> Mind s r c
-              -> String
+      recordFrame frame ws' >>=
+                  hypothesizeAcquisitions catID (getAcquisitions frame) >>=
+                  hypothesizeNoise catID >>=
+               -- hypothesizeTracks catID >>=
+               -- hypothesizeClassifications catID >>=
+                  (\ws'' -> return ws'' { mind = (reason (ReasonerSettings False) High (mind ws'')) } ) >>=
+               -- outputHuman >>=
+               -- outputXML >>=
+                  runAbducer' frames
 
-processFrames []                          _  _    = "End of frame\n\n"
-processFrames ((Frame attrs acqs):frames) hs mind =
-    let
-        catID            = HasInt 0 :: CategoryID
-        (newHs, newMind) = processAcquisitions acqs hs catID mind
-        in 
-          "Mind for frame " ++ show (frameNumber attrs) ++ "\n" ++
-                            unlines (showMind newMind) ++ "\n" ++
-                            processFrames frames newHs newMind
 
-processAcquisitions :: forall s r c.
-                       (Ord r, Show r, Metric c)
-                    => [Acquisition]
-                    -> [HypothesisID]
-                    -> CategoryID
-                    -> Mind s r c
-                    -> ([HypothesisID], Mind s r c)
-
-processAcquisitions acqs hs catID mind =
-    let
-        (acqIDs, hs1, mind1) = generateAcquisitionHypotheses acqs hs catID mind
-        (hs2, mind2)         = generateNoiseHypotheses acqIDs hs catID mind1
-    in
-      (hs2, mind2)
+-- processFrames []                          _     = "End of frame\n\n"
+-- processFrames ((Frame attrs acqs):frames) world =
+--     let
+--         catID  = HasInt 0 :: CategoryID
+--         world' = processAcquisitions acqs catID world
+--         in 
+--           "World for frame " ++ show (frameNumber attrs) ++ "\n" ++
+--                                  (showWorld world') ++ "\n\n" ++
+--                                  processFrames frames world'
+--
+--                            unlines (showMind $ reason (ReasonerSettings False) High newMind) ++ "\n" ++
+--                            "Tracks:\n" ++ (showTracks newTracks) ++ "\n" ++
+--                            "New acquisitions:\n" ++ (showAcquisitions acqIDs newAcqMap) ++ "\n" ++
+--                            processFrames frames newAcqMap newTracks newHs newMind

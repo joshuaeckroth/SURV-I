@@ -1,7 +1,7 @@
 
 LDFLAGS = -L/usr/X11R6/lib -lX11 -lm
 CFLAGS = -g -Wall -ansi
-GHCFLAGS = -fglasgow-exts
+GHCFLAGS = -prof -auto-all 
 
 #all: decode play_events
 all: decode abducer
@@ -9,11 +9,11 @@ all: decode abducer
 decode: decode.c
 	$(CC) $(CFLAGS) decode.c $(LDFLAGS) -o $@
 
-abducer: abducer.hs Acquisition.hs Hypothesis.hs Abducer.hs Reasoner.hs Vocabulary.hs Reasoner/*.hs WrappedInts/*.hs
+abducer: abducer.hs Acquisition.hs Frame.hs Noise.hs Abducer.hs Reasoner.hs Vocabulary.hs Reasoner/*.hs WrappedInts/*.hs
 	ghc -package HaXml $(GHCFLAGS) -o abducer WrappedInts/Types.hs WrappedInts/IDSet.hs WrappedInts/IDMap.hs \
 	Reasoner/Types.hs Reasoner/Core.hs Reasoner/Constrainers.hs \
-	Reasoner/Extra.hs Reasoner.hs Vocabulary.hs Acquisition.hs \
-        Hypothesis.hs \
+	Reasoner/Extra.hs Reasoner.hs Vocabulary.hs Types.hs World.hs Acquisition.hs \
+        Noise.hs Frame.hs Track.hs \
         Abducer.hs abducer.hs
 
 clean:
