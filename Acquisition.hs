@@ -32,7 +32,7 @@ recordAcquisitions ws = recordWorldEvent
 
 showAcquisitions :: [AcquisitionID] -> AcquisitionMap -> [String]
 showAcquisitions []     _      = []
-showAcquisitions (a:as) am = ("Acquisition " ++ (show a) ++
+showAcquisitions (a:as) am = ("Add as fact: Acquisition " ++ (show a) ++
                           " [x=" ++ (show $ acquisitionX acq) ++ ", " ++
                           "y=" ++ (show $ acquisitionY acq) ++ ", " ++
                           "width=" ++ (show $ acquisitionWidth acq) ++ ", " ++

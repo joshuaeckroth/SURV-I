@@ -35,3 +35,4 @@ scoreNoiseHypothesis hypID acqID acqMap _ =
 nextID field mind = if (null . IDMap.toList) (field mind) then 1
                     else 1 + (IntSet.findMax . wrappedInts . IDMap.keysSet) (field mind)
 
+

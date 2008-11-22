@@ -18,12 +18,12 @@ runAbducer' []             ws = return ws
 runAbducer' (frame:frames) ws =
     do
       let catID = HasInt 0 :: CategoryID
-          ws'   = ws { acqIDs = [] }
+          ws'   = ws { acqIDs = [] } -- reset 'current' acquisition set
 
       recordFrame frame ws' >>=
                   hypothesizeAcquisitions catID (getAcquisitions frame) >>=
                   hypothesizeNoise catID >>=
-               -- hypothesizeTracks catID >>=
+                  hypothesizeTracks catID >>=
                -- hypothesizeClassifications catID >>=
                   (\ws'' -> return ws'' { mind = (reason (ReasonerSettings False) High (mind ws'')) } ) >>=
                -- outputHuman >>=

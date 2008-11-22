@@ -11,7 +11,8 @@ data WorldState = WorldState { mind   :: Mind Level Level Level, -- ^ The Mark-I
                                hypIDs :: [HypothesisID],         -- ^ Current set of hypothesis IDs
                                acqMap :: AcquisitionMap,         -- ^ Current map of acquisitions
                                acqIDs :: [AcquisitionID],        -- ^ Most recent acquisitions
-                               tracks :: TrackMap }              -- ^ Current map of tracks
+                               tracks :: TrackMap                -- ^ Current map of tracks
+                             }
 
 -- | Create a new blank world state
 newWorldState :: WorldState
@@ -22,15 +23,13 @@ newWorldState = WorldState
                 []
                 empty
 
-type WorldLog = ([String],      -- ^ Human-readable representation
-                 HaXml.Element) -- ^ XML representation
+type WorldLog = ([String], HaXml.Element) -- ^ Human-readable and XML representation
 
 newtype World a = World { worldState :: (a, WorldLog) }
 
 instance Monad World where
     return a = World (a, ([], HaXml.Elem "World" [] []))
 
-    -- | Perform some action on the world and record its activity in the log
     -- (>>=) :: World a
     --      -> (a -> World b)
     --      -> World b
@@ -42,9 +41,9 @@ instance Monad World where
 recordWorldEvent :: ([String], HaXml.Element) -> World ()
 recordWorldEvent (ss, e) = World ((), (ss, e))
 
-outputHuman :: World a -> IO ()
-outputHuman m = putStrLn (unlines s)
+outputHuman :: World WorldState -> IO ()
+outputHuman m = putStrLn $ unlines (s ++ [""] ++ (showMind $ mind ws))
     where
-      (_, (s, _)) = worldState m
+      (ws, (s, _)) = worldState m
 
 
