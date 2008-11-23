@@ -18,22 +18,17 @@ hypothesizeTracks' :: CategoryID
                    -> WorldState
                    -> World WorldState
 hypothesizeTracks' _     []     ws = return ws
-hypothesizeTracks' catID (a:as) ws =
-    hypothesizeTracks' catID as ws'
+hypothesizeTracks' catID (acqID:acqIDs) ws =
+    recordTrack hypID acqID ws' >> hypothesizeTracks' catID acqIDs ws'
         where
           hypID     = 1 + (head (hypIDs ws))
           newHypIDs = [hypID] ++ (hypIDs ws)
-          newTracks = insert hypID [a] (tracks ws)
+          newTracks = insert hypID [acqID] (tracks ws)
           newMind   = addHypothesis hypID catID (const Medium) (mind ws)
           ws'       = ws { mind = newMind, hypIDs = newHypIDs, tracks = newTracks }
 
-showTracks :: TrackMap -> String
-showTracks tracks = foldWithKey foldTracks "" tracks
-
-foldTracks :: HypothesisID -> [AcquisitionID] -> String -> String
-foldTracks h acqIDs s = "Track " ++ (show h) ++ " explains " ++ (foldTracks' acqIDs) ++ "\n" ++ s
-                        
-foldTracks' []     = ""
-foldTracks' (a:as) = (show a) ++ " " ++ (foldTracks' as)
-
-
+recordTrack :: HypothesisID -> AcquisitionID -> WorldState -> World WorldState
+recordTrack hypID acqID ws =
+    recordWorldEvent (["Track " ++ (show hypID) ++ " explains " ++ (show acqID)],
+                      emptyElem)
+                         >> return ws

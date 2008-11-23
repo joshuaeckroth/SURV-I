@@ -17,7 +17,7 @@ data WorldState = WorldState { mind   :: Mind Level Level Level, -- ^ The Mark-I
                                tracks :: TrackMap                -- ^ Current map of tracks
                              }
 
--- | Create a new blank world state
+-- |Create a new blank world state
 newWorldState :: WorldState
 newWorldState = WorldState
                 (newMind confidenceBoost suggestStatus SparseTransitive)
@@ -27,7 +27,7 @@ newWorldState = WorldState
                 (Frame (Frame_Attrs 0 0) [])
                 empty
 
-type WorldLog = ([String], HaXml.Content) -- ^ Human-readable and XML representation
+type WorldLog = ([String], HaXml.Content)
 
 newtype World a = World { worldState :: (a, WorldLog) }
 
