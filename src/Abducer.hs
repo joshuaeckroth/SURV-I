@@ -21,7 +21,7 @@ runAbducer' (frame:frames) ws =
           ws'   = ws { acqIDs = [] } -- reset 'current' acquisition set
 
       recordFrame frame ws' >>=
-                  hypothesizeAcquisitions catID (getAcquisitions frame) >>=
+                  hypothesizeAcquisitions catID frame (getAcquisitions frame) >>=
                   hypothesizeNoise catID >>=
                   hypothesizeTracks catID >>=
                -- hypothesizeClassifications catID >>=

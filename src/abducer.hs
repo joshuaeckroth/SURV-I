@@ -13,3 +13,4 @@ main =
       args <- System.getArgs
       (Frames frames) <- fReadXml $ head args :: IO Frames
       outputHuman (runAbducer frames ws)
+      outputXML (runAbducer frames ws)

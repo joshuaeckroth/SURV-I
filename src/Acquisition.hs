@@ -10,12 +10,13 @@ import WrappedInts.IDMap (insert, getItemFromMap)
 import Text.XML.HaXml.Types as HaXml
 
 hypothesizeAcquisitions :: CategoryID
+                        -> Frame
                         -> [Acquisition]
                         -> WorldState
                         -> World WorldState
-hypothesizeAcquisitions _     []     ws = recordAcquisitions ws >> return ws
-hypothesizeAcquisitions catID (a:as) ws =
-    hypothesizeAcquisitions catID as ws'
+hypothesizeAcquisitions _     _ []     ws = return ws
+hypothesizeAcquisitions catID f (a:as) ws =
+    recordAcquisition f hypID a ws' >> hypothesizeAcquisitions catID f as ws'
         where
           hypID      = 1 + (head (hypIDs ws))
           newHypIDs  = [hypID] ++ (hypIDs ws)
@@ -25,22 +26,27 @@ hypothesizeAcquisitions catID (a:as) ws =
                        (addHypothesis hypID catID (const Medium) (mind ws))
           ws'        = ws { mind = newMind, hypIDs = newHypIDs, acqMap = newAcqMap, acqIDs = newAcqIDs }
 
-recordAcquisitions :: WorldState -> World WorldState
-recordAcquisitions ws = recordWorldEvent
-                        (showAcquisitions (acqIDs ws) (acqMap ws), HaXml.Elem "Acquisition" [] [])
-                        >> return ws
+recordAcquisition :: Frame -> AcquisitionID -> Acquisition -> WorldState -> World WorldState
+recordAcquisition (Frame attrs _) acqID a ws =
+    recordWorldEvent ([showAcquisition acqID a],
+                      recordWorldEventInFrame (show $ frameNumber attrs)
+                                                  (show $ frameTime attrs)
+                                                  [(worldElem "Acquisition" [("id", show $ acqID),
+                                                                             ("x", show $ acquisitionX a),
+                                                                             ("y", show $ acquisitionY a),
+                                                                             ("width", show $ acquisitionWidth a),
+                                                                             ("height", show $ acquisitionHeight a),
+                                                                             ("area", show $ area a)]
+                                                    [])])
+                         >> return ws
 
-showAcquisitions :: [AcquisitionID] -> AcquisitionMap -> [String]
-showAcquisitions []     _      = []
-showAcquisitions (a:as) am = ("Add as fact: Acquisition " ++ (show a) ++
-                          " [x=" ++ (show $ acquisitionX acq) ++ ", " ++
-                          "y=" ++ (show $ acquisitionY acq) ++ ", " ++
-                          "width=" ++ (show $ acquisitionWidth acq) ++ ", " ++
-                          "height=" ++ (show $ acquisitionHeight acq) ++ ", " ++
-                          "area=" ++ (show $ area acq) ++ "]") :
-                          showAcquisitions as am
-                              where
-                                acq = getItemFromMap am a
+showAcquisition :: AcquisitionID -> Acquisition -> String
+showAcquisition acqID a = "Acquisition " ++ (show acqID) ++
+                          " [x=" ++ (show $ acquisitionX a) ++ ", " ++
+                          "y=" ++ (show $ acquisitionY a) ++ ", " ++
+                          "width=" ++ (show $ acquisitionWidth a) ++ ", " ++
+                          "height=" ++ (show $ acquisitionHeight a) ++ ", " ++
+                          "area=" ++ (show $ area a) ++ "]"
 
 area :: Acquisition -> Double
 area Acquisition { acquisitionWidth = w, acquisitionHeight = h } = w * h
