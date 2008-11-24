@@ -1,14 +1,14 @@
 
 LDFLAGS = -L/usr/X11R6/lib -lX11 -lm
 CFLAGS = -g -Wall -ansi
-GHCFLAGS = #-prof -auto-all
-HMAKEFLAGS = -package HaXml -package containers -package gtk -package array -dbuild -isrc
+GHCFLAGS = -prof -auto-all
+HMAKEFLAGS = -package HaXml -package containers -package array -dbuild -isrc
 SRCS = $(wildcard src/*.hs) $(wildcard src/*/*.hs) \
 
-all: decode player/player abducer api
+all: decoder/decoder player/player abducer api
 
-decode: decode.c
-	$(CC) $(CFLAGS) decode.c $(LDFLAGS) -o $@
+decoder/decoder: decoder/decoder.c
+	$(CC) $(CFLAGS) decoder/decoder.c $(LDFLAGS) -o $@
 
 player/player: player/player.cpp
 	$(CXX) $(CFLAGS) -Iplayer/xmlsp-1.0 player/player.cpp player/xmlsp-1.0/xmlsp.cpp player/xmlsp-1.0/xmlsp_dom.cpp \
@@ -18,6 +18,7 @@ abducer:
 	hmake $(HMAKEFLAGS) $(GHCFLAGS) abducer
 
 clean:
+	rm -Rvf decoder/*.o decoder/decoder player/*.o player/player
 	hmake $(HMAKEFLAGS) -realclean abducer
 
 .PHONY : api

@@ -6,7 +6,8 @@ import Reasoner.Core
 import Reasoner.Types
 import Vocabulary
 import WrappedInts.Types
-import WrappedInts.IDMap (insert, foldWithKey)
+import WrappedInts.IDMap (insert, foldWithKey, getItemFromMap)
+import Text.XML.HaXml.Types as HaXml
 
 hypothesizeTracks :: CategoryID
                   -> WorldState
@@ -19,16 +20,34 @@ hypothesizeTracks' :: CategoryID
                    -> World WorldState
 hypothesizeTracks' _     []     ws = return ws
 hypothesizeTracks' catID (acqID:acqIDs) ws =
-    recordTrack hypID acqID ws' >> hypothesizeTracks' catID acqIDs ws'
+    hypothesizeTracks' catID acqIDs ws'
         where
           hypID       = 1 + (head (hypIDs ws))
+          explainID   = nextID explainers (mind ws)
           newHypIDs   = [hypID] ++ (hypIDs ws)
-          newTrackMap = insert hypID [acqID] (trackMap ws)
-          newMind     = addHypothesis hypID catID (const Medium) (mind ws)
+          acq         = getItemFromMap (acqMap ws) acqID
+          track       = Track acq []
+          newTrackMap = insert hypID track (trackMap ws)
+          newMind     = addExplains explainID hypID acqID
+                        (addHypothesis hypID catID (scoreTrack track newTrackMap) (mind ws))
           ws'         = ws { mind = newMind, hypIDs = newHypIDs, trackMap = newTrackMap }
 
-recordTrack :: HypothesisID -> AcquisitionID -> WorldState -> World WorldState
-recordTrack hypID acqID ws =
-    recordWorldEvent (["Track " ++ (show hypID) ++ " explains " ++ (show acqID)],
-                      emptyElem)
-                         >> return ws
+scoreTrack :: Track -> TrackMap -> Level -> Level
+scoreTrack t trackMap' _ = Medium
+
+showTrack :: [Track] -> TrackMap -> [String]
+showTrack []     _         = []
+showTrack (t:ts) trackMap' = [""]
+
+trackToXml :: [Track] -> TrackMap -> [HaXml.Content]
+trackToXml []     _         = []
+trackToXml (t:ts) trackMap' =
+    [worldElem "Track" [] []]
+    ++ trackToXml ts trackMap'
+
+updateTracks :: WorldState -> World WorldState
+updateTracks ws = return ws
+
+recordTracks :: WorldState -> World WorldState
+recordTracks ws = return ws
+

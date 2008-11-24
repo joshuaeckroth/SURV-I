@@ -19,8 +19,7 @@ unsigned long fgcolor, bgcolor;
 Colormap cmap;
 Visual *visual;
 int depth;
-char msg[1024]; /* output through socket */
-int servfd, clifd; /* server & client socket file descriptors */
+char msg[1024];
 int framenum = 0; /* current frame number; incremented by read_image() */
 
 #define EVENTMASK ExposureMask | KeyPressMask | ButtonPressMask
@@ -65,60 +64,6 @@ void xbye(void)
         XCloseDisplay(display);
 }
 
-
-void socket_init(const char *name)
-{
-    int clilen, servlen;
-    struct sockaddr_un cli_addr, serv_addr;
-    
-    if((servfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
-    {
-        perror("decode: Error opening socket");
-        exit(1);
-    }
-    memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sun_family = AF_UNIX;
-    strcpy(serv_addr.sun_path, name);
-    servlen = strlen(serv_addr.sun_path) + sizeof(serv_addr.sun_family);
-    if(bind(servfd, (struct sockaddr *)&serv_addr, servlen) < 0)
-    {
-        perror("decode: Error binding to socket");
-        exit(1);
-    }
-    fprintf(stderr, "decode: got layer-1 socket\n");
-    listen(servfd, 1);
-    
-    clilen = sizeof(cli_addr);
-    clifd = accept(servfd, (struct sockaddr *)&cli_addr, &clilen);
-    if(clifd < 0)
-    {
-        perror("decode: Error accepting client");
-        exit(1);
-    }
-    fprintf(stderr, "decode: got layer-1 client\n");
-}
-
-void socket_close(void)
-{
-
-}
-
-void get_ok(void)
-{
-    char ack[3];
-    fprintf(stderr, "decode: WAITING FOR OK\n");
-    while((0 == read(clifd, ack, 3)) || (0 != strncmp(ack, "OK", 2)));
-    fprintf(stderr, "decode: GOT OK\n");
-}
-
-void get_next(void)
-{
-    char ack[5];
-    fprintf(stderr, "decode: WAITING FOR NEXT\n");
-    while((0 == read(clifd, ack, 5)) || (0 != strncmp(ack, "NEXT", 4)));
-    fprintf(stderr, "decode: GOT NEXT\n");
-}
-
 int *read_image(FILE *in, int *width, int *height)
 {
     char line[80];
@@ -152,7 +97,6 @@ int *read_image(FILE *in, int *width, int *height)
     return buf;
 }
 
-
 void write_image(FILE *out, int *image, int w, int h)
 {
     int i, n;
@@ -167,10 +111,6 @@ void write_image(FILE *out, int *image, int w, int h)
         image++;
     }
 }
-
-
-
-
 
 void blur(int *f1, int *f2, int w, int h)
 {
@@ -1164,17 +1104,13 @@ void output_labeled(int *lb, int w, int h)
     for (i=0; i<65536; i++) {
         if (!labeled[i].area) continue;
         
-        sprintf(msg, "<Acquisition id=\"%d\" x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\"/>",
-            i, 
-            (int)(labeled[i].center_x / labeled[i].area), 
-            (int)(labeled[i].center_y / labeled[i].area),
-            labeled[i].max_x - labeled[i].min_x + 1,
-            labeled[i].max_y - labeled[i].min_y + 1);
-        /*
-        fprintf(stderr, "decode: SENDING %s\n", msg);
-        write(clifd, msg, strlen(msg));
-        get_ok();
-        */
+        sprintf(msg, "<Acquisition id=\"%d\" x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" time=\"%f\" />",
+		i, 
+		(int)(labeled[i].center_x / labeled[i].area), 
+		(int)(labeled[i].center_y / labeled[i].area),
+		labeled[i].max_x - labeled[i].min_x + 1,
+		labeled[i].max_y - labeled[i].min_y + 1,
+		framenum / 3.0);
         printf("%s\n", msg);
     }
 }
@@ -1216,45 +1152,12 @@ int main(int argc, char *argv[])
         exit(0);
     }
 
-    /*socket_init("layer-1");*/
-    
     xinit();
 
     printf("<Frames>\n");
 
-    /* Get START */
-    /*
-    char start[6];
-    fprintf(stderr, "decode: WAITING FOR START\n");
-    while((0 ==  read(clifd, start, 6)) || (0 != strncmp(start, "START", 5)));
-    fprintf(stderr, "decode: GOT START\n");
-    */
-
-    /* in = fopen("background_e.ppm", "rb"); */
-    /* bkg = read_image(in, &w, &h); */
-    /* fclose(in); */
-
-
     img = XCreateImage(display, visual, depth, ZPixmap, 0, 0, 640, 480, 32, 0);
     
-    
-    /*buf = read_image(in, &w, &h);
-    free(buf);
-    buf = read_image(in, &w, &h);
-    free(buf);*/
-            
-    /*buf = read_image(in, &w, &h);
-    free(buf);
-    buf = read_image(in, &w, &h);
-    frames[1] = buf;
-    
-    buf = read_image(in, &w, &h);
-    free(buf);
-    buf = read_image(in, &w, &h);
-    frames[2] = buf;
-
-    frames[0] = 0;*/
-
     /* Read 64 frames */
     in = fopen(argv[1], "r");
     for (i=1; i<33; i++) {
@@ -1346,12 +1249,8 @@ int main(int argc, char *argv[])
         XDrawString(display, window, gc, 650, 470, framemsg, strlen(framemsg));
         XFlush(display);
 
-        /*fprintf(stderr, "decode: SENDING <Frame>\n");*/
-        /*write(clifd, "<Frame>", 8);*/
         printf("<Frame time=\"%f\" number=\"%d\">\n", ((double)framenum) / 3.0, framenum);
         output_labeled(lb, w, h);
-        /*fprintf(stderr, "decode: SENDING </Frame>\n");*/
-        /*write(clifd, "</Frame>", 9);*/
         printf("</Frame>");
 
         free(dif);
@@ -1410,8 +1309,6 @@ int main(int argc, char *argv[])
         */
         free(framesb[0]);
         free(framesb[2]);
-
-        /*get_next();*/
     }
 
     printf("</Frames>\n");
@@ -1423,8 +1320,6 @@ int main(int argc, char *argv[])
     img->data = 0;
     XDestroyImage(img);
     xbye();
-
-    /*socket_close();*/
     
     return 0;
 }

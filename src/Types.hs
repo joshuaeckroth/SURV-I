@@ -12,8 +12,11 @@ type AcquisitionMap = HypothesisMap Acquisition
 
 type NoiseMap = HypothesisMap AcquisitionID
 
-type TrackMap = HypothesisMap [AcquisitionID]
+type TrackMap = HypothesisMap Track
 
+data Track
+    -- | Tracks have an acquisition (the head) and a list of prior tracks
+    = Track Acquisition [Track]
 
 {-Type decls-}
 
@@ -25,13 +28,13 @@ data Frame_Attrs = Frame_Attrs
     , frameNumber :: Int
     } deriving (Eq,Show)
 data Acquisition = Acquisition
-    { acquisitionId :: String
+    { acquisitionID :: String
     , acquisitionX :: Double
     , acquisitionY :: Double
     , acquisitionWidth :: Double
     , acquisitionHeight :: Double
+    , acquisitionTime :: Double
     } deriving (Eq,Show)
-
 
 {-Instance decls-}
 
@@ -76,18 +79,20 @@ instance XmlContent Acquisition where
 instance XmlAttributes Acquisition where
     fromAttrs as =
         Acquisition
-          { acquisitionId = definiteA fromAttrToStr "Acquisition" "id" as
+          { acquisitionID = definiteA fromAttrToStr "Acquisition" "id" as
           , acquisitionX = read $ definiteA fromAttrToStr "Acquisition" "x" as
           , acquisitionY = read $ definiteA fromAttrToStr "Acquisition" "y" as
           , acquisitionWidth = read $ definiteA fromAttrToStr "Acquisition" "width" as
           , acquisitionHeight = read $ definiteA fromAttrToStr "Acquisition" "height" as
+          , acquisitionTime = read $ definiteA fromAttrToStr "Acquisition" "time" as
           }
     toAttrs v = catMaybes 
-        [ toAttrFrStr "id" (acquisitionId v)
+        [ toAttrFrStr "id" (acquisitionID v)
         , toAttrFrStr "x" (show $ acquisitionX v)
         , toAttrFrStr "y" (show $ acquisitionY v)
         , toAttrFrStr "width" (show $ acquisitionWidth v)
         , toAttrFrStr "height" (show $ acquisitionHeight v)
+        , toAttrFrStr "time" (show $ acquisitionTime v)
         ]
 
 

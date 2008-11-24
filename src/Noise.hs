@@ -22,7 +22,7 @@ hypothesizeNoise' catID (a:as) ws =
         where
           hypID       = 1 + (head (hypIDs ws))
           newHypIDs   = [hypID] ++ (hypIDs ws)
-          explainID   = HasInt (nextID explainers (mind ws))
+          explainID   = nextID explainers (mind ws)
           newNoiseIDs = (noiseIDs ws) ++ [hypID]
           newNoiseMap = IDMap.insert hypID a (noiseMap ws)
           newMind     = addExplains explainID hypID a
@@ -80,8 +80,4 @@ recordNoise ws =
       (Frame attrs _) = frame ws
       framenum        = show $ frameNumber attrs
       frametime       = show $ frameTime attrs
-
-nextID field mind = if (null . IDMap.toList) (field mind) then 1
-                    else 1 + (IntSet.findMax . wrappedInts . IDMap.keysSet) (field mind)
-
 

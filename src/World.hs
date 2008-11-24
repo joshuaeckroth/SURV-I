@@ -3,8 +3,9 @@ import Types
 import Reasoner.Core
 import Reasoner.Types
 import Vocabulary
-import WrappedInts.Types (HasInt(..))
-import WrappedInts.IDMap (empty)
+import WrappedInts.Types (HasInt(..), wrappedInts)
+import WrappedInts.IDMap (empty, toList, keysSet)
+import qualified WrappedInts.IDSet as IDSet
 import Text.XML.HaXml.Types as HaXml
 import Text.XML.HaXml.Combinators as HaXml
 import Text.XML.HaXml.Pretty as HaXml.Pretty
@@ -117,4 +118,5 @@ outputHuman m = putStrLn $ unlines (s ++ [""] ++ (showMind $ mind ws))
     where
       (ws, (s, _)) = worldState m
 
-
+nextID field mind = if (null . toList) (field mind) then HasInt 1
+                    else 1 + (IDSet.findMax . keysSet) (field mind)

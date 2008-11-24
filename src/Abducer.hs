@@ -29,6 +29,8 @@ runAbducer' (frame:frames) ws =
                   recordAcquisitions >>=
                   updateNoise >>=
                   recordNoise >>=
+                  updateTracks >>=
+                  recordTracks >>=
                -- outputHuman >>=
                -- outputXml >>=
                   runAbducer' frames
