@@ -1,0 +1,8 @@
+syntax: glob
+src/*.hi
+src/*/*.hi
+src/*~
+src/*/*~
+api/*
+build/*
+libs/*
