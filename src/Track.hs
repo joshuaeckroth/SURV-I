@@ -21,11 +21,11 @@ hypothesizeTracks' _     []     ws = return ws
 hypothesizeTracks' catID (acqID:acqIDs) ws =
     recordTrack hypID acqID ws' >> hypothesizeTracks' catID acqIDs ws'
         where
-          hypID     = 1 + (head (hypIDs ws))
-          newHypIDs = [hypID] ++ (hypIDs ws)
-          newTracks = insert hypID [acqID] (tracks ws)
-          newMind   = addHypothesis hypID catID (const Medium) (mind ws)
-          ws'       = ws { mind = newMind, hypIDs = newHypIDs, tracks = newTracks }
+          hypID       = 1 + (head (hypIDs ws))
+          newHypIDs   = [hypID] ++ (hypIDs ws)
+          newTrackMap = insert hypID [acqID] (trackMap ws)
+          newMind     = addHypothesis hypID catID (const Medium) (mind ws)
+          ws'         = ws { mind = newMind, hypIDs = newHypIDs, trackMap = newTrackMap }
 
 recordTrack :: HypothesisID -> AcquisitionID -> WorldState -> World WorldState
 recordTrack hypID acqID ws =

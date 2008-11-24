@@ -18,7 +18,7 @@ runAbducer' []             ws = return ws
 runAbducer' (frame:frames) ws =
     do
       let catID = HasInt 0 :: CategoryID
-          ws'   = ws { acqIDs = [] } -- reset 'current' acquisition set
+          ws'   = ws { acqIDs = [], noiseIDs = [] } -- reset 'current' acquisition and noise hypotheses
 
       recordFrame frame ws' >>=
                   hypothesizeAcquisitions catID frame (getAcquisitions frame) >>=
@@ -26,22 +26,10 @@ runAbducer' (frame:frames) ws =
                   hypothesizeTracks catID >>=
                -- hypothesizeClassifications catID >>=
                   (\ws'' -> return ws'' { mind = (reason (ReasonerSettings False) High (mind ws'')) } ) >>=
+                  recordAcquisitions >>=
+                  updateNoise >>=
+                  recordNoise >>=
                -- outputHuman >>=
-               -- outputXML >>=
+               -- outputXml >>=
                   runAbducer' frames
 
-
--- processFrames []                          _     = "End of frame\n\n"
--- processFrames ((Frame attrs acqs):frames) world =
---     let
---         catID  = HasInt 0 :: CategoryID
---         world' = processAcquisitions acqs catID world
---         in 
---           "World for frame " ++ show (frameNumber attrs) ++ "\n" ++
---                                  (showWorld world') ++ "\n\n" ++
---                                  processFrames frames world'
---
---                            unlines (showMind $ reason (ReasonerSettings False) High newMind) ++ "\n" ++
---                            "Tracks:\n" ++ (showTracks newTracks) ++ "\n" ++
---                            "New acquisitions:\n" ++ (showAcquisitions acqIDs newAcqMap) ++ "\n" ++
---                            processFrames frames newAcqMap newTracks newHs newMind

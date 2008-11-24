@@ -6,7 +6,11 @@ import Char (isSpace)
 
 type AcquisitionID = HypothesisID
 
+type NoiseID = HypothesisID
+
 type AcquisitionMap = HypothesisMap Acquisition
+
+type NoiseMap = HypothesisMap AcquisitionID
 
 type TrackMap = HypothesisMap [AcquisitionID]
 

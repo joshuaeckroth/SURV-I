@@ -16,7 +16,6 @@
 
 using namespace std;
 
-
 Display *display;
 Window root;
 Window window;
@@ -193,14 +192,22 @@ bool MyParser::on_tag_open(const std::string& tag_name, XMLSP::StringMap& attrib
         XSetForeground(display, gc, 0xf8b395);
         XDrawString(display, window, gc, x-(w/2)-5, y-(h/2)-5, id, strlen(id));
 	XDrawRectangle(display, window, gc, x-(w/2), y-(h/2), w, h);
-	/*
-        if (type == "noise") {
-            // Draw noise box (w*h box with X through it) and a circle around center
-            XSetForeground(display, gc, 0x444444);
-            XDrawRectangle(display, window, gc, x-(w/2), y-(h/2), w, h);
-            XDrawLine(display, window, gc, x-(w/2), y-(h/2), x-(w/2)+w, y-(h/2)+h);
-            XDrawLine(display, window, gc, x-(w/2), y-(h/2)+h, x-(w/2)+w, y-(h/2));
-            XDrawArc(display, window, gc, x-10, y-10, 20, 20, 0, 360*64);
+    }
+    else if(tag_name == "Noise") {
+      x = atoi(attributes["x"].c_str());
+      y = atoi(attributes["y"].c_str());
+      w = atoi(attributes["width"].c_str());
+      h = atoi(attributes["height"].c_str());
+      id = attributes["id"].c_str();
+
+      // Draw noise box (w*h box with X through it) and a circle around center
+      XSetForeground(display, gc, 0x444444);
+      XDrawRectangle(display, window, gc, x-(w/2), y-(h/2), w, h);
+      XDrawLine(display, window, gc, x-(w/2), y-(h/2), x-(w/2)+w, y-(h/2)+h);
+      XDrawLine(display, window, gc, x-(w/2), y-(h/2)+h, x-(w/2)+w, y-(h/2));
+      XDrawArc(display, window, gc, x-10, y-10, 20, 20, 0, 360*64);
+    }
+      /*
         } else if (type == "ambiguity") {
             // Draw ambiguity box (w*h box with X through it) and a circle around center
             XSetForeground(display, gc, 0xbbbbbb);
@@ -221,9 +228,6 @@ bool MyParser::on_tag_open(const std::string& tag_name, XMLSP::StringMap& attrib
             XSetForeground(display, gc, 0xe494f7);
             XDrawRectangle(display, window, gc, x-(w/2), y-(h/2), w, h);
         }
-	*/
-    }
-        /*
         else if (type == "split" || type == "merge" || type == "ambiguity") {
             sm_x = atoi(attributes["x"].c_str());
             sm_y = atoi(attributes["y"].c_str());

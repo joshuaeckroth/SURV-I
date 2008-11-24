@@ -9,12 +9,14 @@ import Text.XML.HaXml.Types as HaXml
 import Text.XML.HaXml.Combinators as HaXml
 import Text.XML.HaXml.Pretty as HaXml.Pretty
 
-data WorldState = WorldState { mind   :: Mind Level Level Level, -- ^ The Mark-II Mind
-                               hypIDs :: [HypothesisID],         -- ^ Current set of hypothesis IDs
-                               acqMap :: AcquisitionMap,         -- ^ Current map of acquisitions
-                               acqIDs :: [AcquisitionID],        -- ^ Most recent acquisitions
-                               frame  :: Frame,                  -- ^ Most recent frame
-                               tracks :: TrackMap                -- ^ Current map of tracks
+data WorldState = WorldState { mind     :: Mind Level Level Level, -- ^ The Mark-II Mind
+                               hypIDs   :: [HypothesisID],         -- ^ Current set of hypothesis IDs
+                               acqIDs   :: [AcquisitionID],        -- ^ Most recent acquisitions
+                               acqMap   :: AcquisitionMap,         -- ^ Current map of acquisitions
+                               noiseIDs :: [NoiseID],              -- ^ Most recent noise hypotheses
+                               noiseMap :: NoiseMap,               -- ^ Current map of noise hypotheses
+                               trackMap :: TrackMap,               -- ^ Current map of tracks
+                               frame    :: Frame                   -- ^ Most recent frame
                              }
 
 -- |Create a new blank world state
@@ -22,10 +24,12 @@ newWorldState :: WorldState
 newWorldState = WorldState
                 (newMind confidenceBoost suggestStatus SparseTransitive)
                 [HasInt 0]
+                []
                 empty
                 []
-                (Frame (Frame_Attrs 0 0) [])
                 empty
+                empty
+                (Frame (Frame_Attrs 0 0) [])
 
 type WorldLog = ([String], HaXml.Content)
 
@@ -79,10 +83,9 @@ joinWorldEvents c1 c2
 
 joinWorldEventsOneFrame :: String -> String -> HaXml.Content -> HaXml.Content -> HaXml.Content
 joinWorldEventsOneFrame framenum frametime c1 c2 =
-    recordWorldEventInFrame framenum frametime
-                                ((filterFrameEvents framenum $ c1)
-                                 ++
-                                 (filterFrameEvents framenum $ c2))
+    recordWorldEventInFrame framenum frametime ((filterFrameEvents framenum $ c1)
+                                                ++
+                                                (filterFrameEvents framenum $ c2))
 
 joinWorldEventsTwoFrames :: HaXml.Content -> HaXml.Content -> HaXml.Content
 joinWorldEventsTwoFrames c1 c2 =
@@ -103,8 +106,8 @@ extractAttr' :: String -> [HaXml.Attribute] -> String
 extractAttr' s ((name, (HaXml.AttValue [Left value])):as) = if name == s then value
                                                             else extractAttr' s as
 
-outputXML :: World WorldState -> IO ()
-outputXML m = (putStrLn . show) (HaXml.Pretty.document d)
+outputXml :: World WorldState -> IO ()
+outputXml m = (putStrLn . show) (HaXml.Pretty.document d)
     where
       (_, (_, (HaXml.CElem e))) = worldState m
       d = HaXml.Document (HaXml.Prolog Nothing [] Nothing []) HaXml.emptyST e []
