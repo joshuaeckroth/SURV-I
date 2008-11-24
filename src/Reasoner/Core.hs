@@ -88,43 +88,45 @@ data TransitiveExplains =
 data Mind s r c = Mind 
     {
      -- each hypothesis is exactly one of these
-     irrefutable     :: HypothesisIDs,
-     accepted        :: HypothesisIDs, 
-     considering     :: HypothesisIDs, 
-     refuted         :: HypothesisIDs,
-     unacceptable    :: HypothesisIDs,
+     irrefutable      :: HypothesisIDs,
+     accepted         :: HypothesisIDs, 
+     considering      :: HypothesisIDs, 
+     refuted          :: HypothesisIDs,
+     unacceptable     :: HypothesisIDs,
      -- other hypothesis states
-     unevaluated     :: HypothesisIDs,
-     confOverrides   :: HypothesisMap c,
-     categories      :: HypothesisMap CategoryID,
+     unevaluated      :: HypothesisIDs,
+     confOverrides    :: HypothesisMap c,
+     categories       :: HypothesisMap CategoryID,
      -- hypothesis evaluation
-     aPriori         :: HypothesisMap (s -> c),
-     confidence      :: HypothesisMap c,
-     confBounds      :: HypothesisMap (c, c),
-     beliefStatus    :: HypothesisMap Status,
+     aPriori          :: HypothesisMap (s -> c),
+     confidence       :: HypothesisMap c,
+     confBounds       :: HypothesisMap (c, c),
+     beliefStatus     :: HypothesisMap Status,
      -- keep track of relationships between hypotheses
-     effects         :: SubjectMap ObjectIDs, -- what should now be evaluated in the event of changes
-     effectCounts    :: Map.Map (SubjectID, ObjectID) Int, -- reference counting for maintaining the effects field
-     independent     :: AdjusterIDs,   -- adjusters that can not depend on other adjusters
-     dependencies    :: [AdjusterIDs], -- consecutive sets of adjusters, in the order in which they should be followed
+     effects          :: SubjectMap ObjectIDs, -- what should now be evaluated in the event of changes
+     effectCounts     :: Map.Map (SubjectID, ObjectID) Int, -- reference counting for maintaining the effects field
+     independent      :: AdjusterIDs,   -- adjusters that can not depend on other adjusters
+     dependencies     :: [AdjusterIDs], -- consecutive sets of adjusters, in the order in which they should be followed
      -- backward and forward maps
-     adjusts         :: SubjectMap AdjusterIDs,
-     adjustersOf     :: ObjectMap AdjusterIDs,
-     explains        :: SubjectMap ExplainsIDs,
-     explainersOf    :: ObjectMap ExplainsIDs,
-     constrainersOf  :: ObjectMap ConstrainerIDs,
+     adjusts          :: SubjectMap AdjusterIDs,
+     adjustersOf      :: ObjectMap AdjusterIDs,
+     explains         :: SubjectMap ExplainsIDs,
+     explainsKeys     :: HypothesisIDs, -- keys of explains map
+     explainersOf     :: ObjectMap ExplainsIDs,
+     explainersOfKeys :: HypothesisIDs, -- keys of explainersOf map
+     constrainersOf   :: ObjectMap ConstrainerIDs,
      -- activity trace
-     history         :: Maybe (Seq.Seq (MindEvent c)),
+     history          :: Maybe (Seq.Seq (MindEvent c)),
      -- repositories of relationships between hypotheses
-     adjusters       :: AdjusterMap (SubjectID, ObjectID, AdjusterAction c),
-     explainers      :: ExplainsMap (SubjectID, ObjectID),
-     constrainers    :: ConstrainerMap (SubjectIDs, ObjectID, ConstrainerAction c),
+     adjusters        :: AdjusterMap (SubjectID, ObjectID, AdjusterAction c),
+     explainers       :: ExplainsMap (SubjectID, ObjectID),
+     constrainers     :: ConstrainerMap (SubjectIDs, ObjectID, ConstrainerAction c),
      -- abductive state
-     booster         :: c -> [c] -> c,
-     transitive      :: TransitiveExplains,
+     booster          :: c -> [c] -> c,
+     transitive       :: TransitiveExplains,
      -- change of belief about hypotheses
-     suggester       :: s -> (c, c) -> (r, Status),
-     suggestions     :: HypothesisMap (r, Status)
+     suggester        :: s -> (c, c) -> (r, Status),
+     suggestions      :: HypothesisMap (r, Status)
     }
 
 {-| 'ReasonerSettings' configures the behavior of 'reason'. -}
@@ -276,7 +278,7 @@ unexplained mind =
                            (category, explainers) <- IDMap.toList (possibleExplanations object) :: [(CategoryID, SubjectIDs)],
                            IDSet.null (believedOf explainers) ]
     where
-      allObjects = IDMap.keysSet (explains mind) :: HypothesisIDs
+      allObjects = explainsKeys mind :: HypothesisIDs
       objectsIn  = IDSet.intersection allObjects :: HypothesisIDs -> ObjectIDs
       (believed,       believedOf) = (mappend (irrefutable mind) (accepted mind), IDSet.intersection believed)       :: (HypothesisIDs, HypothesisIDs -> HypothesisIDs)
       (notDisbelieved, notDisbelievedOf) = (mappend believed (considering mind),  IDSet.intersection notDisbelieved) :: (HypothesisIDs, HypothesisIDs -> HypothesisIDs)
@@ -448,7 +450,7 @@ newMind boosterFunction suggesterFunction transitiveExplains =
          mempty IDMap.empty IDMap.empty
          IDMap.empty IDMap.empty IDMap.empty IDMap.empty
          IDMap.empty Map.empty mempty []
-         IDMap.empty IDMap.empty IDMap.empty IDMap.empty IDMap.empty
+         IDMap.empty IDMap.empty IDMap.empty IDSet.empty IDMap.empty IDSet.empty IDMap.empty
          Nothing
          IDMap.empty IDMap.empty IDMap.empty
          boosterFunction transitiveExplains
@@ -750,7 +752,7 @@ subjectRelations subject mind =
                                              | rival <- IDSet.toList (IDSet.delete subject subjects) ] 
                 | (object, subjects) <- differentials ] :: [(HypothesisID, HypothesisID)]
     where
-      (allSubjects, allObjects) = (IDMap.keysSet (explains mind), IDMap.keysSet (explainersOf mind)) :: (HypothesisIDs, HypothesisIDs)
+      (allSubjects, allObjects) = (explainsKeys mind, explainersOfKeys mind) :: (HypothesisIDs, HypothesisIDs)
       (subjectsIn, objectsIn) = (IDSet.intersection allSubjects, IDSet.intersection allObjects) :: (HypothesisIDs -> SubjectIDs, HypothesisIDs -> ObjectIDs)
       possibleExplained    = makeFunctionCache possibleExplainedLookup    allSubjects :: SubjectID -> ObjectIDs
       possibleExplanations = makeFunctionCache possibleExplanationsLookup allObjects  :: ObjectID -> SubjectIDs
@@ -775,7 +777,9 @@ addExplains explainer subject object mind =
     let mindWithExplainer =
             noteEvent (ME_AddExplains explainer subject object) $
             mind { explains = IDMap.insertWith mappend subject (IDSet.singleton explainer) (explains mind),
+                   explainsKeys = IDSet.insert subject (explainsKeys mind),
                    explainersOf = IDMap.insertWith mappend object (IDSet.singleton explainer) (explainersOf mind),
+                   explainersOfKeys = IDSet.insert object (explainersOfKeys mind),
                    explainers = IDMap.insertNew explainer (subject, object) (explainers mind) }
     in (foldr1 (.) (map (uncurry addEffect) (subjectRelations subject mindWithExplainer))) mindWithExplainer
 
@@ -792,7 +796,9 @@ removeExplains explainer mindWithExplainer =
        else noteEvent (ME_RemoveExplains explainer) $
             (foldr1 (.) (map (uncurry removeEffect) (subjectRelations subject mindWithExplainer))) $
             mindWithExplainer { explains = removeFromMapSet (explains mindWithExplainer) subject explainer,
+                                explainsKeys = IDSet.delete subject (explainsKeys mindWithExplainer),
                                 explainersOf = removeFromMapSet (explainersOf mindWithExplainer) object explainer,
+                                explainersOfKeys = IDSet.delete object (explainersOfKeys mindWithExplainer),
                                 explainers = IDMap.delete explainer (explainers mindWithExplainer) }
 
 {-| 'setConfidence' overrides hypotheses' confidence so that in a mind they
@@ -1011,7 +1017,7 @@ findActiveDifferentials mind startingSubjects =
     where
       (believed,       believedOf) = (mappend (irrefutable mind) (accepted mind), IDSet.intersection believed)       :: (HypothesisIDs, HypothesisIDs -> HypothesisIDs)
       (notDisbelieved, notDisbelievedOf) = (mappend believed (considering mind),  IDSet.intersection notDisbelieved) :: (HypothesisIDs, HypothesisIDs -> HypothesisIDs)
-      (allSubjects, allObjects) = (IDMap.keysSet (explains mind), IDMap.keysSet (explainersOf mind)) :: (HypothesisIDs, HypothesisIDs)
+      (allSubjects, allObjects) = (explainsKeys mind, explainersOfKeys mind) :: (HypothesisIDs, HypothesisIDs)
       (subjectsIn, objectsIn) = (IDSet.intersection allSubjects, IDSet.intersection allObjects) :: (HypothesisIDs -> SubjectIDs, HypothesisIDs -> ObjectIDs)
       possibleExplained    = makeFunctionCache possibleExplainedLookup    (subjectsIn (considering mind)) :: SubjectID -> ObjectIDs
       possibleExplanations = makeFunctionCache possibleExplanationsLookup (notDisbelievedOf allObjects)   :: ObjectID -> CategoryMap SubjectIDs
