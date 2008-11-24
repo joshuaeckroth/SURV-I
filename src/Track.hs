@@ -51,3 +51,8 @@ updateTracks ws = return ws
 recordTracks :: WorldState -> World WorldState
 recordTracks ws = return ws
 
+trackDuration :: Track -> Double
+trackDuration (Track acq ts)
+    | null ts   = 0.0 -- no previous track
+    | otherwise = let (Track acq2 _) = head ts in
+                  (acquisitionTime acq) - (acquisitionTime acq2) + (trackDuration $ head ts)
