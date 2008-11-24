@@ -17,6 +17,12 @@ player/player: player/player.cpp
 abducer:
 	hmake $(HMAKEFLAGS) $(GHCFLAGS) abducer
 
+test-small:
+	build/abducer tmp2.xml | xmllint --format -
+
+test-large:
+	build/abducer acquisitions.xml | xmllint --format -
+
 clean:
 	rm -Rvf decoder/*.o decoder/decoder player/*.o player/player
 	hmake $(HMAKEFLAGS) -realclean abducer
