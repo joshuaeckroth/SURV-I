@@ -36,7 +36,7 @@ newWorldState = WorldState
 
 type WorldLog = ([String], HaXml.Content) -- ^ Human and XML representation of events
 
-newtype World a = World { worldState :: (a, WorldLog) } -- ^ The World: world state plus the log
+newtype World a = World { worldState :: (a, WorldLog) } -- ^ World state plus the log
 
 instance Monad World where
     return a = World (a, ([], HaXml.CElem (HaXml.Elem "WorldEvents" [] [])))
@@ -75,12 +75,19 @@ worldElem :: String             -- ^ Element name
 worldElem name attrs content =
     HaXml.CElem (HaXml.Elem name (map (\(f,s) -> (f, HaXml.AttValue [Left s])) attrs) content)
 
+-- | Create an empty "WorldEvents" top-level element
 emptyElem :: HaXml.Content
 emptyElem = HaXml.CElem (HaXml.Elem "WorldEvents" [] [])
 
+-- | Determine if some XML content is empty
+--
+-- > isEmptyElem emptyElem == True
 isEmptyElem :: HaXml.Content -> Bool
 isEmptyElem c = 0 == (length $ (children `o` tag "WorldEvents") c)
 
+-- | Join two XML logs
+--
+-- The two logs may be from the same frame or separate frames.
 joinWorldEvents :: HaXml.Content -> HaXml.Content -> HaXml.Content
 joinWorldEvents c1 c2
     | isEmptyElem c1 = c2
@@ -96,50 +103,71 @@ joinWorldEvents c1 c2
       frametime1    = frameattr "time" c1
       framenum2     = frameattr "framenum" c2
 
-joinWorldEventsOneFrame :: String -> String -> HaXml.Content -> HaXml.Content -> HaXml.Content
+-- | Join two XML logs from the same frame
+joinWorldEventsOneFrame :: String        -- ^ Frame number
+                        -> String        -- ^ Frame time
+                        -> HaXml.Content -- ^ XML content
+                        -> HaXml.Content -- ^ XML content
+                        -> HaXml.Content -- ^ Resulting joined content
 joinWorldEventsOneFrame framenum frametime c1 c2 =
     recordWorldEventInFrame framenum frametime ((filterFrameEvents framenum $ c1)
                                                 ++
                                                 (filterFrameEvents framenum $ c2))
 
+-- | Join two XML logs from different frames
 joinWorldEventsTwoFrames :: HaXml.Content -> HaXml.Content -> HaXml.Content
 joinWorldEventsTwoFrames c1 c2 =
     HaXml.CElem (HaXml.Elem "WorldEvents" [] 
                           ((children `o` tag "WorldEvents") c1 ++ (children `o` tag "WorldEvents") c2))
 
-filterFrameEvents :: String -> CFilter
+-- | Filter events in an XML log from the specified frame
+filterFrameEvents :: String  -- ^ Frame number of interest
+                  -> CFilter -- ^ Resulting XML filter
 filterFrameEvents framenum =
     children `o` attrval ("framenum", HaXml.AttValue [Left framenum]) `o` tag "Frame"
              `o` children `o` tag "WorldEvents"
 
--- | This function relies on the situation where the first element has the attribute of interest
-extractAttr :: String -> [HaXml.Content] -> String
+-- | Extract an XML attribute of interest
+--
+-- This function requires that the first element has the attribute of interest.
+extractAttr :: String          -- ^ Attribute name
+            -> [HaXml.Content] -- ^ XML content
+            -> String          -- ^ Attribute value
 extractAttr s ((HaXml.CElem (HaXml.Elem _ attrs _)):c) = extractAttr' s attrs
-extractAttr s c = "here: " ++ (show $ length c)
+    where
+      extractAttr' :: String -> [HaXml.Attribute] -> String
+      extractAttr' s ((name, (HaXml.AttValue [Left value])):as) = if name == s then value
+                                                                  else extractAttr' s as
+extractAttr s c = error ("extractAttr: first element of XML content does not have attribute of interest; " ++
+                         "attribute: " ++ s)
 
-extractAttr' :: String -> [HaXml.Attribute] -> String
-extractAttr' s ((name, (HaXml.AttValue [Left value])):as) = if name == s then value
-                                                            else extractAttr' s as
-
+-- | Print XML header for output
 outputXmlHeader :: World WorldState -> IO ()
 outputXmlHeader m = putStrLn "<xml>"
 
+-- | Return human log
 outputHuman :: World WorldState -> String
 outputHuman m = (unlines s) ++ "\n" ++ (unlines (showMind $ mind ws))
     where
       (ws, (s, _)) = worldState m
 
+-- | Print XML log
+--
+-- The human log is appended as an XML comment.
 outputXml :: World WorldState -> IO ()
 outputXml m = (putStrLn . show) (HaXml.document d)
     where
       (_, (_, (HaXml.CElem e))) = worldState m
       d = HaXml.Document xmlProlog HaXml.emptyST e [HaXml.Comment $ outputHuman m]
 
+-- | Construct XML prolog for outputting the XML log 
 xmlProlog :: HaXml.Prolog
 xmlProlog = HaXml.Prolog (Just (HaXml.XMLDecl "1.0" (Just (HaXml.EncodingDecl "UTF-8")) Nothing))
             [] (Just (HaXml.DTD "classifications.dtd" Nothing [])) []
 
+-- | Get next constrainer ID
 nextConstrainer ws = 1 + (foldr max 0 $ (\(a, _, _) -> a) $ unzip3 $ getConstrainers (mind ws))
+
 
 nextID field mind = if (null . toList) (field mind) then HasInt 1
                     else 1 + (IDSet.findMax . keysSet) (field mind)

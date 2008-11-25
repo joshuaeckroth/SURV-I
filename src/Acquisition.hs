@@ -1,6 +1,7 @@
 module Acquisition where
 import Types
 import World
+import Frame
 import Reasoner.Core
 import Reasoner.Types
 import Vocabulary
@@ -9,22 +10,23 @@ import WrappedInts.IDSet (fromList)
 import WrappedInts.IDMap (insert, getItemFromMap)
 import Text.XML.HaXml.Types as HaXml
 
-hypothesizeAcquisitions :: CategoryID
-                        -> Frame
-                        -> [Acquisition]
-                        -> WorldState
-                        -> World WorldState
-hypothesizeAcquisitions _     _ []     ws = return ws
-hypothesizeAcquisitions catID f (a:as) ws =
-    hypothesizeAcquisitions catID f as ws'
-        where
-          hypID      = 1 + (head (hypIDs ws))
-          newHypIDs  = [hypID] ++ (hypIDs ws)
-          newAcqIDs  = (acqIDs ws) ++ [hypID]
-          newAcqMap  = insert hypID a (acqMap ws)
-          newMind    = setFactual (fromList [hypID])
-                       (addHypothesis hypID catID (const Medium) (mind ws))
-          ws'        = ws { mind = newMind, hypIDs = newHypIDs, acqMap = newAcqMap, acqIDs = newAcqIDs }
+-- | Hypothesize acquisitions and declare each as factual
+hypothesizeAcquisitions :: CategoryID       -- ^ Hypothesis category
+                        -> WorldState       -- ^ World state
+                        -> World WorldState -- ^ Resulting world
+hypothesizeAcquisitions catID ws = hypothesizeAcquisitions' catID (getAcquisitions (frame ws)) ws
+    where
+      hypothesizeAcquisitions' _     []     ws = return ws
+      hypothesizeAcquisitions' catID (a:as) ws =
+          hypothesizeAcquisitions' catID as ws'
+              where
+                hypID      = 1 + (head (hypIDs ws))
+                newHypIDs  = [hypID] ++ (hypIDs ws)
+                newAcqIDs  = (acqIDs ws) ++ [hypID]
+                newAcqMap  = insert hypID a (acqMap ws)
+                newMind    = setFactual (fromList [hypID])
+                             (addHypothesis hypID catID (const Medium) (mind ws))
+                ws'        = ws { mind = newMind, hypIDs = newHypIDs, acqMap = newAcqMap, acqIDs = newAcqIDs }
 
 showAcquisitions :: [AcquisitionID] -> AcquisitionMap -> [String]
 showAcquisitions []     _       = []

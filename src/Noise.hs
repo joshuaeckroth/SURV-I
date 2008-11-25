@@ -11,23 +11,25 @@ import qualified WrappedInts.IDSet as IDSet
 import WrappedInts.Types
 import Text.XML.HaXml.Types as HaXml
 
-hypothesizeNoise :: CategoryID
-                 -> WorldState
-                 -> World WorldState
+-- | Hypothesize and score noise
+hypothesizeNoise :: CategoryID       -- ^ Hypothesis category
+                 -> WorldState       -- ^ World state
+                 -> World WorldState -- ^ Resulting world
 hypothesizeNoise catID ws = hypothesizeNoise' catID (acqIDs ws) ws
-
-hypothesizeNoise' catID []     ws = return ws
-hypothesizeNoise' catID (a:as) ws =
-    hypothesizeNoise' catID as ws'
-        where
-          hypID       = 1 + (head (hypIDs ws))
-          newHypIDs   = [hypID] ++ (hypIDs ws)
-          explainID   = nextID explainers (mind ws)
-          newNoiseIDs = (noiseIDs ws) ++ [hypID]
-          newNoiseMap = IDMap.insert hypID a (noiseMap ws)
-          newMind     = addExplains explainID hypID a
-                        (addHypothesis hypID catID (scoreNoiseHypothesis hypID a (acqMap ws)) (mind ws))
-          ws'         = ws { mind = newMind, hypIDs = newHypIDs, noiseIDs = newNoiseIDs, noiseMap = newNoiseMap }
+    where 
+      hypothesizeNoise' :: CategoryID -> [AcquisitionID] -> WorldState -> World WorldState
+      hypothesizeNoise' catID []     ws = return ws
+      hypothesizeNoise' catID (a:as) ws =
+          hypothesizeNoise' catID as ws'
+              where
+                hypID       = 1 + (head (hypIDs ws))
+                newHypIDs   = [hypID] ++ (hypIDs ws)
+                explainID   = nextID explainers (mind ws)
+                newNoiseIDs = (noiseIDs ws) ++ [hypID]
+                newNoiseMap = IDMap.insert hypID a (noiseMap ws)
+                newMind     = addExplains explainID hypID a
+                              (addHypothesis hypID catID (scoreNoiseHypothesis hypID a (acqMap ws)) (mind ws))
+                ws'         = ws { mind = newMind, hypIDs = newHypIDs, noiseIDs = newNoiseIDs, noiseMap = newNoiseMap }
 
 scoreNoiseHypothesis :: HypothesisID -> AcquisitionID -> AcquisitionMap -> Level -> Level
 scoreNoiseHypothesis hypID acqID acqMap _ =

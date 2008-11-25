@@ -46,4 +46,5 @@ api:
 	haddock -o api -h --title="SURV-I" \
 		--source-module="file:///home/josh/school/surveillance/surv-1/api/src/%{MODULE/.//}.html" \
 		--source-entity="file:///home/josh/school/surveillance/surv-1/api/src/%{MODULE/.//}.html#%N" \
-		$(SRCS)
+		$(SRCS) \
+		&> /dev/null

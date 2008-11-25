@@ -13,9 +13,10 @@ import qualified WrappedInts.IDSet as IDSet
 import Data.List ((\\))
 import Text.XML.HaXml.Types as HaXml
 
-hypothesizeTracks :: CategoryID
-                  -> WorldState
-                  -> World WorldState
+-- | Hypothesize and score tracks, both new and continuing
+hypothesizeTracks :: CategoryID       -- ^ Hypothesis category
+                  -> WorldState       -- ^ World state
+                  -> World WorldState -- ^ Resulting world
 hypothesizeTracks catID ws =
     hypothesizeNewTracks catID nonIntersectingAs ws >>=
     hypothesizeContinuingTracks catID intersectingAs
@@ -54,25 +55,24 @@ hypothesizeContinuingTracks catID (acqID:acqIDs) ws =
     hypothesizeContinuingTracks catID acqIDs
         where
           tracks = intersectTracks (getItemFromMap (acqMap ws) acqID) (elems (trackMap ws))
-
-hypothesizeContinuingTracks' :: CategoryID -> [Track] -> AcquisitionID -> WorldState -> World WorldState
-hypothesizeContinuingTracks' _     []     _     ws = return ws
-hypothesizeContinuingTracks' catID (t:ts) acqID ws =
-    hypothesizeContinuingTracks' catID ts acqID ws'
-        where
-          hypID       = 1 + (head (hypIDs ws))
-          explainID   = nextID explainers (mind ws)
-          newHypIDs   = [hypID] ++ (hypIDs ws)
-          acq         = getItemFromMap (acqMap ws) acqID
-          track       = Track acq (Just t)
-          newTrackIDs = (trackIDs ws) ++ [hypID]
-          newTrackMap = insert hypID track (trackMap ws)
-          newMind     = addExplains explainID hypID acqID
-                        (addHypothesis hypID catID (scoreTrack hypID newTrackMap) (mind ws))
-          ws'         = if duplicateTrack track (trackMap ws) then
-                            ws
-                        else 
-                            ws { mind = newMind, hypIDs = newHypIDs, trackIDs = newTrackIDs, trackMap = newTrackMap }
+          hypothesizeContinuingTracks' :: CategoryID -> [Track] -> AcquisitionID -> WorldState -> World WorldState
+          hypothesizeContinuingTracks' _     []     _     ws = return ws
+          hypothesizeContinuingTracks' catID (t:ts) acqID ws =
+              hypothesizeContinuingTracks' catID ts acqID ws'
+                  where
+                    hypID       = 1 + (head (hypIDs ws))
+                    explainID   = nextID explainers (mind ws)
+                    newHypIDs   = [hypID] ++ (hypIDs ws)
+                    acq         = getItemFromMap (acqMap ws) acqID
+                    track       = Track acq (Just t)
+                    newTrackIDs = (trackIDs ws) ++ [hypID]
+                    newTrackMap = insert hypID track (trackMap ws)
+                    newMind     = addExplains explainID hypID acqID
+                                  (addHypothesis hypID catID (scoreTrack hypID newTrackMap) (mind ws))
+                    ws'         = if duplicateTrack track (trackMap ws) then
+                                      ws
+                                  else 
+                                      ws { mind = newMind, hypIDs = newHypIDs, trackIDs = newTrackIDs, trackMap = newTrackMap }
 
 duplicateTrack :: Track -> TrackMap -> Bool
 duplicateTrack (Track acq Nothing)  trackMap' = if IDMap.null (IDMap.filter (\(Track acq' _) -> acq' == acq) trackMap')
@@ -89,12 +89,11 @@ constrainContinuingTracks ts acqID ws = constrainContinuingTracks' trackIDs trac
       trackIDs = keys (IDMap.filter (\(Track acq' _) -> acq == acq') (trackMap ws)) -- tracks explaining this acq
                  ++
                  keys (IDMap.filter (\acqID' -> acqID' == acqID) (noiseMap ws)) -- noise explaining this acq
-
-constrainContinuingTracks' :: [TrackID] -> [TrackID] -> WorldState -> World WorldState
-constrainContinuingTracks' []      _  ws = return ws
-constrainContinuingTracks' (t:ts') ts ws = constrainContinuingTracks' ts' ts ws'
-    where
-      ws' = ws { mind = (addConstrainer (nextConstrainer ws) (IDSet.fromList ts) oneOf t (mind ws)) }
+      constrainContinuingTracks' :: [TrackID] -> [TrackID] -> WorldState -> World WorldState
+      constrainContinuingTracks' []      _  ws = return ws
+      constrainContinuingTracks' (t:ts') ts ws = constrainContinuingTracks' ts' ts ws'
+          where
+            ws' = ws { mind = (addConstrainer (nextConstrainer ws) (IDSet.fromList ts) oneOf t (mind ws)) }
 
 scoreTrack :: TrackID -> TrackMap -> Level -> Level
 scoreTrack t trackMap' _ = Medium
