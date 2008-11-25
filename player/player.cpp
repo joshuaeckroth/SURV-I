@@ -170,8 +170,8 @@ bool MyParser::on_tag_open(const std::string& tag_name, XMLSP::StringMap& attrib
 {
     string type;
     int this_framenum = 0;
-    int x, y, ox, oy, w, h, ow, oh;
-    const char *id;
+    int x, y, x1, y1, x2, y2, w, h;
+    const char *id, *nextID;
 
     if (tag_name == "WorldEvents") {
         next_frame(); // show initial frame
@@ -207,6 +207,19 @@ bool MyParser::on_tag_open(const std::string& tag_name, XMLSP::StringMap& attrib
       XDrawLine(display, window, gc, x-(w/2), y-(h/2)+h, x-(w/2)+w, y-(h/2));
       XDrawArc(display, window, gc, x-10, y-10, 20, 20, 0, 360*64);
     }
+    else if(tag_name == "Track") {
+      x1 = atoi(attributes["x1"].c_str());
+      y1 = atoi(attributes["y1"].c_str());
+      x2 = atoi(attributes["x2"].c_str());
+      y2 = atoi(attributes["y2"].c_str());
+      id = attributes["id"].c_str();
+      nextID = attributes["nextID"].c_str();
+
+      // Draw track segment
+      XSetForeground(display, gc, 0xbbbbbb);
+      XDrawLine(display, window, gc, x1, y1, x2, y2);
+    }
+
       /*
         } else if (type == "ambiguity") {
             // Draw ambiguity box (w*h box with X through it) and a circle around center

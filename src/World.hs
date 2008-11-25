@@ -6,9 +6,9 @@ import Vocabulary
 import WrappedInts.Types (HasInt(..), wrappedInts)
 import WrappedInts.IDMap (empty, toList, keysSet)
 import qualified WrappedInts.IDSet as IDSet
-import Text.XML.HaXml.Types as HaXml
-import Text.XML.HaXml.Combinators as HaXml
-import Text.XML.HaXml.Pretty as HaXml.Pretty
+import qualified Text.XML.HaXml.Types as HaXml
+import Text.XML.HaXml.Combinators
+import qualified Text.XML.HaXml.Pretty as HaXml
 
 data WorldState = WorldState { mind     :: Mind Level Level Level, -- ^ The Mark-II Mind
                                hypIDs   :: [HypothesisID],         -- ^ Current set of hypothesis IDs
@@ -16,6 +16,7 @@ data WorldState = WorldState { mind     :: Mind Level Level Level, -- ^ The Mark
                                acqMap   :: AcquisitionMap,         -- ^ Current map of acquisitions
                                noiseIDs :: [NoiseID],              -- ^ Most recent noise hypotheses
                                noiseMap :: NoiseMap,               -- ^ Current map of noise hypotheses
+                               trackIDs :: [TrackID],              -- ^ Most recent tracks
                                trackMap :: TrackMap,               -- ^ Current map of tracks
                                frame    :: Frame                   -- ^ Most recent frame
                              }
@@ -29,12 +30,13 @@ newWorldState = WorldState
                 empty
                 []
                 empty
+                []
                 empty
                 (Frame (Frame_Attrs 0 0) [])
 
-type WorldLog = ([String], HaXml.Content)
+type WorldLog = ([String], HaXml.Content) -- ^ Human and XML representation of events
 
-newtype World a = World { worldState :: (a, WorldLog) }
+newtype World a = World { worldState :: (a, WorldLog) } -- ^ The World: world state plus the log
 
 instance Monad World where
     return a = World (a, ([], HaXml.CElem (HaXml.Elem "WorldEvents" [] [])))
@@ -47,19 +49,31 @@ instance Monad World where
                   (b, (s', x')) = worldState n
               in World (b, (s ++ s', joinWorldEvents x x'))
 
-recordWorldEvent :: ([String], HaXml.Content) -> World ()
+-- | Writes a human and XML log
+recordWorldEvent :: ([String], HaXml.Content) -- ^ Human and XML content
+                 -> World ()                  -- ^ Resulting world with logged content
 recordWorldEvent (s, e) = World ((), (s, e))
 
-recordWorldEventInFrame :: String -> String -> [HaXml.Content] -> HaXml.Content
+-- | Writes an XML log in a particular frame number and frame time
+recordWorldEventInFrame :: String          -- ^ Frame number
+                        -> String          -- ^ Frame time
+                        -> [HaXml.Content] -- ^ XML log content
+                        -> HaXml.Content   -- ^ XML log content inside the frame
 recordWorldEventInFrame framenum frametime c =
     HaXml.CElem (HaXml.Elem "WorldEvents" [] 
-                          [(HaXml.CElem (HaXml.Elem "Frame" [("framenum", AttValue [Left framenum]),
-                                                             ("time", AttValue [Left frametime])]
+                          [(HaXml.CElem (HaXml.Elem "Frame" [("framenum", HaXml.AttValue [Left framenum]),
+                                                             ("time", HaXml.AttValue [Left frametime])]
                                          c))])
 
-worldElem :: String -> [(String, String)] -> [HaXml.Content] -> HaXml.Content
+-- | Create an XML element with attributes
+--
+-- This is just a helper function.
+worldElem :: String             -- ^ Element name
+          -> [(String, String)] -- ^ Element attributes
+          -> [HaXml.Content]    -- ^ Child content
+          -> HaXml.Content      -- ^ Resulting content
 worldElem name attrs content =
-    HaXml.CElem (HaXml.Elem name (map (\(f,s) -> (f, AttValue [Left s])) attrs) content)
+    HaXml.CElem (HaXml.Elem name (map (\(f,s) -> (f, HaXml.AttValue [Left s])) attrs) content)
 
 emptyElem :: HaXml.Content
 emptyElem = HaXml.CElem (HaXml.Elem "WorldEvents" [] [])
@@ -93,9 +107,9 @@ joinWorldEventsTwoFrames c1 c2 =
     HaXml.CElem (HaXml.Elem "WorldEvents" [] 
                           ((children `o` tag "WorldEvents") c1 ++ (children `o` tag "WorldEvents") c2))
 
-filterFrameEvents :: String -> HaXml.CFilter
+filterFrameEvents :: String -> CFilter
 filterFrameEvents framenum =
-    children `o` attrval ("framenum", AttValue [Left framenum]) `o` tag "Frame"
+    children `o` attrval ("framenum", HaXml.AttValue [Left framenum]) `o` tag "Frame"
              `o` children `o` tag "WorldEvents"
 
 -- | This function relies on the situation where the first element has the attribute of interest
@@ -107,16 +121,25 @@ extractAttr' :: String -> [HaXml.Attribute] -> String
 extractAttr' s ((name, (HaXml.AttValue [Left value])):as) = if name == s then value
                                                             else extractAttr' s as
 
-outputXml :: World WorldState -> IO ()
-outputXml m = (putStrLn . show) (HaXml.Pretty.document d)
-    where
-      (_, (_, (HaXml.CElem e))) = worldState m
-      d = HaXml.Document (HaXml.Prolog Nothing [] Nothing []) HaXml.emptyST e []
+outputXmlHeader :: World WorldState -> IO ()
+outputXmlHeader m = putStrLn "<xml>"
 
-outputHuman :: World WorldState -> IO ()
-outputHuman m = putStrLn $ unlines (s ++ [""] ++ (showMind $ mind ws))
+outputHuman :: World WorldState -> String
+outputHuman m = (unlines s) ++ "\n" ++ (unlines (showMind $ mind ws))
     where
       (ws, (s, _)) = worldState m
+
+outputXml :: World WorldState -> IO ()
+outputXml m = (putStrLn . show) (HaXml.document d)
+    where
+      (_, (_, (HaXml.CElem e))) = worldState m
+      d = HaXml.Document xmlProlog HaXml.emptyST e [HaXml.Comment $ outputHuman m]
+
+xmlProlog :: HaXml.Prolog
+xmlProlog = HaXml.Prolog (Just (HaXml.XMLDecl "1.0" (Just (HaXml.EncodingDecl "UTF-8")) Nothing))
+            [] (Just (HaXml.DTD "classifications.dtd" Nothing [])) []
+
+nextConstrainer ws = 1 + (foldr max 0 $ (\(a, _, _) -> a) $ unzip3 $ getConstrainers (mind ws))
 
 nextID field mind = if (null . toList) (field mind) then HasInt 1
                     else 1 + (IDSet.findMax . keysSet) (field mind)

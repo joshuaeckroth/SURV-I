@@ -3,10 +3,15 @@ import Reasoner.Types
 import Vocabulary
 import Text.XML.HaXml.Xml2Haskell
 import Char (isSpace)
+import WrappedInts.Types
 
 type AcquisitionID = HypothesisID
 
+type AcquisitionIDs = HypothesisIDs
+
 type NoiseID = HypothesisID
+
+type TrackID = HypothesisID
 
 type AcquisitionMap = HypothesisMap Acquisition
 
@@ -15,8 +20,9 @@ type NoiseMap = HypothesisMap AcquisitionID
 type TrackMap = HypothesisMap Track
 
 data Track
-    -- | Tracks have an acquisition (the head) and a list of prior tracks
-    = Track Acquisition [Track]
+    -- | Tracks have an acquisition (the head) and the prior track
+    = Track Acquisition (Maybe Track)
+    deriving (Eq)
 
 {-Type decls-}
 

@@ -12,5 +12,5 @@ main =
       let ws = return (newWorldState)
       args <- System.getArgs
       (Frames frames) <- fReadXml $ head args :: IO Frames
-      --outputHuman (runAbducer frames ws)
-      outputXml (runAbducer frames ws)
+      let world = runAbducer frames ws
+      outputXml world

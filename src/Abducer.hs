@@ -18,7 +18,7 @@ runAbducer' []             ws = return ws
 runAbducer' (frame:frames) ws =
     do
       let catID = HasInt 0 :: CategoryID
-          ws'   = ws { acqIDs = [], noiseIDs = [] } -- reset 'current' acquisition and noise hypotheses
+          ws'   = ws { acqIDs = [], noiseIDs = [], trackIDs = [] } -- reset 'current' acquisition, noise, track hypotheses
 
       recordFrame frame ws' >>=
                   hypothesizeAcquisitions catID frame (getAcquisitions frame) >>=
@@ -31,7 +31,5 @@ runAbducer' (frame:frames) ws =
                   recordNoise >>=
                   updateTracks >>=
                   recordTracks >>=
-               -- outputHuman >>=
-               -- outputXml >>=
                   runAbducer' frames
 
