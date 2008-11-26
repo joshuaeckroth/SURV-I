@@ -12,30 +12,37 @@ import WrappedInts.Types (HasInt(..))
 
 -- | Execute the abduction
 runAbducer :: [Frame]          -- ^ List of frames (which contain acquisitions)
-           -> World WorldState -- ^ Existing world
-           -> World WorldState -- ^ Resulting world
-runAbducer frames world = world >>= runAbducer' frames
+           -> WorldState -- ^ Existing world
+           -> IO ()
+runAbducer frames ws =
+    do
+      outputXmlHeader ws
+      runAbducer' frames ws
+      outputXmlFooter ws
+
     where
-      runAbducer' :: [Frame] -> WorldState -> World WorldState
-      runAbducer' []             ws = return ws
+      runAbducer' :: [Frame] -> WorldState -> IO ()
+      runAbducer' []     _  = return ()
       runAbducer' (f:fs) ws =
           do
             let
                 catID = HasInt 0 :: CategoryID
+                -- insert frame and reset 'current' acquisition, noise, track hypotheses,
+                -- then execute abduction sequence
+                world    = ((return $ ws { frame = f, acqIDs = [], noiseIDs = [], trackIDs = [] }) >>=
+                            recordFrame >>=
+                            hypothesizeAcquisitions catID >>=
+                            hypothesizeNoise catID >>=
+                            hypothesizeTracks catID >>=
+                            -- hypothesizeClassifications catID >>=
+                            constrainAcquisitionExplainers >>=
+                            (\ws'' -> return ws'' { mind = (reason (ReasonerSettings False) Medium (mind ws'')) }) >>=
+                            recordAcquisitions >>=
+                            updateNoise >>=
+                            recordNoise >>=
+                            updateTracks >>=
+                            recordTracks)
+                (ws', _) = worldState world
 
-                -- insert frame, reset 'current' acquisition, noise, track hypotheses
-                ws'   = ws { frame = f, acqIDs = [], noiseIDs = [], trackIDs = [] } 
-
-            recordFrame ws' >>=
-                        hypothesizeAcquisitions catID >>=
-                        hypothesizeNoise catID >>=
-                        hypothesizeTracks catID >>=
-                     -- hypothesizeClassifications catID >>=
-                        (\ws'' -> return ws'' { mind = (reason (ReasonerSettings False) High (mind ws'')) } ) >>=
-                        recordAcquisitions >>=
-                        updateNoise >>=
-                        recordNoise >>=
-                        updateTracks >>=
-                        recordTracks >>=
-                        runAbducer' fs
-
+            outputLog world
+            runAbducer' fs ws'

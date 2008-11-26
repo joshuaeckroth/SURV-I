@@ -9,8 +9,7 @@ import World
 
 main =
     do
-      let ws = return (newWorldState)
+      let ws = newWorldState
       args <- System.getArgs
       (Frames frames) <- fReadXml $ head args :: IO Frames
-      let world = runAbducer frames ws
-      outputXml world
+      runAbducer frames ws

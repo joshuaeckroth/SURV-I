@@ -10,6 +10,7 @@ import qualified WrappedInts.IDMap as IDMap
 import qualified WrappedInts.IDSet as IDSet
 import WrappedInts.Types
 import Text.XML.HaXml.Types as HaXml
+import Data.List ((\\))
 
 -- | Hypothesize and score noise
 hypothesizeNoise :: CategoryID       -- ^ Hypothesis category
@@ -28,22 +29,23 @@ hypothesizeNoise catID ws = hypothesizeNoise' catID (acqIDs ws) ws
                 newNoiseIDs = (noiseIDs ws) ++ [hypID]
                 newNoiseMap = IDMap.insert hypID a (noiseMap ws)
                 newMind     = addExplains explainID hypID a
-                              (addHypothesis hypID catID (scoreNoiseHypothesis hypID a (acqMap ws)) (mind ws))
+                              (addHypothesis hypID catID (scoreNoise hypID a (acqMap ws)) (mind ws))
                 ws'         = ws { mind = newMind, hypIDs = newHypIDs, noiseIDs = newNoiseIDs, noiseMap = newNoiseMap }
 
-scoreNoiseHypothesis :: HypothesisID -> AcquisitionID -> AcquisitionMap -> Level -> Level
-scoreNoiseHypothesis hypID acqID acqMap _ =
+scoreNoise :: HypothesisID -> AcquisitionID -> AcquisitionMap -> Level -> Level
+scoreNoise hypID acqID acqMap _ =
     if (area acq) < 20.0 then Highest
     else Lowest
         where
           acq = IDMap.getItemFromMap acqMap acqID
 
-showNoise :: [NoiseID] -> NoiseMap -> [String]
-showNoise []     _         = []
-showNoise (n:ns) noiseMap' =
+showNoise :: [NoiseID] -> NoiseMap -> AcquisitionMap -> [String]
+showNoise []     _         _       = []
+showNoise (n:ns) noiseMap' acqMap' =
     ["Noise " ++ (show n) ++
-     " (acquisition: " ++ (show a) ++ ")"]
-    ++ showNoise ns noiseMap'
+     " [acquisition: " ++ (show a) ++ ", " ++
+     "score: " ++ (show $ scoreNoise n a acqMap' Medium) ++ "]"]
+    ++ showNoise ns noiseMap' acqMap'
     where
       a = IDMap.getItemFromMap noiseMap' n
 
@@ -60,19 +62,22 @@ noiseToXml (n:ns) noiseMap' acqMap' =
     where
       acq = IDMap.getItemFromMap acqMap' (IDMap.getItemFromMap noiseMap' n)
 
-updateNoise :: WorldState -> World WorldState
-updateNoise ws = return (ws { noiseIDs = newNoiseIDs, noiseMap = newNoiseMap })
+-- | Keep only noise hypotheses considered \'irrefutable\' or \'accepted\'
+updateNoise :: WorldState       -- ^ World state
+            -> World WorldState -- ^ Resulting world
+updateNoise ws =
+    recordWorldEvent (["Removed noise:"] ++ (showNoise ((noiseIDs ws) \\ newNoiseIDs) (noiseMap ws) (acqMap ws)) ++ ["END"], emptyElem) >>
+                     return (ws { noiseIDs = newNoiseIDs, noiseMap = newNoiseMap })
     where
       m           = mind ws
       hs          = IDSet.toList $ IDSet.union (irrefutableHypotheses m) (acceptedHypotheses m)
-      -- only keep accepted or irrefutable noise hypotheses
       newNoiseMap = IDMap.filterWithKey (\n _ -> elem n hs) (noiseMap ws)
       newNoiseIDs = filter (\n -> elem n $ IDMap.keys newNoiseMap) (noiseIDs ws)
 
 recordNoise :: WorldState -> World WorldState
 recordNoise ws =
     recordWorldEvent
-    (showNoise ns noiseMap',
+    (showNoise ns noiseMap' acqMap',
      recordWorldEventInFrame framenum frametime $ noiseToXml ns noiseMap' acqMap') >>
     return ws
     where

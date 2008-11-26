@@ -9,6 +9,8 @@ import qualified WrappedInts.IDSet as IDSet
 import qualified Text.XML.HaXml.Types as HaXml
 import Text.XML.HaXml.Combinators
 import qualified Text.XML.HaXml.Pretty as HaXml
+import Data.List ((\\))
+import qualified Data.ByteString.Char8 as ByteString
 
 data WorldState = WorldState { mind     :: Mind Level Level Level, -- ^ The Mark-II Mind
                                hypIDs   :: [HypothesisID],         -- ^ Current set of hypothesis IDs
@@ -24,6 +26,7 @@ data WorldState = WorldState { mind     :: Mind Level Level Level, -- ^ The Mark
 -- |Create a new blank world state
 newWorldState :: WorldState
 newWorldState = WorldState
+                -- (setTrace True (newMind confidenceBoost suggestStatus SparseTransitive))
                 (newMind confidenceBoost suggestStatus SparseTransitive)
                 [HasInt 0]
                 []
@@ -142,23 +145,35 @@ extractAttr s c = error ("extractAttr: first element of XML content does not hav
                          "attribute: " ++ s)
 
 -- | Print XML header for output
-outputXmlHeader :: World WorldState -> IO ()
-outputXmlHeader m = putStrLn "<xml>"
+outputXmlHeader :: WorldState -> IO ()
+outputXmlHeader ws =
+    do
+      (putStrLn . show) (HaXml.prolog xmlProlog)
+      putStrLn "<WorldEvents>"
+
+outputXmlFooter :: WorldState -> IO ()
+outputXmlFooter ws = putStrLn "</WorldEvents>"
 
 -- | Return human log
 outputHuman :: World WorldState -> String
-outputHuman m = (unlines s) ++ "\n" ++ (unlines (showMind $ mind ws))
+outputHuman m = (unlines s) ++ "\n" ++ (unlines $ ["Mind:"] ++ (showMind $ mind ws)
+                                            -- ++ ["Mind trace:"] ++ (map show $ ByteString.split ',' $ ByteString.pack $ show $ mindTrace $ mind ws)
+                                            -- ++ ["Constrainers:"] ++ (map show $ getConstrainers $ mind ws)
+                                            -- ++ ["Explainers:"] ++ (map show $ getExplainers $ mind ws)
+                                            -- ++ ["Hypotheses:"] ++ (map (\h -> unlines $ showHypothesis h (mind ws)) $ (hypIDs ws) \\ [0])
+                                            )
     where
       (ws, (s, _)) = worldState m
 
--- | Print XML log
---
--- The human log is appended as an XML comment.
-outputXml :: World WorldState -> IO ()
-outputXml m = (putStrLn . show) (HaXml.document d)
+-- | Print log
+outputLog :: World WorldState -> IO ()
+outputLog m = putStrLn $ unlines $ map (show . HaXml.content) $ buildLog m
     where
-      (_, (_, (HaXml.CElem e))) = worldState m
-      d = HaXml.Document xmlProlog HaXml.emptyST e [HaXml.Comment $ outputHuman m]
+      buildLog :: World WorldState -> [HaXml.Content]
+      buildLog m = ((children `o` tag "WorldEvents") e) ++ [frameLog]
+          where
+            (_, (s, e)) = worldState m
+            frameLog    = HaXml.CElem (HaXml.Elem "FrameLog" [] [HaXml.CString True $ unlines $ map ((++) "     ") s])
 
 -- | Construct XML prolog for outputting the XML log 
 xmlProlog :: HaXml.Prolog

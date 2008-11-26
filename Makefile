@@ -2,7 +2,7 @@
 LDFLAGS = -L/usr/X11R6/lib -lX11 -lm
 CFLAGS = -g -Wall -ansi
 GHCFLAGS = -prof -auto-all
-HMAKEFLAGS = -package HaXml -package containers -package array -dbuild -isrc
+HMAKEFLAGS = -package HaXml -package containers -package array -package bytestring -dbuild -isrc
 SRCS = $(wildcard src/*.hs) $(wildcard src/*/*.hs) \
 
 all: decoder/decoder player/player abducer api
@@ -25,6 +25,9 @@ test-tiny-prof:
 
 test-small:
 	build/abducer tmp2.xml | xmllint --format -
+
+test-small-prof:
+	build/abducer +RTS -p -RTS tmp2.xml | xmllint --format -
 
 test-large:
 	build/abducer acquisitions.xml | xmllint --format -
