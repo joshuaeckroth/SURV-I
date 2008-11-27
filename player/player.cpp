@@ -70,7 +70,7 @@ void xbye(void)
 }
 
 
-FILE *video_in;
+FILE *video_in, *video_out;
 XImage *ximg;
 
 
@@ -80,13 +80,12 @@ int *read_image(FILE *in, int *width, int *height)
     int *buf;
     int w, h, x, y, c, i;
     
+    /* Grab two lines: "P6\nwidth height MAXVAL\n" */
     if (!fgets(line, 80, in)) return 0;
     if (!fgets(line, 80, in)) return 0;
     
-    /* Grab two lines */
     sscanf(line, "%d %d %d", &w, &h, &x);
     
-    /* PPM format: "width heigh MAXVAL" */
     buf = (int *)malloc(w*h*sizeof(int));
     i = 0;
     if (!buf) return 0;
@@ -107,6 +106,26 @@ int *read_image(FILE *in, int *width, int *height)
     return buf;
 }
 
+void write_image(FILE *out, XImage *img, int width, int height)
+{
+  int x, y;
+  long p;
+  char r, g, b;
+
+  fprintf(out, "P6\n640 480 255\n");
+
+  for(y = 0; y < height; y++)
+    {
+      for(x = 0; x < width; x++)
+	{
+	  p = XGetPixel(img, x, y);
+	  r = p >> 16;
+	  g = p >> 8;
+	  b = p;
+	  fprintf(out, "%c%c%c", r, g, b);
+	}
+    }
+}
 
 class MyParser: public XMLSP::Parser
 {
@@ -158,7 +177,14 @@ bool MyParser::on_tag_close(const std::string& tag_name)
 {
     if (tag_name == "Frame") {
       //key_wait();
-      usleep(200000);
+      if(video_out != NULL)
+	{
+	  write_image(video_out, XGetImage(display, window, 0, 0, 640, 480, AllPlanes, XYPixmap), 640, 480);
+	}
+      else
+	{
+	  usleep(200000);
+	}
     }
     else if (tag_name == "WorldEvents") { // done with video
       key_wait();
@@ -332,8 +358,8 @@ int main(int argc, char *argv[])
     string line;
 
     if (argc<2) {
-        printf("Need filename\n");
-        exit(0);
+      printf("Usage: %s <video_in.ppm> [video_out.ppm]\n", argv[0]);
+      exit(0);
     }
 
     xinit();
@@ -341,6 +367,14 @@ int main(int argc, char *argv[])
     ximg = XCreateImage(display, visual, depth, ZPixmap, 0, 0, 640, 480, 32, 0);
     
     video_in = fopen(argv[1], "r");
+    if(argc == 3)
+      {
+	video_out = fopen(argv[2], "w");
+      }
+    else
+      {
+	video_out = NULL;
+      }
 
     parser.begin();
     while(!cin.eof() && !quit)

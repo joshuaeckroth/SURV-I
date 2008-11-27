@@ -11,5 +11,5 @@ main =
     do
       let ws = newWorldState
       args <- System.getArgs
-      (Frames frames) <- fReadXml $ head args :: IO Frames
+      (Frames frames) <- hGetXml stdin :: IO Frames
       runAbducer frames ws
