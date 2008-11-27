@@ -23,9 +23,9 @@ hypothesizeNoise catID ws = hypothesizeNoise' catID (acqIDs ws) ws
       hypothesizeNoise' catID (a:as) ws =
           hypothesizeNoise' catID as ws'
               where
-                hypID       = 1 + (head (hypIDs ws))
+                hypID       = nextHypID ws
                 newHypIDs   = [hypID] ++ (hypIDs ws)
-                explainID   = nextID explainers (mind ws)
+                explainID   = nextExplainer ws
                 newNoiseIDs = (noiseIDs ws) ++ [hypID]
                 newNoiseMap = IDMap.insert hypID a (noiseMap ws)
                 newMind     = addExplains explainID hypID a
@@ -34,7 +34,7 @@ hypothesizeNoise catID ws = hypothesizeNoise' catID (acqIDs ws) ws
 
 scoreNoise :: HypothesisID -> AcquisitionID -> AcquisitionMap -> Level -> Level
 scoreNoise hypID acqID acqMap _ =
-    if (area acq) < 20.0 then Highest
+    if (area acq) < 20.0 then High
     else Lowest
         where
           acq = IDMap.getItemFromMap acqMap acqID
@@ -67,12 +67,16 @@ updateNoise :: WorldState       -- ^ World state
             -> World WorldState -- ^ Resulting world
 updateNoise ws =
     recordWorldEvent (["Removed noise:"] ++ (showNoise ((noiseIDs ws) \\ newNoiseIDs) (noiseMap ws) (acqMap ws)) ++ ["END"], emptyElem) >>
-                     return (ws { noiseIDs = newNoiseIDs, noiseMap = newNoiseMap })
+                     return (ws { mind = newMind, noiseIDs = newNoiseIDs, noiseMap = newNoiseMap })
     where
-      m           = mind ws
-      hs          = IDSet.toList $ IDSet.union (irrefutableHypotheses m) (acceptedHypotheses m)
-      newNoiseMap = IDMap.filterWithKey (\n _ -> elem n hs) (noiseMap ws)
-      newNoiseIDs = filter (\n -> elem n $ IDMap.keys newNoiseMap) (noiseIDs ws)
+      m             = mind ws
+      frametime     = let (Frame attrs _) = (frame ws) in frameTime attrs
+      goodHs        = IDSet.toList $ IDSet.union (irrefutableHypotheses m) (IDSet.union (acceptedHypotheses m) (consideringHypotheses m))
+      -- filter out noise older than 1 sec
+      freshNoiseMap = IDMap.filter (\acqID -> (frametime - (acquisitionTime (IDMap.getItemFromMap (acqMap ws) acqID))) < 1.0) (noiseMap ws)
+      newNoiseMap   = IDMap.filterWithKey (\n _ -> elem n goodHs) freshNoiseMap
+      newNoiseIDs   = filter (\n -> elem n $ IDMap.keys newNoiseMap) (noiseIDs ws)
+      newMind       = foldl (\m h -> removeHypothesis h m) (mind ws) ((\\) (IDMap.keys $ noiseMap ws) (IDMap.keys newNoiseMap))
 
 recordNoise :: WorldState -> World WorldState
 recordNoise ws =

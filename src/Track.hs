@@ -4,6 +4,7 @@ import World
 import Types
 import Reasoner.Core
 import Reasoner.Types
+import Reasoner.Constrainers
 import Vocabulary
 import WrappedInts.Types
 import WrappedInts.IDMap (insert, foldWithKey, getItemFromMap, keys, elems)
@@ -17,15 +18,16 @@ hypothesizeTracks :: CategoryID       -- ^ Hypothesis category
                   -> WorldState       -- ^ World state
                   -> World WorldState -- ^ Resulting world
 hypothesizeTracks catID ws =
-    hypothesizeNewTracks catID nonIntersectingAs ws >>=
-    hypothesizeContinuingTracks catID intersectingAs
+    -- we want to hypothesize continuing tracks before new so that continuing tracks
+    -- don't pick up hypothesized new tracks and continue them
+    hypothesizeContinuingTracks catID intersectingAs ws >>=
+    hypothesizeNewTracks catID as
     where
-      trackMap'         = trackMap ws
-      acqMap'           = acqMap ws
-      ts                = keys trackMap'
-      as                = acqIDs ws
-      intersectingAs    = IDSet.toList (intersectAcquisitions ts trackMap' as acqMap')
-      nonIntersectingAs = as \\ intersectingAs
+      trackMap'      = trackMap ws
+      acqMap'        = acqMap ws
+      ts             = keys trackMap'
+      as             = acqIDs ws
+      intersectingAs = IDSet.toList $! (intersectAcquisitions ts trackMap' as acqMap')
 
 -- | Hypothesize and score one new track per acquisition
 hypothesizeNewTracks :: CategoryID       -- ^ Hypothesis category
@@ -36,8 +38,8 @@ hypothesizeNewTracks _     []             ws = return ws
 hypothesizeNewTracks catID (acqID:acqIDs) ws =
     hypothesizeNewTracks catID acqIDs ws'
         where
-          hypID       = 1 + (head (hypIDs ws))
-          explainID   = nextID explainers (mind ws)
+          hypID       = nextHypID ws
+          explainID   = nextExplainer ws
           newHypIDs   = [hypID] ++ (hypIDs ws)
           acq         = getItemFromMap (acqMap ws) acqID
           track       = Track acq Nothing
@@ -53,43 +55,37 @@ hypothesizeContinuingTracks :: CategoryID       -- ^ Hypothesis category
                             -> WorldState       -- ^ World state
                             -> World WorldState -- ^ Resulting world
 hypothesizeContinuingTracks _     []             ws = return ws
-hypothesizeContinuingTracks catID (acqID:acqIDs) ws =
-    hypothesizeContinuingTracks' catID tracks acqID ws >>=
-    hypothesizeContinuingTracks catID acqIDs
+hypothesizeContinuingTracks catID acqIDs' ws =
+    hypothesizeContinuingTracks' catID trackAcqPairs ws
         where
-          tracks = intersectTracks (getItemFromMap (acqMap ws) acqID) (elems (trackMap ws))
-          hypothesizeContinuingTracks' :: CategoryID -> [Track] -> AcquisitionID -> WorldState -> World WorldState
-          hypothesizeContinuingTracks' _     []     _     ws = return ws
-          hypothesizeContinuingTracks' catID (t:ts) acqID ws =
-              hypothesizeContinuingTracks' catID ts acqID ws'
+          trackAcqPairs = [(track, acqID) | acqID <- acqIDs',
+                                                     track <- (constructContinuingTracks
+                                                               (getItemFromMap (acqMap ws) acqID)) $!
+                                                              (intersectTracks (getItemFromMap (acqMap ws) acqID) (elems (trackMap ws))) ]
+
+          constructContinuingTracks :: Acquisition
+                                    -> [Track]
+                                    -> [Track]
+          constructContinuingTracks acq []     = []
+          constructContinuingTracks acq (t:ts) = [Track acq (Just t)] ++ constructContinuingTracks acq ts
+
+          hypothesizeContinuingTracks' :: CategoryID
+                                       -> [(Track, AcquisitionID)]
+                                       -> WorldState
+                                       -> World WorldState
+          hypothesizeContinuingTracks' _     []                   ws = return ws
+          hypothesizeContinuingTracks' catID ((track,acqID):rest) ws =
+              hypothesizeContinuingTracks' catID rest ws'
                   where
-                    hypID       = 1 + (head (hypIDs ws))
-                    explainID   = nextID explainers (mind ws)
+                    hypID       = nextHypID ws
+                    explainID   = nextExplainer ws
                     newHypIDs   = [hypID] ++ (hypIDs ws)
-                    acq         = getItemFromMap (acqMap ws) acqID
-                    track       = Track acq (Just t)
                     newTrackIDs = (trackIDs ws) ++ [hypID]
                     newTrackMap = insert hypID track (trackMap ws)
                     newMind     = addExplains explainID hypID acqID
                                   (addHypothesis hypID catID (scoreTrack hypID newTrackMap) (mind ws))
-                    ws'         = if duplicateTrack track (trackMap ws) then
-                                      ws
-                                  else 
-                                      ws { mind = newMind, hypIDs = newHypIDs, trackIDs = newTrackIDs,
-                                           trackMap = newTrackMap }
-
--- | Determine if a track is a duplicat of another
---
--- Two duplicate tracks have all track points in common; any point not in common means the two tracks are not duplicates.
-duplicateTrack :: Track    -- ^ The track to check
-               -> TrackMap -- ^ Map of existing tracks
-               -> Bool     -- ^ Duplicate?
-duplicateTrack (Track acq Nothing)  trackMap' = if IDMap.null (IDMap.filter (\(Track acq' _) -> acq' == acq) trackMap')
-                                                then False
-                                                else True
-duplicateTrack (Track acq (Just t)) trackMap' = if IDMap.null (IDMap.filter (\(Track acq' _) -> acq' == acq) trackMap')
-                                                then False
-                                                else duplicateTrack t trackMap'
+                    ws'         = ws { mind = newMind, hypIDs = newHypIDs, trackIDs = newTrackIDs,
+                                       trackMap = newTrackMap }
 
 -- | Score a track hypothesis
 scoreTrack :: TrackID -> TrackMap -> Level -> Level
@@ -104,14 +100,14 @@ scoreTrack t trackMap' _ = level
                       dist  = sqrt (((acquisitionX acq) - (acquisitionX acq2))^2 +
                                     ((acquisitionY acq) - (acquisitionY acq2))^2)
                       level'
-                         | delta < 1.0 && dist < 50.0  = Highest
-                         | delta < 1.0 && dist < 100.0 = VeryHigh
-                         | delta < 1.0 && dist < 200.0 = High
-                         | delta < 1.0 && dist < 300.0 = SlightlyHigh
-                         | delta < 2.0 && dist < 400.0 = Medium
-                         | delta < 2.0 && dist < 500.0 = SlightlyLow
-                         | delta < 2.0 && dist < 600.0 = Low
-                         | delta < 2.0 && dist < 700.0 = VeryLow
+                         | delta < 0.4 && dist < 15.0  = Highest
+                         | delta < 0.4 && dist < 25.0  = VeryHigh
+                         | delta < 0.7 && dist < 50.0  = High
+                         | delta < 0.7 && dist < 75.0  = SlightlyHigh
+                         | delta < 0.7 && dist < 125.0 = Medium
+                         | delta < 0.7 && dist < 150.0 = SlightlyLow
+                         | delta < 0.7 && dist < 175.0 = Low
+                         | delta < 0.7 && dist < 200.0 = VeryLow
                          | otherwise                   = Lowest
 
 -- | Find all acquisitions that \'intersect\' the given tracks
@@ -126,7 +122,7 @@ intersectAcquisitions ts trackMap' as acqMap' = intersectAcquisitions' ts trackM
       intersectAcquisitions' (t:ts) trackMap' []      as acqMap' = intersectAcquisitions' ts trackMap' as as acqMap'
       intersectAcquisitions' (t:ts) trackMap' (a:as') as acqMap' =
           if dist <= radius && dist /= 0 && delta <= time then
-              IDSet.insert a $ intersectAcquisitions' (t:ts) trackMap' as' as acqMap'
+              (IDSet.insert a) $! (intersectAcquisitions' (t:ts) trackMap' as' as acqMap')
           else
               intersectAcquisitions' (t:ts) trackMap' as' as acqMap'
           where
@@ -137,11 +133,11 @@ intersectAcquisitions ts trackMap' as acqMap' = intersectAcquisitions' ts trackM
             acqX               = acquisitionX acq
             acqY               = acquisitionY acq
             dist               = sqrt((trackX - acqX)^2 + (trackY - acqY)^2)
-            radius             = 500.0
+            radius             = 200.0
             trackTime          = acquisitionTime trackAcq
             acqTime            = acquisitionTime acq
             delta              = abs (trackTime - acqTime)
-            time               = 5.0 -- seconds
+            time               = 0.5 -- seconds
 
 -- | Find all tracks that \'intersect\' the given acquisition
 intersectTracks :: Acquisition -- ^ Acquisition to intersect
@@ -150,7 +146,7 @@ intersectTracks :: Acquisition -- ^ Acquisition to intersect
 intersectTracks _   []     = []
 intersectTracks acq (t:ts) =
     if dist <= radius && dist /= 0 && delta <= time then
-        [t] ++ intersectTracks acq ts
+        ([t] ++) $! (intersectTracks acq ts)
     else
         intersectTracks acq ts
     where
@@ -160,11 +156,11 @@ intersectTracks acq (t:ts) =
       acqX               = acquisitionX acq
       acqY               = acquisitionY acq
       dist               = sqrt((trackX - acqX)^2 + (trackY - acqY)^2)
-      radius             = 500.0
+      radius             = 200.0
       trackTime          = acquisitionTime trackAcq
       acqTime            = acquisitionTime acq
       delta              = abs (trackTime - acqTime)
-      time               = 5.0 -- seconds
+      time               = 0.5 -- seconds
 
 -- | Human format of track log
 showTracks :: [TrackID]      -- ^ Track IDs to log
@@ -183,8 +179,8 @@ showTracks (trackID:trackIDs) trackMap' acqMap' =
       t         = getItemFromMap trackMap' trackID
       (acq, t') =
           case t of
-            Track acq (Just t) -> (acq, foldWithKey (\k e a -> if e == t then k else a) 0 trackMap')
-            Track acq Nothing  -> (acq, 0)
+            Track acq (Just t') -> (acq, foldWithKey (\k e a -> if e == t' then k else a) 0 trackMap')
+            Track acq Nothing   -> (acq, 0)
       acqID = foldWithKey (\k e a -> if e == acq then k else a) 0 acqMap'
 
 -- | XML format of track log
@@ -197,27 +193,31 @@ tracksToXml (trackID:trackIDs) trackMap' =
     where
       t = getItemFromMap trackMap' trackID
       tracksToXml' (Track _ Nothing) = []
-      tracksToXml' (Track acq (Just (Track acq2 _))) =
+      tracksToXml' (Track acq (Just t'@(Track acq2 _))) =
           [worldElem "Track" [("id", show trackID),
                               ("x1", show $ acquisitionX acq),
                               ("y1", show $ acquisitionY acq),
                               ("x2", show $ acquisitionX acq2),
                               ("y2", show $ acquisitionY acq2),
-                              ("nextID", show trackID2)] []]
+                              ("prevID", show trackID2)] []]
           where
-            trackID2 = foldWithKey (\k e a -> if e == t then k else a) 0 trackMap'
+            trackID2 = foldWithKey (\k e a -> if e == t' then k else a) 0 trackMap'
 
 -- | Keep only track hypotheses considered \'irrefutable\' or \'accepted\'
 updateTracks :: WorldState       -- ^ World state
              -> World WorldState -- ^ Resulting world
 updateTracks ws =
     recordWorldEvent (["Removed tracks:"] ++ (showTracks ((trackIDs ws) \\ newTrackIDs) (trackMap ws) (acqMap ws)) ++ ["END"], emptyElem) >>
-                     return (ws { trackIDs = newTrackIDs, trackMap = newTrackMap })
+                     return (ws { mind = newMind, trackIDs = newTrackIDs, trackMap = newTrackMap })
     where
-      m           = mind ws
-      hs          = IDSet.toList $ IDSet.union (irrefutableHypotheses m) (acceptedHypotheses m)
-      newTrackMap = IDMap.filterWithKey (\n _ -> elem n hs) (trackMap ws)
-      newTrackIDs = filter (\n -> elem n $ IDMap.keys newTrackMap) (trackIDs ws)
+      m             = mind ws
+      frametime     = let (Frame attrs _) = (frame ws) in frameTime attrs
+      goodHs        = IDSet.toList $ IDSet.union (irrefutableHypotheses m) (IDSet.union (acceptedHypotheses m) (consideringHypotheses m))
+      -- filter out tracks older than 5 sec
+      freshTrackMap = IDMap.filter (\(Track acq _) -> (frametime - (acquisitionTime acq)) < 5.0) (trackMap ws)
+      newTrackMap   = IDMap.filterWithKey (\h _ -> elem h goodHs) freshTrackMap
+      newTrackIDs   = filter (\n -> elem n $ IDMap.keys newTrackMap) (trackIDs ws)
+      newMind       = foldl (\m h -> removeHypothesis h m) (mind ws) ((\\) (IDMap.keys $ trackMap ws) (IDMap.keys newTrackMap))
 
 -- | Record recent track hypotheses
 recordTracks :: WorldState       -- ^ World state
@@ -227,7 +227,8 @@ recordTracks ws =
                       recordWorldEventInFrame framenum frametime $ tracksToXml ts trackMap') >>
     return ws
     where
-      ts              = trackIDs ws
+--      ts              = trackIDs ws
+      ts              = keys (trackMap ws)
       trackMap'       = trackMap ws
       acqMap'         = acqMap ws
       (Frame attrs _) = frame ws

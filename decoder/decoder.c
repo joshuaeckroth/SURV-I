@@ -1152,11 +1152,15 @@ int main(int argc, char *argv[])
         exit(0);
     }
 
+    /* X WINDOW
     xinit();
+    */
 
     printf("<Frames>\n");
 
+    /* X WINDOW
     img = XCreateImage(display, visual, depth, ZPixmap, 0, 0, 640, 480, 32, 0);
+    */
     
     /* Read 64 frames */
     in = fopen(argv[1], "r");
@@ -1231,23 +1235,29 @@ int main(int argc, char *argv[])
         XPutImage(display, window, gc, img, 0, 0, 640, 480, 640, 480);
         XFlush(display);*/
 
+	/* X WINDOW
         img->data = (char *)framesb[1];
         XPutImage(display, window, gc, img, 0, 0, 0, 0, 640, 480);
+	*/
         
         /* dif = difference(buf, bkg, w, h); */
         dif = compare3(framesb, w, h);
         lb = label(dif, w, h);
         bl = blend(dif, framesb[1], w, h);
 
-        img->data = bl /*(char *)framesb[0]*/;
+	/* X WINDOW
+        img->data = bl
         XPutImage(display, window, gc, img, 0, 0, 640, 0, 640, 480);
+	*/
 
         /* Frame count */
+	/* X WINDOW
         sprintf(framemsg, "Frame %d, time %0.2fs", framenum, ((double)framenum) / 3.0);
         XSetForeground(display, gc, 0xf8b395);
         XDrawString(display, window, gc, 10, 470, framemsg, strlen(framemsg));
         XDrawString(display, window, gc, 650, 470, framemsg, strlen(framemsg));
         XFlush(display);
+	*/
 
         printf("<Frame time=\"%f\" number=\"%d\">\n", ((double)framenum) / 3.0, framenum);
         output_labeled(lb, w, h);
@@ -1317,9 +1327,11 @@ int main(int argc, char *argv[])
             XNextEvent(display, &event);
     } while (event.type != KeyPress);        */
     
+    /* X WINDOW
     img->data = 0;
     XDestroyImage(img);
     xbye();
+    */
     
     return 0;
 }

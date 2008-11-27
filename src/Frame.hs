@@ -13,4 +13,4 @@ recordFrame ws = recordFrame' (frame ws) ws
                                >> return (ws { frame = f })
 
 getAcquisitions :: Frame -> [Acquisition]
-getAcquisitions (Frame _ acqs) = acqs
+getAcquisitions (Frame _ acqs) = filter (\acq -> (area acq) > 10.0) acqs

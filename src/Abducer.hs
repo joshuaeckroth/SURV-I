@@ -9,6 +9,7 @@ import Vocabulary
 import Reasoner.Types
 import Reasoner.Core
 import WrappedInts.Types (HasInt(..))
+import WrappedInts.IDSet (toList)
 
 -- | Execute the abduction
 runAbducer :: [Frame]          -- ^ List of frames (which contain acquisitions)
@@ -26,10 +27,8 @@ runAbducer frames ws =
       runAbducer' (f:fs) ws =
           do
             let
-                catID = HasInt 0 :: CategoryID
-                -- insert frame and reset 'current' acquisition, noise, track hypotheses,
-                -- then execute abduction sequence
-                world    = ((return $ ws { frame = f, acqIDs = [], noiseIDs = [], trackIDs = [] }) >>=
+                catID    = HasInt 0 :: CategoryID
+                world    = ((return $ cleanWorld f ws) >>=
                             recordFrame >>=
                             hypothesizeAcquisitions catID >>=
                             hypothesizeNoise catID >>=
@@ -37,11 +36,13 @@ runAbducer frames ws =
                             -- hypothesizeClassifications catID >>=
                             constrainAcquisitionExplainers >>=
                             (\ws'' -> return ws'' { mind = (reason (ReasonerSettings False) Medium (mind ws'')) }) >>=
-                            recordAcquisitions >>=
                             updateNoise >>=
                             recordNoise >>=
                             updateTracks >>=
-                            recordTracks)
+                            recordTracks >>=
+                            updateAcquisitions >>=
+                            recordAcquisitions)
+
                 (ws', _) = worldState world
 
             outputLog world

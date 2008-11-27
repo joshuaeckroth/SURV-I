@@ -6,12 +6,13 @@ import Reasoner.Core
 import Reasoner.Types
 import Reasoner.Constrainers
 import Vocabulary
-import WrappedInts.Types (HasMap)
+import WrappedInts.Types (HasInt(..))
 import WrappedInts.IDSet (fromList)
 import WrappedInts.IDMap (insert, getItemFromMap, keys)
 import qualified WrappedInts.IDMap as IDMap
 import qualified WrappedInts.IDSet as IDSet
 import Text.XML.HaXml.Types as HaXml
+import Data.List ((\\))
 
 -- | Hypothesize acquisitions and declare each as factual
 hypothesizeAcquisitions :: CategoryID       -- ^ Hypothesis category
@@ -23,7 +24,7 @@ hypothesizeAcquisitions catID ws = hypothesizeAcquisitions' catID (getAcquisitio
       hypothesizeAcquisitions' catID (a:as) ws =
           hypothesizeAcquisitions' catID as ws'
               where
-                hypID      = 1 + (head (hypIDs ws))
+                hypID      = nextHypID ws
                 newHypIDs  = [hypID] ++ (hypIDs ws)
                 newAcqIDs  = (acqIDs ws) ++ [hypID]
                 newAcqMap  = insert hypID a (acqMap ws)
@@ -57,6 +58,13 @@ acquisitionsToXml (a:as) acqMap' =
     where
       acq = getItemFromMap acqMap' a
 
+updateAcquisitions :: WorldState -> World WorldState
+updateAcquisitions ws = return (ws { mind = newMind, acqMap = freshAcqMap })
+    where
+      frametime   = let (Frame attrs _) = (frame ws) in frameTime attrs
+      freshAcqMap = IDMap.filter (\acq -> (frametime - (acquisitionTime acq)) < 1.0) (acqMap ws)
+      newMind     = foldl (\m h -> removeHypothesis h m) (mind ws) ((\\) (IDMap.keys $ acqMap ws) (IDMap.keys freshAcqMap))
+
 recordAcquisitions :: WorldState -> World WorldState
 recordAcquisitions ws =
     recordWorldEvent (showAcquisitions as acqMap',
@@ -82,21 +90,13 @@ constrainAcquisitionExplainers ws = constrainAcquisitionExplainers' (acqIDs ws) 
       constrainAcquisitionExplainers' (acqID:acqIDs') ws =
           constrainAcquisitionExplainers' acqIDs' ws'
               where
-                acq       = getItemFromMap (acqMap ws) acqID
-                noiseIDs' = keys (IDMap.filter ((==) acqID) (noiseMap ws))
-                trackIDs' = keys (IDMap.filter (\(Track acq' _) -> acq' == acq) (trackMap ws))
-                -- the track hypotheses will be constrained by the noise hypotheses
-                ws'       = constrain trackIDs' noiseIDs' acqID ws
-                constrain :: [HypothesisID] -> [HypothesisID] -> AcquisitionID -> WorldState -> WorldState
-                constrain []     _       _     ws'' = ws''
-                constrain (h:hs) hypIDs' acqID ws'' = constrain hs hypIDs' acqID ws'''
-                    where
-                      ws''' = ws'' { mind = addConstrainer (nextConstrainer ws'') (IDSet.fromList hypIDs') oneOf h (mind ws'') }
-
-area :: Acquisition -> Double
-area Acquisition { acquisitionWidth = w, acquisitionHeight = h } = w * h
-
-distance :: Acquisition -> Acquisition -> Double
-distance Acquisition { acquisitionX = x1, acquisitionY = y1 }
-         Acquisition { acquisitionX = x2, acquisitionY = y2 } =
-    sqrt $ (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)
+                acq          = getItemFromMap (acqMap ws) acqID
+                noiseIDs'    = keys (IDMap.filter ((==) acqID) (noiseMap ws))
+                trackIDs'    = keys (IDMap.filter (\(Track acq' _) -> acq' == acq) (trackMap ws))
+                hs           = IDSet.fromList (trackIDs' ++ noiseIDs')
+                cID          = read $ show $ nextConstrainer ws
+                cIDs         = map HasInt [cID..(cID + (IDSet.size hs))] :: [ConstrainerID]
+                constrainers = [(constrainer, IDSet.delete object hs, object)
+                                | (constrainer, object) <- zip cIDs (IDSet.toList hs) :: [(ConstrainerID, ObjectID)]]
+                               :: [(ConstrainerID, SubjectIDs, ObjectID)]
+                ws'          = ws { mind = foldl (\m (c, ss, o) -> addConstrainer c ss notOverOneOf o m) (mind ws) constrainers }

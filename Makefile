@@ -1,7 +1,7 @@
 
 LDFLAGS = -L/usr/X11R6/lib -lX11 -lm
 CFLAGS = -g -Wall -ansi
-GHCFLAGS = -prof -auto-all
+GHCFLAGS = -O -prof -auto-all
 HMAKEFLAGS = -package HaXml -package containers -package array -package bytestring -dbuild -isrc
 SRCS = $(wildcard src/*.hs) $(wildcard src/*/*.hs) \
 

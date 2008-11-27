@@ -157,11 +157,12 @@ void MyParser::on_error(int errnr, int line, int col, const std::string& message
 bool MyParser::on_tag_close(const std::string& tag_name)
 {
     if (tag_name == "Frame") {
-        key_wait();
+      //key_wait();
+      usleep(200000);
     }
     else if (tag_name == "WorldEvents") { // done with video
-        key_wait();
-        quit = true;
+      key_wait();
+      quit = true;
     }
     return true;
 }
@@ -174,7 +175,8 @@ bool MyParser::on_tag_open(const std::string& tag_name, XMLSP::StringMap& attrib
     const char *id, *nextID;
 
     if (tag_name == "WorldEvents") {
-        next_frame(); // show initial frame
+      key_wait();
+      next_frame(); // show initial frame
     } else if (tag_name == "Frame") {
       this_framenum = atoi(attributes["framenum"].c_str());
 
@@ -216,7 +218,7 @@ bool MyParser::on_tag_open(const std::string& tag_name, XMLSP::StringMap& attrib
       nextID = attributes["nextID"].c_str();
 
       // Draw track segment
-      XSetForeground(display, gc, 0xbbbbbb);
+      XSetForeground(display, gc, 0xa8f794);
       XDrawLine(display, window, gc, x1, y1, x2, y2);
     }
 
