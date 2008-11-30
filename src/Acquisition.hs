@@ -58,15 +58,6 @@ acquisitionsToXml (a:as) acqMap' =
     where
       acq = getItemFromMap acqMap' a
 
-updateAcquisitions :: WorldState -> World WorldState
-updateAcquisitions ws = return (ws { mind = newMind, hypIDs = newHypIDs, acqMap = freshAcqMap })
-    where
-      frametime   = let (Frame attrs _) = (frame ws) in frameTime attrs
-      -- delete acquisitions older than 1 sec
-      freshAcqMap = IDMap.filter (\acq -> (frametime - (acquisitionTime acq)) <= 1.0) (acqMap ws)
-      newHypIDs   = (hypIDs ws) \\ ((IDMap.keys $ acqMap ws) \\ (IDMap.keys freshAcqMap))
-      newMind     = foldl (\m h -> removeHypothesis h m) (mind ws) ((\\) (IDMap.keys $ acqMap ws) (IDMap.keys freshAcqMap))
-
 recordAcquisitions :: WorldState -> World WorldState
 recordAcquisitions ws =
     recordWorldEvent (showAcquisitions as acqMap',

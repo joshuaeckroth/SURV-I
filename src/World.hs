@@ -54,14 +54,20 @@ instance Monad World where
               in World (b, (s ++ s', joinWorldEvents x x'))
 
 cleanWorld :: Frame -> WorldState -> WorldState
-cleanWorld f ws = ws { mind = newMind'', frame = f, acqIDs = [], hypIDs = newHypIDs }
+cleanWorld f ws = ws { mind = newMind''', frame = f, acqIDs = [], acqMap = empty, hypIDs = newHypIDs,
+                       noiseIDs = [], noiseMap = empty }
     where
-      newMind   = foldl (\m (c, _, _) -> removeConstrainer c m) (mind ws) (getConstrainers (mind ws))
-      newMind'  = foldl (\m (a, _, _) -> removeAdjuster a m) newMind (getAdjusters newMind)
+      newMind    = foldl (\m (c, _, _) -> removeConstrainer c m) (mind ws) (getConstrainers (mind ws))
+      newMind'   = foldl (\m (a, _, _) -> removeAdjuster a m) newMind (getAdjusters newMind)
 
       -- remove acquisitions
-      newMind'' = foldl (\m h -> removeHypothesis h m) newMind' (acqIDs ws)
-      newHypIDs = (hypIDs ws) \\ (acqIDs ws)
+      newMind''  = foldl (\m h -> removeHypothesis h m) newMind' (acqIDs ws)
+
+      -- remove noise
+      newMind''' = foldl (\m h -> removeHypothesis h m) newMind' (noiseIDs ws)
+
+      -- only tracks are left
+      newHypIDs  = [0] ++ (trackIDs ws)
 
 -- | Writes a human and XML log
 recordWorldEvent :: ([String], HaXml.Content) -- ^ Human and XML content
@@ -171,7 +177,7 @@ outputHuman m = (unlines $ ["Mind:"] ++ (showMind $ mind ws)
                  ++ ["Mind trace:"] ++ (formatTrace $ mindTrace $ mind ws)
                  ++ ["Constrainers:"] ++ (map show $ getConstrainers $ mind ws)
                  ++ ["Explainers:"] ++ (map show $ getExplainers $ mind ws)
-                 ++ ["Hypotheses:"] ++ (map (\h -> unlines $ showHypothesis h (mind ws)) (hypIDs ws))
+                 ++ ["Hypotheses:"] ++ (map (\h -> unlines $ showHypothesis h (mind ws)) ((hypIDs ws) \\ [0]))
                 )
     where
       (ws, _) = worldState m
@@ -181,7 +187,7 @@ outputLog :: World WorldState -> IO ()
 outputLog m = putStrLn $ unlines $ map (show . HaXml.content) $ buildLog m
     where
       buildLog :: World WorldState -> [HaXml.Content]
-      buildLog m = {- [frameLog] ++ -} ((children `o` tag "WorldEvents") e)
+      buildLog m = [frameLog] ++ ((children `o` tag "WorldEvents") e)
           where
             (_, (s, e)) = worldState m
             frameLog    = HaXml.CElem (HaXml.Elem "FrameLog" [] [HaXml.CString True $ (outputHuman m) ++ (unlines $ map ((++) "     ") s)])
