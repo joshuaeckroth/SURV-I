@@ -59,10 +59,12 @@ acquisitionsToXml (a:as) acqMap' =
       acq = getItemFromMap acqMap' a
 
 updateAcquisitions :: WorldState -> World WorldState
-updateAcquisitions ws = return (ws { mind = newMind, acqMap = freshAcqMap })
+updateAcquisitions ws = return (ws { mind = newMind, hypIDs = newHypIDs, acqMap = freshAcqMap })
     where
       frametime   = let (Frame attrs _) = (frame ws) in frameTime attrs
-      freshAcqMap = IDMap.filter (\acq -> (frametime - (acquisitionTime acq)) < 1.0) (acqMap ws)
+      -- delete acquisitions older than 1 sec
+      freshAcqMap = IDMap.filter (\acq -> (frametime - (acquisitionTime acq)) <= 1.0) (acqMap ws)
+      newHypIDs   = (hypIDs ws) \\ ((IDMap.keys $ acqMap ws) \\ (IDMap.keys freshAcqMap))
       newMind     = foldl (\m h -> removeHypothesis h m) (mind ws) ((\\) (IDMap.keys $ acqMap ws) (IDMap.keys freshAcqMap))
 
 recordAcquisitions :: WorldState -> World WorldState
@@ -88,15 +90,27 @@ constrainAcquisitionExplainers ws = constrainAcquisitionExplainers' (acqIDs ws) 
       constrainAcquisitionExplainers' :: [AcquisitionID] -> WorldState -> World WorldState
       constrainAcquisitionExplainers' []              ws = return ws
       constrainAcquisitionExplainers' (acqID:acqIDs') ws =
+          recordWorldEvent (["Constrained acquisition " ++ (show acqID) ++ ":"] ++ (map show (getConstrainers (mind ws'))), emptyElem) >>
           constrainAcquisitionExplainers' acqIDs' ws'
               where
                 acq          = getItemFromMap (acqMap ws) acqID
                 noiseIDs'    = keys (IDMap.filter ((==) acqID) (noiseMap ws))
-                trackIDs'    = keys (IDMap.filter (\(Track acq' _) -> acq' == acq) (trackMap ws))
+                trackIDs'    = keys (IDMap.filter (\(Track acq' _ _ _) -> acq' == acq) (trackMap ws))
                 hs           = IDSet.fromList (trackIDs' ++ noiseIDs')
                 cID          = read $ show $ nextConstrainer ws
                 cIDs         = map HasInt [cID..(cID + (IDSet.size hs))] :: [ConstrainerID]
                 constrainers = [(constrainer, IDSet.delete object hs, object)
                                 | (constrainer, object) <- zip cIDs (IDSet.toList hs) :: [(ConstrainerID, ObjectID)]]
                                :: [(ConstrainerID, SubjectIDs, ObjectID)]
-                ws'          = ws { mind = foldl (\m (c, ss, o) -> addConstrainer c ss notOverOneOf o m) (mind ws) constrainers }
+                ws'          = ws { mind = foldl (\m (c, ss, o) -> addConstrainer c ss oneOf o m) (mind ws) constrainers }
+
+acqDistance :: Acquisition
+            -> Acquisition
+            -> Double
+acqDistance acq acq' = sqrt (((acquisitionX acq) - (acquisitionX acq'))^2 +
+                             ((acquisitionY acq) - (acquisitionY acq'))^2)
+
+acqDelta :: Acquisition
+         -> Acquisition
+         -> Double
+acqDelta acq acq' = abs $ (acquisitionTime acq) - (acquisitionTime acq')

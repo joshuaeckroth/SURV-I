@@ -184,6 +184,7 @@ bool MyParser::on_tag_close(const std::string& tag_name)
       else
 	{
 	  usleep(200000);
+	  key_wait();
 	}
     }
     else if (tag_name == "WorldEvents") { // done with video
@@ -197,8 +198,8 @@ bool MyParser::on_tag_open(const std::string& tag_name, XMLSP::StringMap& attrib
 {
     string type;
     int this_framenum = 0;
-    int x, y, x1, y1, x2, y2, w, h;
-    const char *id, *nextID;
+    int x, y, ox, oy, ex, ey, w, h;
+    const char *id, *prevID;
 
     if (tag_name == "WorldEvents") {
       key_wait();
@@ -236,16 +237,25 @@ bool MyParser::on_tag_open(const std::string& tag_name, XMLSP::StringMap& attrib
       XDrawArc(display, window, gc, x-10, y-10, 20, 20, 0, 360*64);
     }
     else if(tag_name == "Track") {
-      x1 = atoi(attributes["x1"].c_str());
-      y1 = atoi(attributes["y1"].c_str());
-      x2 = atoi(attributes["x2"].c_str());
-      y2 = atoi(attributes["y2"].c_str());
+      x = atoi(attributes["x"].c_str());
+      y = atoi(attributes["y"].c_str());
+      ox = atoi(attributes["ox"].c_str());
+      oy = atoi(attributes["oy"].c_str());
+      ex = atoi(attributes["ex"].c_str());
+      ey = atoi(attributes["ey"].c_str());
       id = attributes["id"].c_str();
-      nextID = attributes["nextID"].c_str();
+      prevID = attributes["prevID"].c_str();
 
       // Draw track segment
       XSetForeground(display, gc, 0xa8f794);
-      XDrawLine(display, window, gc, x1, y1, x2, y2);
+      XDrawLine(display, window, gc, ox, oy, x, y);
+
+      // Draw track ID
+      //XDrawString(display, window, gc, x+5, y+5, id, strlen(id));
+
+      // Draw expected location
+      XSetForeground(display, gc, 0xbbbbbb);
+      XDrawLine(display, window, gc, x, y, ex, ey);
     }
 
       /*

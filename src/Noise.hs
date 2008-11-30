@@ -67,7 +67,7 @@ updateNoise :: WorldState       -- ^ World state
             -> World WorldState -- ^ Resulting world
 updateNoise ws =
     recordWorldEvent (["Removed noise:"] ++ (showNoise ((noiseIDs ws) \\ newNoiseIDs) (noiseMap ws) (acqMap ws)) ++ ["END"], emptyElem) >>
-                     return (ws { mind = newMind, noiseIDs = newNoiseIDs, noiseMap = newNoiseMap })
+                     return (ws { mind = newMind, hypIDs = newHypIDs, noiseIDs = newNoiseIDs, noiseMap = newNoiseMap })
     where
       m             = mind ws
       frametime     = let (Frame attrs _) = (frame ws) in frameTime attrs
@@ -76,7 +76,8 @@ updateNoise ws =
       freshNoiseMap = IDMap.filter (\acqID -> (frametime - (acquisitionTime (IDMap.getItemFromMap (acqMap ws) acqID))) < 1.0) (noiseMap ws)
       newNoiseMap   = IDMap.filterWithKey (\n _ -> elem n goodHs) freshNoiseMap
       newNoiseIDs   = filter (\n -> elem n $ IDMap.keys newNoiseMap) (noiseIDs ws)
-      newMind       = foldl (\m h -> removeHypothesis h m) (mind ws) ((\\) (IDMap.keys $ noiseMap ws) (IDMap.keys newNoiseMap))
+      newHypIDs     = (hypIDs ws) \\ ((noiseIDs ws) \\ newNoiseIDs)
+      newMind       = foldl (\m h -> removeHypothesis h m) (mind ws) ((noiseIDs ws) \\ newNoiseIDs)
 
 recordNoise :: WorldState -> World WorldState
 recordNoise ws =

@@ -12,7 +12,7 @@ import WrappedInts.Types (HasInt(..))
 import WrappedInts.IDSet (toList)
 
 -- | Execute the abduction
-runAbducer :: [Frame]          -- ^ List of frames (which contain acquisitions)
+runAbducer :: [Frame]    -- ^ List of frames (which contain acquisitions)
            -> WorldState -- ^ Existing world
            -> IO ()
 runAbducer frames ws =
@@ -30,17 +30,22 @@ runAbducer frames ws =
                 catID    = HasInt 0 :: CategoryID
                 world    = ((return $ cleanWorld f ws) >>=
                             recordFrame >>=
+
                             hypothesizeAcquisitions catID >>=
                             hypothesizeNoise catID >>=
                             hypothesizeTracks catID >>=
+                            hypothesizeSplitTracks catID >>=
                             -- hypothesizeClassifications catID >>=
                             constrainAcquisitionExplainers >>=
+
                             (\ws'' -> return ws'' { mind = (reason (ReasonerSettings False) Medium (mind ws'')) }) >>=
+
                             updateNoise >>=
-                            recordNoise >>=
                             updateTracks >>=
+--                            updateAcquisitions >>=
+
+                            recordNoise >>=
                             recordTracks >>=
-                            updateAcquisitions >>=
                             recordAcquisitions)
 
                 (ws', _) = worldState world

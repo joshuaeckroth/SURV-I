@@ -10,8 +10,8 @@ import qualified WrappedInts.IDMap as IDMap
 import qualified Text.XML.HaXml.Types as HaXml
 import Text.XML.HaXml.Combinators
 import qualified Text.XML.HaXml.Pretty as HaXml
+import qualified Data.Sequence as Seq
 import Data.List ((\\))
-import qualified Data.ByteString.Char8 as ByteString
 
 data WorldState = WorldState { mind     :: Mind Level Level Level, -- ^ The Mark-II Mind
                                hypIDs   :: [HypothesisID],         -- ^ Current set of hypothesis IDs
@@ -27,8 +27,8 @@ data WorldState = WorldState { mind     :: Mind Level Level Level, -- ^ The Mark
 -- |Create a new blank world state
 newWorldState :: WorldState
 newWorldState = WorldState
-                -- (setTrace True (newMind confidenceBoost suggestStatus SparseTransitive))
-                (newMind confidenceBoost suggestStatus SparseTransitive)
+                (setTrace True (newMind confidenceBoost suggestStatus SparseTransitive))
+                -- (newMind confidenceBoost suggestStatus SparseTransitive))
                 [HasInt 0]
                 []
                 empty
@@ -54,13 +54,14 @@ instance Monad World where
               in World (b, (s ++ s', joinWorldEvents x x'))
 
 cleanWorld :: Frame -> WorldState -> WorldState
-cleanWorld f ws = ws { mind = newMind, frame = f, acqIDs = [],
-                       noiseIDs = [], noiseMap = newNoiseMap, trackIDs = [], trackMap = newTrackMap }
+cleanWorld f ws = ws { mind = newMind'', frame = f, acqIDs = [], hypIDs = newHypIDs }
     where
-      oldHs       = (IDSet.toList $ refutedHypotheses $ mind ws) ++ (IDSet.toList $ unacceptableHypotheses $ mind ws)
-      newMind     = foldl (\m h -> removeHypothesis h m) (mind ws) oldHs
-      newNoiseMap = foldr IDMap.delete (noiseMap ws) oldHs
-      newTrackMap = foldr IDMap.delete (trackMap ws) oldHs
+      newMind   = foldl (\m (c, _, _) -> removeConstrainer c m) (mind ws) (getConstrainers (mind ws))
+      newMind'  = foldl (\m (a, _, _) -> removeAdjuster a m) newMind (getAdjusters newMind)
+
+      -- remove acquisitions
+      newMind'' = foldl (\m h -> removeHypothesis h m) newMind' (acqIDs ws)
+      newHypIDs = (hypIDs ws) \\ (acqIDs ws)
 
 -- | Writes a human and XML log
 recordWorldEvent :: ([String], HaXml.Content) -- ^ Human and XML content
@@ -167,10 +168,10 @@ outputXmlFooter ws = putStrLn "</WorldEvents>"
 -- | Return human log
 outputHuman :: World WorldState -> String
 outputHuman m = (unlines $ ["Mind:"] ++ (showMind $ mind ws)
-                 -- ++ ["Mind trace:"] ++ (map show $ ByteString.split ',' $ ByteString.pack $ show $ mindTrace $ mind ws)
-                 -- ++ ["Constrainers:"] ++ (map show $ getConstrainers $ mind ws)
-                 -- ++ ["Explainers:"] ++ (map show $ getExplainers $ mind ws)
-                 -- ++ ["Hypotheses:"] ++ (map (\h -> unlines $ showHypothesis h (mind ws)) $ (hypIDs ws) \\ [0])
+                 ++ ["Mind trace:"] ++ (formatTrace $ mindTrace $ mind ws)
+                 ++ ["Constrainers:"] ++ (map show $ getConstrainers $ mind ws)
+                 ++ ["Explainers:"] ++ (map show $ getExplainers $ mind ws)
+                 ++ ["Hypotheses:"] ++ (map (\h -> unlines $ showHypothesis h (mind ws)) (hypIDs ws))
                 )
     where
       (ws, _) = worldState m
@@ -180,10 +181,17 @@ outputLog :: World WorldState -> IO ()
 outputLog m = putStrLn $ unlines $ map (show . HaXml.content) $ buildLog m
     where
       buildLog :: World WorldState -> [HaXml.Content]
-      buildLog m = ((children `o` tag "WorldEvents") e) ++ [frameLog]
+      buildLog m = {- [frameLog] ++ -} ((children `o` tag "WorldEvents") e)
           where
             (_, (s, e)) = worldState m
             frameLog    = HaXml.CElem (HaXml.Elem "FrameLog" [] [HaXml.CString True $ (outputHuman m) ++ (unlines $ map ((++) "     ") s)])
+
+formatTrace :: (Show a) => Seq.Seq a -> [String]
+formatTrace s = formatTrace' s 0 (Seq.length s)
+    where
+      formatTrace' s i n
+          | i == n = []
+          | otherwise  = [show $ Seq.index s i] ++ formatTrace' s (i+1) n
 
 -- | Construct XML prolog for outputting the XML log 
 xmlProlog :: HaXml.Prolog
@@ -201,3 +209,5 @@ nextHypID ws = 1 + maximum [head $ hypIDs ws,
 nextConstrainer ws = 1 + (foldr max 0 $ (\(a, _, _) -> a) $ unzip3 $ getConstrainers (mind ws))
 
 nextExplainer ws = 1 + (foldr max 0 $ IDMap.keys (explainers $ mind ws))
+
+nextAdjuster ws = 1 + (foldr max 0 $ (\(a, _, _) -> a) $ unzip3 $ getAdjusters (mind ws))
