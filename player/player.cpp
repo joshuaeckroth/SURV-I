@@ -28,6 +28,18 @@ int depth;
 int framenum = 0;
 bool quit = 0;
 
+int textColor = 0xffcc66;
+int acquisitionColor = 0xcc66ff;
+int trackColor = 0x66ffcc;
+int noiseColor = 0x432254;
+int expectedColor = 0xffcc66;
+
+XGCValues gcValues;
+GC trackGc;
+GC acquisitionGc;
+GC noiseGc;
+GC expectedGc;
+
 #define EVENTMASK ExposureMask | KeyPressMask | ButtonPressMask
 
 void xinit(void)
@@ -49,8 +61,26 @@ void xinit(void)
             0, 0, 640, 480, 0, fgcolor, bgcolor);
 
     gc = XCreateGC(display, window, 0, 0);
+
+    gcValues.line_width = 3;
+    gcValues.cap_style = CapRound;
+    gcValues.join_style = JoinRound;
+
+    trackGc = XCreateGC(display, window, (GCLineWidth | GCJoinStyle | GCCapStyle), &gcValues);
+
+    gcValues.line_width = 2;
+    acquisitionGc = XCreateGC(display, window, (GCLineWidth | GCJoinStyle | GCCapStyle), &gcValues);
+
+    noiseGc = XCreateGC(display, window, (GCLineWidth | GCJoinStyle | GCCapStyle), &gcValues);
+
+    gcValues.line_width = 2;
+    gcValues.line_style = LineOnOffDash;
+    expectedGc = XCreateGC(display, window, (GCLineWidth | GCJoinStyle | GCCapStyle | GCLineStyle), &gcValues);
+
     XSetBackground(display, gc, bgcolor);
     XSetForeground(display, gc, fgcolor);
+
+    XSetFont(display, gc, XLoadFont(display, "-adobe-helvetica-*-r-*-*-*-120-*-*-*-*-*-*"));
 
     XMapRaised(display, window);
 
@@ -161,7 +191,7 @@ void next_frame(void)
     ximg->data = 0;
     free(buf);
     sprintf(framemsg, "Frame %d, time %0.2fs", framenum, ((double)framenum) / 3.0);
-    XSetForeground(display, gc, 0xf8b395);
+    XSetForeground(display, gc, textColor);
     XDrawString(display, window, gc, 10, 470, framemsg, strlen(framemsg));
     XFlush(display);
 }
@@ -198,11 +228,10 @@ bool MyParser::on_tag_open(const std::string& tag_name, XMLSP::StringMap& attrib
 {
     string type;
     int this_framenum = 0;
-    int x, y, ox, oy, ex, ey, w, h;
-    const char *id, *prevID;
+    int x, y, ox, oy, ex, ey, w, h, radius;
+    const char *id, *prevID, *thisFrame;
 
     if (tag_name == "WorldEvents") {
-      key_wait();
       next_frame(); // show initial frame
     } else if (tag_name == "Frame") {
       this_framenum = atoi(attributes["framenum"].c_str());
@@ -218,9 +247,10 @@ bool MyParser::on_tag_open(const std::string& tag_name, XMLSP::StringMap& attrib
         w = atoi(attributes["width"].c_str());
         h = atoi(attributes["height"].c_str());
         id = attributes["id"].c_str();
-        XSetForeground(display, gc, 0xf8b395);
+
+        XSetForeground(display, acquisitionGc, acquisitionColor);
         XDrawString(display, window, gc, x-(w/2)-5, y-(h/2)-5, id, strlen(id));
-	XDrawRectangle(display, window, gc, x-(w/2), y-(h/2), w, h);
+	XDrawRectangle(display, window, acquisitionGc, x-(w/2), y-(h/2), w, h);
     }
     else if(tag_name == "Noise") {
       x = atoi(attributes["x"].c_str());
@@ -230,11 +260,11 @@ bool MyParser::on_tag_open(const std::string& tag_name, XMLSP::StringMap& attrib
       id = attributes["id"].c_str();
 
       // Draw noise box (w*h box with X through it) and a circle around center
-      XSetForeground(display, gc, 0x444444);
-      XDrawRectangle(display, window, gc, x-(w/2), y-(h/2), w, h);
-      XDrawLine(display, window, gc, x-(w/2), y-(h/2), x-(w/2)+w, y-(h/2)+h);
-      XDrawLine(display, window, gc, x-(w/2), y-(h/2)+h, x-(w/2)+w, y-(h/2));
-      XDrawArc(display, window, gc, x-10, y-10, 20, 20, 0, 360*64);
+      XSetForeground(display, noiseGc, noiseColor);
+      XDrawRectangle(display, window, noiseGc, x-(w/2), y-(h/2), w, h);
+      XDrawLine(display, window, noiseGc, x-(w/2), y-(h/2), x-(w/2)+w, y-(h/2)+h);
+      XDrawLine(display, window, noiseGc, x-(w/2), y-(h/2)+h, x-(w/2)+w, y-(h/2));
+      XDrawArc(display, window, noiseGc, x-10, y-10, 20, 20, 0, 360*64);
     }
     else if(tag_name == "Track") {
       x = atoi(attributes["x"].c_str());
@@ -245,17 +275,26 @@ bool MyParser::on_tag_open(const std::string& tag_name, XMLSP::StringMap& attrib
       ey = atoi(attributes["ey"].c_str());
       id = attributes["id"].c_str();
       prevID = attributes["prevID"].c_str();
+      radius = atoi(attributes["radius"].c_str());
+      thisFrame = attributes["thisFrame"].c_str();
 
       // Draw track segment
-      XSetForeground(display, gc, 0xa8f794);
-      XDrawLine(display, window, gc, ox, oy, x, y);
+      XSetForeground(display, trackGc, trackColor);
+      XDrawLine(display, window, trackGc, ox, oy, x, y);
 
-      // Draw track ID
-      //XDrawString(display, window, gc, x+5, y+5, id, strlen(id));
+      // Only draw extra info if the track is current (this frame)
+      if(strncmp(thisFrame, "True", 4) == 0)
+	{
+	  // Draw track ID
+	  XDrawString(display, window, gc, x+5, y+5, id, strlen(id));
+	  
+	  // Draw expected location
+	  XSetForeground(display, expectedGc, expectedColor);
+	  XDrawLine(display, window, expectedGc, x, y, ex, ey);
 
-      // Draw expected location
-      XSetForeground(display, gc, 0xbbbbbb);
-      XDrawLine(display, window, gc, x, y, ex, ey);
+	  // Draw radius
+	  XDrawArc(display, window, expectedGc, ex - radius, ey - radius, 2 * radius, 2 * radius, 0, 360*64);
+	}
     }
 
       /*

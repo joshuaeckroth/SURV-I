@@ -166,7 +166,7 @@ hypothesizeSplitTracks catID ws =
             constrainers = [(constrainer, IDSet.fromList (trackIDs' \\ [object]), object)
                             | (constrainer, object) <- zip cIDs trackIDs' :: [(ConstrainerID, ObjectID)]]
                            :: [(ConstrainerID, SubjectIDs, ObjectID)]
-            ws'          = ws { mind = foldl (\m (c, ss, o) -> addConstrainer c ss notOverOneOf o m) (mind ws) constrainers }
+            ws'          = ws { mind = foldl (\m (c, ss, o) -> addConstrainer c ss oneOf o m) (mind ws) constrainers }
 
 addTrackImplications :: Track
                      -> WorldState
@@ -237,8 +237,7 @@ intersectAcquisitions ts trackMap' as acqMap' f = intersectAcquisitions' ts trac
             acqX                   = acquisitionX acq
             acqY                   = acquisitionY acq
             dist                   = sqrt((expectedX - acqX)^2 + (expectedY - acqY)^2)
-            speed                  = trackSpeed track trackMap'
-            radius                 = if speed == 0.0 then 200.0 else (2.0 * speed)
+            radius                 = trackRadius (expectedX, expectedY) track trackMap'
             delta                  = trackDelta f track
             time                   = 0.7 -- seconds
 
@@ -282,30 +281,38 @@ tracksToXml :: [TrackID]       -- ^ Track IDs to log
             -> [HaXml.Content] -- ^ XML log
 tracksToXml []                 _         _ = []
 tracksToXml (trackID:trackIDs) trackMap' f =
-    tracksToXml' t ++ tracksToXml trackIDs trackMap' f
+    trackToXml t ++ tracksToXml trackIDs trackMap' f
     where
       t = getItemFromMap trackMap' trackID
-      tracksToXml' (Track _   _ _ Nothing)         = []
-      tracksToXml' (Track acq _ n (Just trackID')) =
+      trackToXml (Track acq _ n p) =
           [worldElem "Track" [("id", show trackID),
                               ("x", show $ acquisitionX acq),
                               ("y", show $ acquisitionY acq),
                               ("ox", show $ acquisitionX acq'),
                               ("oy", show $ acquisitionY acq'),
-                              ("prevID", show trackID'),
+                              ("prevID", show prevTrackID),
                               ("nextID", show nextTrackID),
                               ("ex", show expectedX),
-                              ("ey", show expectedY)] []]
+                              ("ey", show expectedY),
+                              ("radius", show radius),
+                              ("thisFrame", show thisFrame)] []]
           where
-            Track acq' _ _ _       = getItemFromMap trackMap' trackID'
+            prevTrackID            = case p of
+                                       Nothing          -> 0
+                                       Just prevTrackID -> prevTrackID
+            Track acq' _ _ _       = case p of
+                                       Nothing          -> t
+                                       Just prevTrackID -> getItemFromMap trackMap' prevTrackID
             nextTrackID            = case n of
                                        Nothing          -> 0
                                        Just nextTrackID -> nextTrackID
             (Frame attrs _)        = f
+            thisFrame              = (frameTime attrs) == (acquisitionTime acq)
             (expectedX, expectedY) = if (acquisitionTime acq) /= (frameTime attrs) then
                                          (acquisitionX acq, acquisitionY acq)
                                      else
                                          trackExpectedLocation f t trackMap'
+            radius                 = trackRadius (expectedX, expectedY) t trackMap'
 
 -- | Keep only track hypotheses considered \'irrefutable\' or \'accepted\'
 updateTracks :: WorldState       -- ^ World state
@@ -423,11 +430,13 @@ trackDuration (Track acq _ _ (Just trackID')) trackMap' = (acquisitionTime acq) 
 --
 -- Speed of track with most recent acquisition acq and second most recent acquisition acq\' =
 -- (acqDistance acq acq\') (acqDelta acq acq\')
+--
+-- The maximum possible speed is 100 (forced limitation)
 trackSpeed :: Track
            -> TrackMap
            -> Double
 trackSpeed (Track acq _ _ Nothing)         _         = 0.0
-trackSpeed (Track acq _ _ (Just trackID')) trackMap' = (acqDistance acq acq') / (acqDelta acq acq')
+trackSpeed (Track acq _ _ (Just trackID')) trackMap' = min 100 $ (acqDistance acq acq') / (acqDelta acq acq')
     where
       (Track acq' _ _ _) = getItemFromMap trackMap' trackID'
 
@@ -473,6 +482,16 @@ trackExpectedLocation f t@(Track acq _ _ (Just trackID')) trackMap' = (x3, y3)
                                       else                  -- moved left
                                           (0 - dist / ((sqrt 2) * m)) + x2
                              in (x3, y2 - m * (x3 - x2))
+
+trackRadius :: (Double, Double) -> Track -> TrackMap -> Double
+trackRadius (ex, ey) track@(Track acq _ _ _) trackMap'
+    | speed == 0.0 = 75.0
+    | speed < 50.0 = min (3 * expDist) $ 3 * speed
+    | otherwise    = min (3 * expDist) $ 150.0
+    where
+      speed    = trackSpeed track trackMap'
+      (x,y)    = (acquisitionX acq, acquisitionY acq)
+      expDist  = sqrt ((x - ex)^2 + (y - ey)^2)
 
 trackAcquisition :: TrackID -> TrackMap -> Acquisition
 trackAcquisition trackID trackMap' = acq
