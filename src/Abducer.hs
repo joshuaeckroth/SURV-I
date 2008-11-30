@@ -40,6 +40,7 @@ runAbducer frames ws =
 
                             (\ws'' -> return ws'' { mind = (reason (ReasonerSettings False) Medium (mind ws'')) }) >>=
 
+                            updateNoise >>=
                             updateTracks >>=
 
                             recordNoise >>=

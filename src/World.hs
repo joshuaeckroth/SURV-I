@@ -27,8 +27,8 @@ data WorldState = WorldState { mind     :: Mind Level Level Level, -- ^ The Mark
 -- |Create a new blank world state
 newWorldState :: WorldState
 newWorldState = WorldState
-                (setTrace True (newMind confidenceBoost suggestStatus SparseTransitive))
-                -- (newMind confidenceBoost suggestStatus SparseTransitive))
+                -- (setTrace True (newMind confidenceBoost suggestStatus SparseTransitive))
+                (newMind confidenceBoost suggestStatus SparseTransitive)
                 [HasInt 0]
                 []
                 empty
@@ -174,10 +174,10 @@ outputXmlFooter ws = putStrLn "</WorldEvents>"
 -- | Return human log
 outputHuman :: World WorldState -> String
 outputHuman m = (unlines $ ["Mind:"] ++ (showMind $ mind ws)
-                 ++ ["Mind trace:"] ++ (formatTrace $ mindTrace $ mind ws)
-                 ++ ["Constrainers:"] ++ (map show $ getConstrainers $ mind ws)
-                 ++ ["Explainers:"] ++ (map show $ getExplainers $ mind ws)
-                 ++ ["Hypotheses:"] ++ (map (\h -> unlines $ showHypothesis h (mind ws)) ((hypIDs ws) \\ [0]))
+                 -- ++ ["Mind trace:"] ++ (formatTrace $ mindTrace $ mind ws)
+                 -- ++ ["Constrainers:"] ++ (map show $ getConstrainers $ mind ws)
+                 -- ++ ["Explainers:"] ++ (map show $ getExplainers $ mind ws)
+                 -- ++ ["Hypotheses:"] ++ (map (\h -> unlines $ showHypothesis h (mind ws)) ((hypIDs ws) \\ [0]))
                 )
     where
       (ws, _) = worldState m
