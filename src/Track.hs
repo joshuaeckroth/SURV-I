@@ -101,9 +101,10 @@ hypothesizeContinuingTracks catID intersections ws
                 ws'              = addTrackImplications track' $
                                    ws { mind = newMind, hypIDs = newHypIDs, trackIDs = newTrackIDs, trackMap = newTrackMap }
 
-hypothesizeSplitTracks :: CategoryID
-                       -> WorldState
-                       -> World WorldState
+-- | Hypothesize split tracks
+hypothesizeSplitTracks :: CategoryID       -- ^ Hypothesis category
+                       -> WorldState       -- ^ World state
+                       -> World WorldState -- ^ Resulting world
 hypothesizeSplitTracks catID ws =
     recordWorldEvent (["Continuing tracks:"] ++ (showTracks continuingTracks (trackMap ws') (acqMap ws') (frame ws')) ++ ["END"], emptyElem) >>
     recordWorldEvent (["Nonheads and their continuations:"] ++ (map (\(t, ts) -> (show t) ++ ": " ++ (show ts)) splits) ++ ["END"], emptyElem) >>
@@ -168,9 +169,10 @@ hypothesizeSplitTracks catID ws =
                            :: [(ConstrainerID, SubjectIDs, ObjectID)]
             ws'          = ws { mind = foldl (\m (c, ss, o) -> addConstrainer c ss oneOf o m) (mind ws) constrainers }
 
-addTrackImplications :: Track
-                     -> WorldState
-                     -> WorldState
+-- | Connect track heads with rest of track by way of track implications (implies & impliedBy)
+addTrackImplications :: Track      -- ^ Track to connect by way of implications
+                     -> WorldState -- ^ World state
+                     -> WorldState -- ^ Resulting world state
 addTrackImplications (Track _ _       _ Nothing)         ws = ws
 addTrackImplications (Track _ trackID _ (Just trackID')) ws = addTrackImplications t' ws'
     where
@@ -179,8 +181,12 @@ addTrackImplications (Track _ trackID _ (Just trackID')) ws = addTrackImplicatio
                 addConstrainer (1 + (nextConstrainer ws)) (IDSet.singleton trackID) impliedBy trackID' (mind ws)
       ws'     = ws { mind = newMind }
 
--- | Score a track hypothesis
-scoreTrack :: Frame -> TrackID -> TrackMap -> Level -> Level
+-- | Score a track hypothesis (this is the hypothesis's a prior score)
+scoreTrack :: Frame    -- ^ Current frame
+           -> TrackID  -- ^ Track ID to score
+           -> TrackMap -- ^ Current track map
+           -> Level    -- ^ "Current situation"
+           -> Level    -- ^ Resulting score
 scoreTrack f t trackMap' l = level
     where
       track = getItemFromMap trackMap' t
@@ -391,7 +397,10 @@ recordTracks ws =
       frametime         = show $ frameTime attrs
 
 -- | Construct a list of track heads
-trackHeads :: TrackMap -> [TrackID]
+--
+-- Here, track heads are any tracks without a previous track point (so this includes new tracks).
+trackHeads :: TrackMap  -- ^ Current track map
+           -> [TrackID] -- ^ Track heads
 trackHeads trackMap' = IDMap.keys $ IDMap.filter (\(Track _ _ n _) -> case n of
                                                                         Nothing -> True
                                                                         Just _  -> False) trackMap'

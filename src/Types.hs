@@ -20,9 +20,9 @@ type NoiseMap = HypothesisMap AcquisitionID
 type TrackMap = HypothesisMap Track
 
 data Track
-    -- | Tracks have an acquisition, own track ID, and possibly next and/or prior track IDs
+    -- | Tracks have an acquisition, own track ID, and possibly next and\/or prior track IDs
     --
-    -- Tracks without a next ID are heads, tracks without a prior ID are ends
+    -- Tracks without a next ID are heads, tracks without a prior ID are ends.
     = Track Acquisition TrackID (Maybe TrackID) (Maybe TrackID)
     deriving (Eq)
 

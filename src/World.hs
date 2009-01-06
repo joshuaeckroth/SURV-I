@@ -24,7 +24,7 @@ data WorldState = WorldState { mind     :: Mind Level Level Level, -- ^ The Mark
                                frame    :: Frame                   -- ^ Most recent frame
                              }
 
--- |Create a new blank world state
+-- | Create a new blank world state
 newWorldState :: WorldState
 newWorldState = WorldState
                 -- (setTrace True (newMind confidenceBoost suggestStatus SparseTransitive))
