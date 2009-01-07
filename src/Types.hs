@@ -46,6 +46,7 @@ data Frame_Attrs = Frame_Attrs
     } deriving (Eq,Show)
 data Acquisition = Acquisition
     { acquisitionID :: String
+    , acquisitionSource :: String
     , acquisitionX :: Double
     , acquisitionY :: Double
     , acquisitionWidth :: Double
@@ -97,6 +98,7 @@ instance XmlAttributes Acquisition where
     fromAttrs as =
         Acquisition
           { acquisitionID = definiteA fromAttrToStr "Acquisition" "id" as
+          , acquisitionSource = definiteA fromAttrToStr "Acquisition" "source" as
           , acquisitionX = read $ definiteA fromAttrToStr "Acquisition" "x" as
           , acquisitionY = read $ definiteA fromAttrToStr "Acquisition" "y" as
           , acquisitionWidth = read $ definiteA fromAttrToStr "Acquisition" "width" as
@@ -105,6 +107,7 @@ instance XmlAttributes Acquisition where
           }
     toAttrs v = catMaybes 
         [ toAttrFrStr "id" (acquisitionID v)
+        , toAttrFrStr "source" (acquisitionSource v)
         , toAttrFrStr "x" (show $ acquisitionX v)
         , toAttrFrStr "y" (show $ acquisitionY v)
         , toAttrFrStr "width" (show $ acquisitionWidth v)

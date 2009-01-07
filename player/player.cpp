@@ -58,7 +58,7 @@ void xinit(void)
     cmap = DefaultColormap(display, screen);
 
     window = XCreateSimpleWindow(display, root,
-            0, 0, 640, 480, 0, fgcolor, bgcolor);
+            0, 0, 1280, 480, 0, fgcolor, bgcolor);
 
     gc = XCreateGC(display, window, 0, 0);
 
@@ -100,7 +100,7 @@ void xbye(void)
 }
 
 
-FILE *video_in, *video_out;
+FILE *video_in_0, *video_in_1, *video_out;
 XImage *ximg;
 
 
@@ -142,7 +142,7 @@ void write_image(FILE *out, XImage *img, int width, int height)
   long p;
   char r, g, b;
 
-  fprintf(out, "P6\n640 480 255\n");
+  fprintf(out, "P6\n1280 480 255\n");
 
   for(y = 0; y < height; y++)
     {
@@ -180,19 +180,34 @@ void next_frame(void)
     int w, h, *buf;
     char framemsg[15];
     
-    buf = read_image(video_in, &w, &h);
+    buf = read_image(video_in_0, &w, &h);
     if (!buf) return;
     free(buf);
-    buf = read_image(video_in, &w, &h);
+    buf = read_image(video_in_0, &w, &h);
     if (!buf) return;
-    framenum++;
+
     ximg->data = (char *)buf;
     XPutImage(display, window, gc, ximg, 0, 0, 0, 0, 640, 480);
     ximg->data = 0;
     free(buf);
+
+    buf = read_image(video_in_1, &w, &h);
+    if (!buf) return;
+    free(buf);
+    buf = read_image(video_in_1, &w, &h);
+    if (!buf) return;
+
+    ximg->data = (char *)buf;
+    XPutImage(display, window, gc, ximg, 0, 0, 641, 0, 640, 480);
+    ximg->data = 0;
+    free(buf);
+    
+    framenum++;
+
     sprintf(framemsg, "Frame %d, time %0.2fs", framenum, ((double)framenum) / 3.0);
     XSetForeground(display, gc, textColor);
     XDrawString(display, window, gc, 10, 470, framemsg, strlen(framemsg));
+
     XFlush(display);
 }
 
@@ -209,7 +224,7 @@ bool MyParser::on_tag_close(const std::string& tag_name)
       //key_wait();
       if(video_out != NULL)
 	{
-	  write_image(video_out, XGetImage(display, window, 0, 0, 640, 480, AllPlanes, XYPixmap), 640, 480);
+	  write_image(video_out, XGetImage(display, window, 0, 0, 1280, 480, AllPlanes, XYPixmap), 1280, 480);
 	}
       else
 	{
@@ -229,7 +244,7 @@ bool MyParser::on_tag_open(const std::string& tag_name, XMLSP::StringMap& attrib
     string type;
     int this_framenum = 0;
     int x, y, ox, oy, ex, ey, w, h, radius;
-    const char *id, *prevID, *thisFrame;
+    const char *id, *source, *prevID, *thisFrame;
 
     if (tag_name == "WorldEvents") {
       next_frame(); // show initial frame
@@ -247,6 +262,11 @@ bool MyParser::on_tag_open(const std::string& tag_name, XMLSP::StringMap& attrib
         w = atoi(attributes["width"].c_str());
         h = atoi(attributes["height"].c_str());
         id = attributes["id"].c_str();
+	source = attributes["source"].c_str();
+
+	if(strncmp(source, "camera-0", 8) == 0) {
+	  x += 640;
+	}
 
         XSetForeground(display, acquisitionGc, acquisitionColor);
         XDrawString(display, window, gc, x-(w/2)-5, y-(h/2)-5, id, strlen(id));
@@ -258,6 +278,12 @@ bool MyParser::on_tag_open(const std::string& tag_name, XMLSP::StringMap& attrib
       w = atoi(attributes["width"].c_str());
       h = atoi(attributes["height"].c_str());
       id = attributes["id"].c_str();
+      //source = attributes["source"].c_str();
+      source = "camera-0";
+
+      if(strncmp(source, "camera-0", 8) == 0) {
+	x += 640;
+      }
 
       // Draw noise box (w*h box with X through it) and a circle around center
       XSetForeground(display, noiseGc, noiseColor);
@@ -277,6 +303,14 @@ bool MyParser::on_tag_open(const std::string& tag_name, XMLSP::StringMap& attrib
       prevID = attributes["prevID"].c_str();
       radius = atoi(attributes["radius"].c_str());
       thisFrame = attributes["thisFrame"].c_str();
+      //source = attributes["source"].c_str();
+      source = "camera-0";
+
+      if(strncmp(source, "camera-0", 8) == 0) {
+	x += 640;
+	ox += 640;
+	ex += 640;
+      }
 
       // Draw track segment
       XSetForeground(display, trackGc, trackColor);
@@ -407,7 +441,7 @@ int main(int argc, char *argv[])
     string line;
 
     if (argc<2) {
-      printf("Usage: %s <video_in.ppm> [video_out.ppm]\n", argv[0]);
+      printf("Usage: %s <video_in_0.ppm> <video_in_1.ppm> [video_out.ppm]\n", argv[0]);
       exit(0);
     }
 
@@ -415,10 +449,11 @@ int main(int argc, char *argv[])
 
     ximg = XCreateImage(display, visual, depth, ZPixmap, 0, 0, 640, 480, 32, 0);
     
-    video_in = fopen(argv[1], "r");
+    video_in_0 = fopen(argv[1], "r");
+    video_in_1 = fopen(argv[2], "r");
     if(argc == 3)
       {
-	video_out = fopen(argv[2], "w");
+	video_out = fopen(argv[3], "w");
       }
     else
       {
@@ -429,6 +464,7 @@ int main(int argc, char *argv[])
     while(!cin.eof() && !quit)
     {
       getline(cin, line);
+      cout << line << endl;
       if (parser.parse_chunk(line) == false) {
 	cerr << "player: Parser error:" << endl;
 	cerr << "player: " << line << endl;

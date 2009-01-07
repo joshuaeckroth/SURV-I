@@ -1070,7 +1070,7 @@ typedef struct {
 
 labeled_t labeled[65536];
 
-void output_labeled(int *lb, int w, int h)
+void output_labeled(int *lb, int w, int h, const char *camera)
 {
     int x, y, i, j, more;
     
@@ -1104,8 +1104,9 @@ void output_labeled(int *lb, int w, int h)
     for (i=0; i<65536; i++) {
         if (!labeled[i].area) continue;
         
-        sprintf(msg, "<Acquisition id=\"%d\" x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" time=\"%f\" />",
-		i, 
+        sprintf(msg, "<Acquisition id=\"%d\" source=\"camera-%s\" x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" time=\"%f\" />",
+		i,
+		camera,
 		(int)(labeled[i].center_x / labeled[i].area), 
 		(int)(labeled[i].center_y / labeled[i].area),
 		labeled[i].max_x - labeled[i].min_x + 1,
@@ -1147,8 +1148,8 @@ int main(int argc, char *argv[])
     XEvent event;
     char framemsg[15];
     
-    if (argc<2) {
-        printf("Need filename (in PPM format)\n");
+    if (argc<3) {
+        printf("Need camera number and filename (in PPM format)\n");
         exit(0);
     }
 
@@ -1163,7 +1164,7 @@ int main(int argc, char *argv[])
     */
     
     /* Read 64 frames */
-    in = fopen(argv[1], "r");
+    in = fopen(argv[2], "r");
     for (i=1; i<33; i++) {
         buf = read_image(in, &w, &h);
         free(buf);
@@ -1260,7 +1261,7 @@ int main(int argc, char *argv[])
 	*/
 
         printf("<Frame time=\"%f\" number=\"%d\">\n", ((double)framenum) / 3.0, framenum);
-        output_labeled(lb, w, h);
+        output_labeled(lb, w, h, argv[1]);
         printf("</Frame>");
 
         free(dif);

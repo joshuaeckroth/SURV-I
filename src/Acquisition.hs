@@ -36,7 +36,8 @@ showAcquisitions :: [AcquisitionID] -> AcquisitionMap -> [String]
 showAcquisitions []     _       = []
 showAcquisitions (a:as) acqMap' =
     ["Acquisition " ++ (show a) ++
-     " [x=" ++ (show $ acquisitionX acq) ++ ", " ++
+     " [source=" ++ (acquisitionSource acq) ++ ", " ++
+     "x=" ++ (show $ acquisitionX acq) ++ ", " ++
      "y=" ++ (show $ acquisitionY acq) ++ ", " ++
      "width=" ++ (show $ acquisitionWidth acq) ++ ", " ++
      "height=" ++ (show $ acquisitionHeight acq) ++ ", " ++
@@ -49,6 +50,7 @@ acquisitionsToXml :: [AcquisitionID] -> AcquisitionMap -> [HaXml.Content]
 acquisitionsToXml []     _       = []
 acquisitionsToXml (a:as) acqMap' =
     [worldElem "Acquisition" [("id", show a),
+                              ("source", acquisitionSource acq),
                               ("x", show $ acquisitionX acq),
                               ("y", show $ acquisitionY acq),
                               ("width", show $ acquisitionWidth acq),

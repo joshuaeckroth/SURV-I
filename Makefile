@@ -17,6 +17,10 @@ player/player: player/player.cpp
 abducer:
 	hmake $(HMAKEFLAGS) $(GHCFLAGS) abducer
 
+decode-videos:
+	decoder/decoder 0 ../videos/plse1.ppm > acquisitions-camera-0.xml
+	decoder/decoder 1 ../videos/plsw1-6fps.ppm > acquisitions-camera-1.xml
+
 test-tiny:
 	build/abducer tmp.xml | xmllint --format -
 
@@ -34,6 +38,9 @@ test-large:
 
 test-large-prof:
 	build/abducer +RTS -p -RTS acquisitions.xml | xmllint --format -
+
+test-visual:
+	build/abducer acquisitions-camera-0.xml acquisitions-camera-1.xml | player/player ../videos/plse1.ppm ../videos/plsw1-6fps.ppm
 
 clean:
 	rm -Rvf decoder/*.o decoder/decoder player/*.o player/player
