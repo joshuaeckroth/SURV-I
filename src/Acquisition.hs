@@ -1,3 +1,4 @@
+
 module Acquisition where
 import Types
 import World
@@ -39,8 +40,8 @@ showAcquisitions (a:as) acqMap' =
      " [source=" ++ (acquisitionSource acq) ++ ", " ++
      "x=" ++ (show $ acquisitionX acq) ++ ", " ++
      "y=" ++ (show $ acquisitionY acq) ++ ", " ++
-     "width=" ++ (show $ acquisitionWidth acq) ++ ", " ++
-     "height=" ++ (show $ acquisitionHeight acq) ++ ", " ++
+     "w=" ++ (show $ acquisitionWidth acq) ++ ", " ++
+     "h=" ++ (show $ acquisitionHeight acq) ++ ", " ++
      "area=" ++ (show $ area acq) ++ "]"]
     ++ showAcquisitions as acqMap'
     where
@@ -53,8 +54,8 @@ acquisitionsToXml (a:as) acqMap' =
                               ("source", acquisitionSource acq),
                               ("x", show $ acquisitionX acq),
                               ("y", show $ acquisitionY acq),
-                              ("width", show $ acquisitionWidth acq),
-                              ("height", show $ acquisitionHeight acq),
+                              ("w", show $ acquisitionWidth acq),
+                              ("h", show $ acquisitionHeight acq),
                               ("area", show $ area acq)] []]
     ++ acquisitionsToXml as acqMap'
     where

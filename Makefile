@@ -5,10 +5,13 @@ GHCFLAGS = -O -prof -auto-all
 HMAKEFLAGS = -package HaXml -package containers -package array -package bytestring -dbuild -isrc
 SRCS = $(wildcard src/*.hs) $(wildcard src/*/*.hs) \
 
-all: decoder/decoder player/player abducer api
+all: decoder2/decoder player/player abducer api
 
 decoder/decoder: decoder/decoder.c
 	$(CC) $(CFLAGS) decoder/decoder.c $(LDFLAGS) -o $@
+
+decoder2/decoder: decoder2/decoder.cpp
+	$(CXX) $(CFLAGS) -o decoder2/decoder -lcv -lcvaux -lml -lhighgui -lcxcore -L`pwd`/libs/opencv/lib -I`pwd`/libs/opencv/include/opencv decoder2/decoder.cpp
 
 player/player: player/player.cpp
 	$(CXX) $(CFLAGS) -Iplayer/xmlsp-1.0 player/player.cpp player/xmlsp-1.0/xmlsp.cpp player/xmlsp-1.0/xmlsp_dom.cpp \
@@ -18,8 +21,7 @@ abducer:
 	hmake $(HMAKEFLAGS) $(GHCFLAGS) abducer
 
 decode-videos:
-	decoder/decoder 0 ../videos/plse1.ppm > acquisitions-camera-0.xml
-	decoder/decoder 1 ../videos/plsw1-6fps.ppm > acquisitions-camera-1.xml
+	LD_LIBRARY_PATH=`pwd`/libs/opencv/lib decoder2/decoder ../videos/plse1.avi "camera-east" ../videos/plsw1-6fps.avi "camera-west" 6 > acquisitions.xml
 
 test-tiny:
 	build/abducer tmp.xml | xmllint --format -
@@ -40,7 +42,10 @@ test-large-prof:
 	build/abducer +RTS -p -RTS acquisitions.xml | xmllint --format -
 
 test-visual:
-	build/abducer acquisitions-camera-0.xml acquisitions-camera-1.xml | player/player ../videos/plse1.ppm ../videos/plsw1-6fps.ppm
+	build/abducer acquisitions.xml | player/player ../videos/plsw1-6fps.ppm ../videos/plse1.ppm
+
+gui:
+	ghc -package wx -o gui src/GUI.hs
 
 clean:
 	rm -Rvf decoder/*.o decoder/decoder player/*.o player/player

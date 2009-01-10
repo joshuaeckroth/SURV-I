@@ -45,8 +45,7 @@ data Frame_Attrs = Frame_Attrs
     , frameNumber :: Int
     } deriving (Eq,Show)
 data Acquisition = Acquisition
-    { acquisitionID :: String
-    , acquisitionSource :: String
+    { acquisitionSource :: String
     , acquisitionX :: Double
     , acquisitionY :: Double
     , acquisitionWidth :: Double
@@ -97,22 +96,20 @@ instance XmlContent Acquisition where
 instance XmlAttributes Acquisition where
     fromAttrs as =
         Acquisition
-          { acquisitionID = definiteA fromAttrToStr "Acquisition" "id" as
-          , acquisitionSource = definiteA fromAttrToStr "Acquisition" "source" as
+          { acquisitionSource = definiteA fromAttrToStr "Acquisition" "source" as
           , acquisitionX = read $ definiteA fromAttrToStr "Acquisition" "x" as
           , acquisitionY = read $ definiteA fromAttrToStr "Acquisition" "y" as
-          , acquisitionWidth = read $ definiteA fromAttrToStr "Acquisition" "width" as
-          , acquisitionHeight = read $ definiteA fromAttrToStr "Acquisition" "height" as
-          , acquisitionTime = read $ definiteA fromAttrToStr "Acquisition" "time" as
+          , acquisitionWidth = read $ definiteA fromAttrToStr "Acquisition" "w" as
+          , acquisitionHeight = read $ definiteA fromAttrToStr "Acquisition" "h" as
+          , acquisitionTime = read $ definiteA fromAttrToStr "Acquisition" "t" as
           }
     toAttrs v = catMaybes 
-        [ toAttrFrStr "id" (acquisitionID v)
-        , toAttrFrStr "source" (acquisitionSource v)
+        [ toAttrFrStr "source" (acquisitionSource v)
         , toAttrFrStr "x" (show $ acquisitionX v)
         , toAttrFrStr "y" (show $ acquisitionY v)
-        , toAttrFrStr "width" (show $ acquisitionWidth v)
-        , toAttrFrStr "height" (show $ acquisitionHeight v)
-        , toAttrFrStr "time" (show $ acquisitionTime v)
+        , toAttrFrStr "w" (show $ acquisitionWidth v)
+        , toAttrFrStr "h" (show $ acquisitionHeight v)
+        , toAttrFrStr "t" (show $ acquisitionTime v)
         ]
 
 

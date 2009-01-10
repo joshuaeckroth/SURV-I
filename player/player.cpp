@@ -180,9 +180,9 @@ void next_frame(void)
     int w, h, *buf;
     char framemsg[15];
     
-    buf = read_image(video_in_0, &w, &h);
-    if (!buf) return;
-    free(buf);
+    //buf = read_image(video_in_0, &w, &h);
+    //if (!buf) return;
+    //free(buf);
     buf = read_image(video_in_0, &w, &h);
     if (!buf) return;
 
@@ -191,9 +191,9 @@ void next_frame(void)
     ximg->data = 0;
     free(buf);
 
-    buf = read_image(video_in_1, &w, &h);
-    if (!buf) return;
-    free(buf);
+    //buf = read_image(video_in_1, &w, &h);
+    //if (!buf) return;
+    //free(buf);
     buf = read_image(video_in_1, &w, &h);
     if (!buf) return;
 
@@ -259,12 +259,12 @@ bool MyParser::on_tag_open(const std::string& tag_name, XMLSP::StringMap& attrib
     if (tag_name == "Acquisition") {
         x = atoi(attributes["x"].c_str());
         y = atoi(attributes["y"].c_str());
-        w = atoi(attributes["width"].c_str());
-        h = atoi(attributes["height"].c_str());
+        w = atoi(attributes["w"].c_str());
+        h = atoi(attributes["h"].c_str());
         id = attributes["id"].c_str();
 	source = attributes["source"].c_str();
 
-	if(strncmp(source, "camera-0", 8) == 0) {
+	if(strncmp(source, "camera-east", 11) == 0) {
 	  x += 640;
 	}
 
@@ -279,9 +279,9 @@ bool MyParser::on_tag_open(const std::string& tag_name, XMLSP::StringMap& attrib
       h = atoi(attributes["height"].c_str());
       id = attributes["id"].c_str();
       //source = attributes["source"].c_str();
-      source = "camera-0";
+      source = "camera-east";
 
-      if(strncmp(source, "camera-0", 8) == 0) {
+      if(strncmp(source, "camera-east", 11) == 0) {
 	x += 640;
       }
 
@@ -304,9 +304,9 @@ bool MyParser::on_tag_open(const std::string& tag_name, XMLSP::StringMap& attrib
       radius = atoi(attributes["radius"].c_str());
       thisFrame = attributes["thisFrame"].c_str();
       //source = attributes["source"].c_str();
-      source = "camera-0";
+      source = "camera-east";
 
-      if(strncmp(source, "camera-0", 8) == 0) {
+      if(strncmp(source, "camera-east", 11) == 0) {
 	x += 640;
 	ox += 640;
 	ex += 640;
