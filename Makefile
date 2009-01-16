@@ -3,15 +3,23 @@ LDFLAGS = -L/usr/X11R6/lib -lX11 -lm
 CFLAGS = -g -Wall -ansi
 GHCFLAGS = -O -prof -auto-all
 HMAKEFLAGS = -package HaXml -package containers -package array -package bytestring -dbuild -isrc
-SRCS = $(wildcard src/*.hs) $(wildcard src/*/*.hs) \
+CVCFLAGS = -lcv -lcvaux -lml -lhighgui -lcxcore -L`pwd`/libs/opencv/lib -I`pwd`/libs/opencv/include/opencv
+CVLDPATH = LD_LIBRARY_PATH=`pwd`/libs/opencv/lib
+SRCS = $(wildcard src/*.hs) $(wildcard src/*/*.hs)
 
-all: decoder2/decoder player/player abducer api
+all: decoder2/calibrate decoder2/decoder player/player abducer api
 
 decoder/decoder: decoder/decoder.c
 	$(CC) $(CFLAGS) decoder/decoder.c $(LDFLAGS) -o $@
 
+decoder2/calibrate: decoder2/calibrate.cpp
+	$(CXX) $(CFLAGS) $(CVCFLAGS) -o decoder2/calibrate decoder2/calibrate.cpp
+
+decoder2/calibrate3d: decoder2/calibrate3d.cpp
+	$(CXX) $(CFLAGS) $(CVCFLAGS) -o decoder2/calibrate3d decoder2/calibrate3d.cpp
+
 decoder2/decoder: decoder2/decoder.cpp
-	$(CXX) $(CFLAGS) -o decoder2/decoder -lcv -lcvaux -lml -lhighgui -lcxcore -L`pwd`/libs/opencv/lib -I`pwd`/libs/opencv/include/opencv decoder2/decoder.cpp
+	$(CXX) $(CFLAGS) $(CVCFLAGS) -o decoder2/decoder decoder2/decoder.cpp
 
 player/player: player/player.cpp
 	$(CXX) $(CFLAGS) -Iplayer/xmlsp-1.0 player/player.cpp player/xmlsp-1.0/xmlsp.cpp player/xmlsp-1.0/xmlsp_dom.cpp \
@@ -20,8 +28,17 @@ player/player: player/player.cpp
 abducer:
 	hmake $(HMAKEFLAGS) $(GHCFLAGS) abducer
 
+calibrate: decoder2/calibrate
+	echo "camera-east (5 images)"
+	$(CVLDPATH) decoder2/calibrate 5 7 0 "camera-0"
+	echo "camera-west (5 images)"
+	$(CVLDPATH) decoder2/calibrate 5 7 1 "camera-1"
+
+calibrate3d: decoder2/calibrate3d
+	$(CVLDPATH) decoder2/calibrate3d 5 7 2
+
 decode-videos:
-	LD_LIBRARY_PATH=`pwd`/libs/opencv/lib decoder2/decoder ../videos/plse1.avi "camera-east" ../videos/plsw1-6fps.avi "camera-west" 6 > acquisitions.xml
+	$(CVLDPATH) decoder2/decoder ../videos/plse1.avi "camera-east" ../videos/plsw1-6fps.avi "camera-west" 6 > acquisitions.xml
 
 test-tiny:
 	build/abducer tmp.xml | xmllint --format -
