@@ -27,8 +27,8 @@ int main(int argc, char *argv[])
   IplImage** samples = (IplImage**)malloc(num_cameras * sizeof(IplImage*));
   IplImage** mapx = (IplImage**)malloc(num_cameras * sizeof(IplImage*));
   IplImage** mapy = (IplImage**)malloc(num_cameras * sizeof(IplImage*));
-  CvMat** intrinsics = (CvMat**)malloc(num_cameras * sizeof(CvMat**));
-  CvMat** distortions = (CvMat**)malloc(num_cameras * sizeof(CvMat**));
+  CvMat** intrinsics = (CvMat**)malloc(num_cameras * sizeof(CvMat*));
+  CvMat** distortions = (CvMat**)malloc(num_cameras * sizeof(CvMat*));
   Cv3dTrackerCameraIntrinsics* intrinsics3d =
     (Cv3dTrackerCameraIntrinsics*)malloc(num_cameras * sizeof(Cv3dTrackerCameraIntrinsics));
   char** window_names = (char**)malloc(num_cameras * sizeof(char*));
