@@ -1,0 +1,278 @@
+<ui version="4.0" >
+ <class>SettingsWidget</class>
+ <widget class="QWidget" name="SettingsWidget" >
+  <property name="geometry" >
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>220</width>
+    <height>563</height>
+   </rect>
+  </property>
+  <property name="maximumSize" >
+   <size>
+    <width>220</width>
+    <height>16777215</height>
+   </size>
+  </property>
+  <property name="windowTitle" >
+   <string>Settings</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_2" >
+   <item>
+    <widget class="QGroupBox" name="groupBox" >
+     <property name="sizePolicy" >
+      <sizepolicy vsizetype="Preferred" hsizetype="Preferred" >
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="title" >
+      <string>Cameras</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_2" >
+      <item row="0" column="0" >
+       <layout class="QVBoxLayout" name="verticalLayout" >
+        <item>
+         <widget class="QFrame" name="frame" >
+          <property name="frameShape" >
+           <enum>QFrame::NoFrame</enum>
+          </property>
+          <property name="frameShadow" >
+           <enum>QFrame::Plain</enum>
+          </property>
+          <layout class="QHBoxLayout" name="horizontalLayout_2" >
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout" >
+             <item>
+              <widget class="QLabel" name="label" >
+               <property name="text" >
+                <string>Number of Cameras</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="numCamerasSpinBox" >
+             <property name="minimum" >
+              <number>1</number>
+             </property>
+             <property name="maximum" >
+              <number>10</number>
+             </property>
+             <property name="value" >
+              <number>2</number>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="1" column="0" >
+       <widget class="QFrame" name="frame_2" >
+        <property name="frameShape" >
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="frameShadow" >
+         <enum>QFrame::Plain</enum>
+        </property>
+        <layout class="QHBoxLayout" name="horizontalLayout_4" >
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_3" >
+           <item>
+            <widget class="QPushButton" name="calibrate2d_button" >
+             <property name="text" >
+              <string>Calibrate 2D</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="calibrate3d_button" >
+             <property name="text" >
+              <string>Calibrate 3D</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="acq_overlays_groupbox" >
+     <property name="title" >
+      <string>Acquisition Overlays</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_5" >
+      <item>
+       <widget class="QCheckBox" name="acq_ids_checkbox" >
+        <property name="text" >
+         <string>IDs</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="acq_center_checkbox" >
+        <property name="text" >
+         <string>Centers</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="acq_frames_checkbox" >
+        <property name="text" >
+         <string>Frames</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+     <zorder>acq_frames_checkbox</zorder>
+     <zorder>acq_ids_checkbox</zorder>
+     <zorder>acq_center_checkbox</zorder>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="noise_overlays_groupbox" >
+     <property name="title" >
+      <string>Noise Overlays</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_7" >
+      <item>
+       <widget class="QCheckBox" name="noise_ids" >
+        <property name="text" >
+         <string>IDs</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="noise_checkbox" >
+        <property name="text" >
+         <string>Centers</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="noise_frames_checkbox" >
+        <property name="text" >
+         <string>Frames</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="track_overlays_groupbox" >
+     <property name="title" >
+      <string>Track Overlays</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_6" >
+      <item>
+       <widget class="QCheckBox" name="track_ids_checkbox" >
+        <property name="text" >
+         <string>IDs</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="track_segments_checkbox" >
+        <property name="text" >
+         <string>Segments</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="camera_overlays_groupbox" >
+     <property name="title" >
+      <string>Camera Overlays</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_8" >
+      <item>
+       <widget class="QCheckBox" name="axes_checkbox" >
+        <property name="text" >
+         <string>Axes</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="contours_checkbox" >
+        <property name="text" >
+         <string>Contours</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDockWidget" name="history_dock" >
+     <property name="features" >
+      <set>QDockWidget::DockWidgetFloatable</set>
+     </property>
+     <property name="allowedAreas" >
+      <set>Qt::NoDockWidgetArea</set>
+     </property>
+     <property name="windowTitle" >
+      <string>History</string>
+     </property>
+     <widget class="QWidget" name="dockWidgetContents_2" >
+      <layout class="QVBoxLayout" name="verticalLayout_5" >
+       <item>
+        <widget class="QScrollArea" name="history_scrollarea" >
+         <property name="frameShape" >
+          <enum>QFrame::NoFrame</enum>
+         </property>
+         <property name="frameShadow" >
+          <enum>QFrame::Plain</enum>
+         </property>
+         <property name="lineWidth" >
+          <number>0</number>
+         </property>
+         <property name="widgetResizable" >
+          <bool>true</bool>
+         </property>
+         <widget class="QWidget" name="scrollAreaWidgetContents" >
+          <property name="geometry" >
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>168</width>
+            <height>108</height>
+           </rect>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_7" >
+           <item>
+            <widget class="QTreeView" name="history_tree" >
+             <property name="frameShape" >
+              <enum>QFrame::NoFrame</enum>
+             </property>
+             <property name="lineWidth" >
+              <number>0</number>
+             </property>
+             <property name="wordWrap" >
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,7 @@
+<RCC>
+  <qresource prefix="images" >
+    <file>images/media-playback-start.png</file>
+    <file>images/media-playback-stop.png</file>
+    <file>images/media-record.png</file>
+  </qresource>
+</RCC>
