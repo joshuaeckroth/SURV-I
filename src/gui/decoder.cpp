@@ -7,9 +7,6 @@
 #include "decoder.h"
 #include "imagebuffer.h"
 
-#define  XY_SHIFT  16
-#define  XY_ONE    (1 << XY_SHIFT)
-
 Decoder::Decoder(int c)
   : camera(c), bg_model(0), frame(0)
 {
@@ -104,7 +101,6 @@ void Decoder::findBlobsByCCClasters(CvSeq** clasters, int& claster_num, CvSeq** 
   CvSeq* cnt = NULL;
   CvMemStorage* storage = cvCreateMemStorage();
   *cnt_list = cvCreateSeq(0, sizeof(CvSeq), sizeof(CvSeq*), storage);
-  int claster_cur;
   *clasters = NULL;
   
   pIB = cvCloneImage(bg_model->foreground);
@@ -122,7 +118,6 @@ void Decoder::findBlobsByCCClasters(CvSeq** clasters, int& claster_num, CvSeq** 
 
 QString Decoder::findBlobs()
 {
-  CvPoint2D32f real_center;
   CvSeq* clasters = NULL;
   CvSeq* cnt_list = NULL;
   int claster_num;
@@ -156,7 +151,6 @@ QString Decoder::findBlobs()
 	      int i, count = cnt->total;
 	      cvStartReadSeq(cnt, &reader, 0);
 	      CvPoint pt1, pt2;
-	      int shift = 0;
 	      count -= !CV_IS_SEQ_CLOSED(cnt);
 
 	      CV_READ_SEQ_ELEM(pt1, reader);

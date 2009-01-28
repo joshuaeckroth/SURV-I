@@ -3,7 +3,10 @@ CONFIG += qt debug
 
 TARGET = build/runsurv
 
-DEPENDPATH += .
+OBJECTS_DIR = build
+RCC_DIR = build
+UI_DIR = build
+MOC_DIR = build
 
 RESOURCES += src/gui/surv-1.qrc
 
