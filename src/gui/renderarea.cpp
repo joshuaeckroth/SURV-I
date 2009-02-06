@@ -33,7 +33,7 @@ void RenderArea::onFrameSizeChanged(int width, int height, int camera)
   imageHeight[camera] = height;
 }
 
-void RenderArea::processFrame(const IplImage* frame, int camera)
+void RenderArea::showFrame(const IplImage* frame, int camera)
 {
   clear = false;
   updatePixmap(frame, camera);

@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<opencv_storage>
+<east_fmat type_id="opencv-matrix">
+  <rows>3</rows>
+  <cols>3</cols>
+  <dt>f</dt>
+  <data>
+    8.66727305e-07 6.61932836e-06 -3.39581427e-04 9.86665600e-06
+    5.63157937e-06 3.31656961e-03 -1.03090068e-04 -0.01010265 1.</data></east_fmat>
+</opencv_storage>

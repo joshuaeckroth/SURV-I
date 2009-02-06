@@ -7,10 +7,12 @@
 
 #include "capturethread.h"
 #include "imagebuffer.h"
+#include "decoder.h"
 
-CaptureThread::CaptureThread(ImageBuffer* buffer, int c)
-  : QThread(), imageBuffer(buffer), captureActive(false),
-    calculatedFps(0.0), fps(0.0), camera(c), error(false)
+CaptureThread::CaptureThread(ImageBuffer* buffer, Decoder* d, int c)
+  : QThread(), imageBuffer(buffer), decoder(d), captureActive(false),
+    calculatedFps(0.0), fps(0.0), frameTime(0.0), frameNum(0), camera(c),
+    error(false)
 {
   char filename[20];
   sprintf(filename, "camera-%d.avi", camera);
@@ -28,6 +30,7 @@ void CaptureThread::run()
   QTime time;
   time.start();
   IplImage *frame;
+  QString detections;
   while(true)
     {
       if(!captureActive)
@@ -43,7 +46,11 @@ void CaptureThread::run()
       frame = cvQueryFrame(capture);
       if(frame)
 	{
+	  frameNum++;
+	  frameTime = frameNum / fps;
 	  imageBuffer->addFrame(frame);
+	  detections = decoder->decodeFrame(frame, frameNum, frameTime);
+	  emit newDetections(detections);
 	}
       updateFPS(time.elapsed());
     }

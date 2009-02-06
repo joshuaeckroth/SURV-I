@@ -6,6 +6,7 @@
 #include "renderthread.h"
 #include "renderarea.h"
 #include "decoder.h"
+#include "abducerthread.h"
 
 ProcessingController::ProcessingController(RenderArea* r, int n)
   : frameRate(6), numCameras(n), renderer(r)
@@ -16,19 +17,24 @@ ProcessingController::ProcessingController(RenderArea* r, int n)
 
 void ProcessingController::init()
 {
+  abducerThread = new AbducerThread();
+
   for(int i = 0; i < numCameras; i++)
     {
       imageBuffer[i] = new ImageBuffer(20);
-      captureThread[i] = new CaptureThread(imageBuffer[i], i);
-      decoder[i] = new Decoder(i);
-      renderThread[i] = new RenderThread(imageBuffer[i], decoder[i], renderer, i);
+      decoder[i] = new Decoder(i, numCameras);
+      captureThread[i] = new CaptureThread(imageBuffer[i], decoder[i], i);
+      renderThread[i] = new RenderThread(imageBuffer[i], renderer, i);
       if(captureThread[i]->hasError())
 	{
 	  qDebug() << "Error in camera " << QString::number(i);
 	}
       else
 	{
+	  connect(captureThread[i], SIGNAL(newDetections(QString)), this, SLOT(newDetections(QString)));
 	  renderThread[i]->start();
+	  connect(abducerThread, SIGNAL(newTracks(QString)), this, SLOT(newTracks(QString)));
+	  abducerThread->start();
 	}
     }
 }
@@ -92,4 +98,15 @@ void ProcessingController::numCamerasChanged(int n)
   renderer->setNumCameras(n);
 
   init();
+}
+
+void ProcessingController::newDetections(QString detections)
+{
+  qDebug() << detections;
+  abducerThread->newDetections(detections);
+}
+
+void ProcessingController::newTracks(QString tracks)
+{
+  qDebug() << "new tracks: " << tracks;
 }

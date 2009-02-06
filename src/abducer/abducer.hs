@@ -10,6 +10,5 @@ import World
 main =
     do
       let ws = newWorldState
-      args <- System.getArgs
-      (Frames frames) <- fReadXml (head args)
+      (Frames frames) <- hGetXml stdin
       runAbducer frames ws

@@ -4,22 +4,37 @@
 #include <QTextStream>
 #include <QDebug>
 
+#include <math.h>
+
 #include "decoder.h"
 #include "imagebuffer.h"
 
-Decoder::Decoder(int c)
-  : camera(c), bg_model(0), frame(0)
+Decoder::Decoder(int c, int n)
+  : camera(c), numCameras(n), bg_model(0), frame(0)
 {
-  QFile warp_file(QString("camera-") + QString::number(camera) + "-warp.xml");
-  warp = (CvMat*)cvLoad(warp_file.fileName().toAscii().constData());
+  fmat = (CvMat**)malloc(numCameras * sizeof(void*));
+  fmat[0] = NULL; // self
+  for(int i = 1; i < numCameras; i++)
+    {
+      QFile fmat_file(QString("camera-fmat-") +
+		      QString::number(camera) + "-to-" +
+		      QString::number((camera + i) % numCameras) + ".xml");
+      fmat[i] = (CvMat*)cvLoad(fmat_file.fileName().toAscii().constData());
+      if(fmat[i] == NULL)
+	{
+	  qDebug() << "Error loading " << fmat_file.fileName();
+	}
+    }
 }
 
-QString Decoder::processFrame(IplImage* f)
+QString Decoder::decodeFrame(IplImage* f, int frameNum, double time)
 {
   frame = f;
   QString result;
   QTextStream stream(&result);
-  stream << "<Frame>\n";
+  stream << "<Frame camera=\"" << camera << "\" "
+	 << "number=\"" << frameNum << "\" "
+	 << "time=\"" << time << "\">\n";
 
   if(!bg_model)
     {
@@ -129,6 +144,12 @@ QString Decoder::findBlobs()
 
   int contour_id = 0;
 
+  CvRect rect;
+  double area;
+  int cx, cy;
+  double ea, eb, ec;
+  CvMat *pmat = cvCreateMat(1, 3, CV_32FC1);
+  CvMat *rmat = cvCreateMat(1, 3, CV_32FC1);
   for(int claster_cur = 0; claster_cur < claster_num; ++claster_cur)
     {
       for(int cnt_cur = 0; cnt_cur < clasters->total; ++cnt_cur)
@@ -143,7 +164,34 @@ QString Decoder::findBlobs()
 	  cvInitTreeNodeIterator(&iterator, cnt, maxLevel);
 	  while((cnt = (CvSeq*)cvNextTreeNode(&iterator)) != 0)
 	    {
-	      stream << "<Acquisition id=\"" << contour_id << "\">\n";
+	      area = fabs(cvContourArea(cnt));
+	      rect = cvBoundingRect(cnt);
+
+	      cx = rect.x + rect.width / 2;
+	      cy = rect.y + rect.height / 2;
+
+	      stream << "<Acquisition id=\"" << contour_id << "\" "
+		     << "area=\"" << area << "\" "
+		     << "cx=\"" << cx << "\" "
+		     << "cy=\"" << cy << "\">\n";
+
+	      for(int i = 1; i < numCameras; i++)
+		{
+		  cvSetReal1D(pmat, 0, cx);
+		  cvSetReal1D(pmat, 1, cy);
+		  cvSetReal1D(pmat, 2, 1);
+
+		  cvMatMul(pmat, fmat[i], rmat);
+
+		  ea = cvGetReal1D(rmat, 0);
+		  eb = cvGetReal1D(rmat, 1);
+		  ec = cvGetReal1D(rmat, 2);
+		  
+		  stream << "<Epiline to=\"" << ((camera + i) % numCameras) << "\" "
+			 << "ea=\"" << ea << "\" "
+			 << "eb=\"" << eb << "\" "
+			 << "ec=\"" << ec << "\" />\n";
+		}
 
 	      contour_id++;
 

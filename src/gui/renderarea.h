@@ -11,7 +11,7 @@ class RenderArea : public QWidget
 
 public:
   RenderArea(QWidget* parent);
-  void processFrame(const IplImage* frame, int camera);
+  void showFrame(const IplImage* frame, int camera);
   void setNumCameras(int n);
 
 public slots:

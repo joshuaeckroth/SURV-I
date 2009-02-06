@@ -1,5 +1,6 @@
 
 CONFIG += qt debug
+QT += xml
 
 TARGET = build/runsurv
 
@@ -17,6 +18,7 @@ unix {
 LIBS += -lcv -lcxcore -lhighgui -lcvaux
 
 HEADERS += \
+  src/gui/abducerthread.h \
   src/gui/capturethread.h \
   src/gui/decoder.h \
   src/gui/imagebuffer.h \
@@ -24,13 +26,15 @@ HEADERS += \
   src/gui/processingcontroller.h \
   src/gui/renderarea.h \
   src/gui/renderthread.h \
-  src/gui/settings.h
+  src/gui/settings.h \
+  src/gui/tracksreader.h
 
 FORMS += \
   src/gui/mainwindow.ui \
   src/gui/settings.ui
 
 SOURCES += \
+  src/gui/abducerthread.cpp \
   src/gui/capturethread.cpp \
   src/gui/decoder.cpp \
   src/gui/imagebuffer.cpp \
@@ -39,6 +43,7 @@ SOURCES += \
   src/gui/processingcontroller.cpp \
   src/gui/renderarea.cpp \
   src/gui/renderthread.cpp \
-  src/gui/settings.cpp
+  src/gui/settings.cpp \
+  src/gui/tracksreader.cpp
 
 

@@ -6,8 +6,8 @@
 class Decoder
 {
 public:
-  Decoder(int c);
-  QString processFrame(IplImage* f);
+  Decoder(int c, int n);
+  QString decodeFrame(IplImage* f, int frameNum, double time);
 
 private:
   QString findBlobs();
@@ -15,9 +15,10 @@ private:
   void multVectorMatrix(float rv[4], const float v[4], const float m[4][4]);
 
   int camera;
+  int numCameras;
   CvBGStatModel* bg_model;
   IplImage* frame;
-  CvMat* warp;
+  CvMat** fmat;
 };
 
 #endif
