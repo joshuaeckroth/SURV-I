@@ -2,7 +2,7 @@ module Abducer where
 import Types
 import World
 import Frame
-import Acquisition
+import Detection
 import Noise
 import Track
 import Vocabulary
@@ -12,42 +12,28 @@ import WrappedInts.Types (HasInt(..))
 import WrappedInts.IDSet (toList)
 
 -- | Execute the abduction
-runAbducer :: [Frame]    -- ^ List of frames (which contain acquisitions)
-           -> WorldState -- ^ Existing world
-           -> IO ()
-runAbducer frames ws =
-    do
-      outputXmlHeader ws
-      runAbducer' frames ws
-      outputXmlFooter ws
-
+runAbducer :: Frame            -- ^ Frame of detections
+           -> WorldState       -- ^ Existing world
+           -> World WorldState -- ^ Resulting world
+runAbducer frame ws = world
     where
-      runAbducer' :: [Frame] -> WorldState -> IO ()
-      runAbducer' []     _  = return ()
-      runAbducer' (f:fs) ws =
-          do
-            let
-                catID    = HasInt 0 :: CategoryID
-                world    = ((return $ cleanWorld f ws) >>=
-                            recordFrame >>=
+      catID = HasInt 0 :: CategoryID
+      world = ((return $ cleanWorld frame ws) >>=
+               recordFrame >>=
+                  
+               assertDetections catID >>=
+               hypothesizeNoise catID >>=
+               hypothesizeTracks catID >>=
+               hypothesizeSplitTracks catID >>=
+               -- hypothesizeClassifications catID >>=
+               constrainDetectionExplainers >>=
+                  
+               (\ws'' -> return ws'' { mind = (reason (ReasonerSettings False) Medium (mind ws'')) }) >>=
 
-                            hypothesizeAcquisitions catID >>=
-                            hypothesizeNoise catID >>=
-                            hypothesizeTracks catID >>=
-                            hypothesizeSplitTracks catID >>=
-                            -- hypothesizeClassifications catID >>=
-                            constrainAcquisitionExplainers >>=
+               updateNoise >>=
+               updateTracks >>=
+                  
+               recordNoise >>=
+               recordTracks >>=
+               recordDetections)
 
-                            (\ws'' -> return ws'' { mind = (reason (ReasonerSettings False) Medium (mind ws'')) }) >>=
-
-                            updateNoise >>=
-                            updateTracks >>=
-
-                            recordNoise >>=
-                            recordTracks >>=
-                            recordAcquisitions)
-
-                (ws', _) = worldState world
-
-            outputLog world
-            runAbducer' fs ws'

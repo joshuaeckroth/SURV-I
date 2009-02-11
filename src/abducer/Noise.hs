@@ -1,7 +1,7 @@
 module Noise where
 import Types
 import World
-import Acquisition
+import Detection
 import Reasoner.Core
 import Reasoner.Types
 import Vocabulary
@@ -16,56 +16,55 @@ import Data.List ((\\))
 hypothesizeNoise :: CategoryID       -- ^ Hypothesis category
                  -> WorldState       -- ^ World state
                  -> World WorldState -- ^ Resulting world
-hypothesizeNoise catID ws = hypothesizeNoise' catID (acqIDs ws) ws
+hypothesizeNoise catID ws = hypothesizeNoise' catID (detIDs ws) ws
     where 
-      hypothesizeNoise' :: CategoryID -> [AcquisitionID] -> WorldState -> World WorldState
-      hypothesizeNoise' catID []     ws = return ws
-      hypothesizeNoise' catID (a:as) ws =
-          hypothesizeNoise' catID as ws'
+      hypothesizeNoise' :: CategoryID -> [DetectionID] -> WorldState -> World WorldState
+      hypothesizeNoise' catID []         ws = return ws
+      hypothesizeNoise' catID (did:dids) ws =
+          hypothesizeNoise' catID dids ws'
               where
                 hypID       = nextHypID ws
                 newHypIDs   = [hypID] ++ (hypIDs ws)
                 explainID   = nextExplainer ws
                 newNoiseIDs = (noiseIDs ws) ++ [hypID]
-                newNoiseMap = IDMap.insert hypID a (noiseMap ws)
-                newMind     = addExplains explainID hypID a
-                              (addHypothesis hypID catID (scoreNoise hypID a (acqMap ws)) (mind ws))
+                newNoiseMap = IDMap.insert hypID did (noiseMap ws)
+                newMind     = addExplains explainID hypID did
+                              (addHypothesis hypID catID (scoreNoise hypID did (detMap ws)) (mind ws))
                 ws'         = ws { mind = newMind, hypIDs = newHypIDs, noiseIDs = newNoiseIDs, noiseMap = newNoiseMap }
 
-scoreNoise :: HypothesisID -> AcquisitionID -> AcquisitionMap -> Level -> Level
-scoreNoise hypID acqID acqMap _ =
-    if (area acq) < 20.0 then High
+scoreNoise :: HypothesisID -> DetectionID -> DetectionMap -> Level -> Level
+scoreNoise hypID did m _ =
+    if area < 20.0 then High
     else Lowest
         where
-          acq = IDMap.getItemFromMap acqMap acqID
+          Detection (Detection_Attrs { detArea = area }) _ _ = IDMap.getItemFromMap m did
 
-showNoise :: [NoiseID] -> NoiseMap -> AcquisitionMap -> [String]
+showNoise :: [NoiseID] -> NoiseMap -> DetectionMap -> [String]
 showNoise []     _         _       = []
-showNoise (n:ns) noiseMap' acqMap' =
+showNoise (n:ns) nm dm =
     ["Noise " ++ (show n) ++
-     " [acquisition: " ++ (show a) ++ ", " ++
-     "score: " ++ (show $ scoreNoise n a acqMap' Medium) ++ "]"]
-    ++ showNoise ns noiseMap' acqMap'
+     " [acquisition: " ++ (show did) ++ ", " ++
+     "score: " ++ (show $ scoreNoise n did dm Medium) ++ "]"]
+    ++ showNoise ns nm dm
     where
-      a = IDMap.getItemFromMap noiseMap' n
+      did = IDMap.getItemFromMap nm n
 
-noiseToXml :: [NoiseID] -> NoiseMap -> AcquisitionMap -> [HaXml.Content]
-noiseToXml []     _         _       = []
-noiseToXml (n:ns) noiseMap' acqMap' =
+noiseToXml :: [NoiseID] -> NoiseMap -> DetectionMap -> [HaXml.Content ()]
+noiseToXml []     _  _  = []
+noiseToXml (n:ns) nm dm =
     [worldElem "Noise" [("id", show n),
-                        ("x", show $ acquisitionX acq),
-                        ("y", show $ acquisitionY acq),
-                        ("width", show $ acquisitionWidth acq),
-                        ("height", show $ acquisitionHeight acq),
-                        ("area", show $ area acq)] []]
-    ++ noiseToXml ns noiseMap' acqMap'
+                        ("camera", frameProp frameCamera $ detProp detFrame det),
+                        ("cx", show $ detProp detCx det),
+                        ("cy", show $ detProp detCy det),
+                        ("area", show $ detProp detArea det)] []]
+    ++ noiseToXml ns nm dm
     where
-      acq = IDMap.getItemFromMap acqMap' (IDMap.getItemFromMap noiseMap' n)
+      det = IDMap.getItemFromMap dm (IDMap.getItemFromMap nm n)
 
 updateNoise :: WorldState       -- ^ World state
             -> World WorldState -- ^ Resulting world
 updateNoise ws =
-    recordWorldEvent (["Removed noise:"] ++ (showNoise ((noiseIDs ws) \\ newNoiseIDs) (noiseMap ws) (acqMap ws)) ++ ["END"], emptyElem) >>
+    recordWorldEvent (["Removed noise:"] ++ (showNoise ((noiseIDs ws) \\ newNoiseIDs) (noiseMap ws) (detMap ws)) ++ ["END"], emptyElem) >>
                      return (ws { mind = newMind, hypIDs = newHypIDs, noiseIDs = newNoiseIDs, noiseMap = newNoiseMap })
     where
       m             = mind ws
@@ -78,14 +77,12 @@ updateNoise ws =
 recordNoise :: WorldState -> World WorldState
 recordNoise ws =
     recordWorldEvent
-    (showNoise ns noiseMap' acqMap',
-     recordWorldEventInFrame framenum frametime $ noiseToXml ns noiseMap' acqMap') >>
+    (showNoise ns nm dm,
+     recordWorldEventInFrame frame $ noiseToXml ns nm dm) >>
     return ws
     where
-      ns              = noiseIDs ws
-      noiseMap'       = noiseMap ws
-      acqMap'         = acqMap ws
-      (Frame attrs _) = frame ws
-      framenum        = show $ frameNumber attrs
-      frametime       = show $ frameTime attrs
+      ns        = noiseIDs ws
+      nm        = noiseMap ws
+      dm        = detMap ws
+      frame     = curFrame ws
 

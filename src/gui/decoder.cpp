@@ -34,7 +34,7 @@ QString Decoder::decodeFrame(IplImage* f, int frameNum, double time)
   QTextStream stream(&result);
   stream << "<Frame camera=\"" << camera << "\" "
 	 << "number=\"" << frameNum << "\" "
-	 << "time=\"" << time << "\">\n";
+	 << "time=\"" << time << "\">";
 
   if(!bg_model)
     {
@@ -170,10 +170,10 @@ QString Decoder::findBlobs()
 	      cx = rect.x + rect.width / 2;
 	      cy = rect.y + rect.height / 2;
 
-	      stream << "<Acquisition id=\"" << contour_id << "\" "
+	      stream << "<Detection id=\"" << contour_id << "\" "
 		     << "area=\"" << area << "\" "
 		     << "cx=\"" << cx << "\" "
-		     << "cy=\"" << cy << "\">\n";
+		     << "cy=\"" << cy << "\">";
 
 	      for(int i = 1; i < numCameras; i++)
 		{
@@ -190,7 +190,7 @@ QString Decoder::findBlobs()
 		  stream << "<Epiline to=\"" << ((camera + i) % numCameras) << "\" "
 			 << "ea=\"" << ea << "\" "
 			 << "eb=\"" << eb << "\" "
-			 << "ec=\"" << ec << "\" />\n";
+			 << "ec=\"" << ec << "\" />";
 		}
 
 	      contour_id++;
@@ -207,12 +207,12 @@ QString Decoder::findBlobs()
 		{
 		  CV_READ_SEQ_ELEM(pt2, reader);
 
-		  stream << "<Contour x1=\"" << pt1.x << "\" y1=\"" << pt1.y << "\" x2=\"" << pt2.x << "\" y2=\"" << pt2.y << "\" />\n";
+		  stream << "<Contour x1=\"" << pt1.x << "\" y1=\"" << pt1.y << "\" x2=\"" << pt2.x << "\" y2=\"" << pt2.y << "\" />";
 		
 		  pt1 = pt2;
 		}
 
-	      stream << "</Acquisition>\n";
+	      stream << "</Detection>";
 	    }
 	}
     }

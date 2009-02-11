@@ -1,0 +1,20 @@
+<!ELEMENT Frames (Frame*)>
+<!ELEMENT Frame (Detection*)>
+<!ATTLIST Frame camera CDATA #REQUIRED
+                number CDATA #REQUIRED
+                time   CDATA #REQUIRED>
+<!ELEMENT Detection (Epiline, Contour*)>
+<!ATTLIST Detection area   CDATA #REQUIRED
+	            cx     CDATA #REQUIRED
+                    cy     CDATA #REQUIRED>
+<!ELEMENT Epiline EMPTY>
+<!ATTLIST Epiline to CDATA #REQUIRED
+                  ea CDATA #REQUIRED
+                  eb CDATA #REQUIRED
+                  ec CDATA #REQUIRED>
+<!ELEMENT Contour EMPTY>
+<!ATTLIST Contour x1 CDATA #REQUIRED
+                  y1 CDATA #REQUIRED
+                  x2 CDATA #REQUIRED
+                  y2 CDATA #REQUIRED>
+

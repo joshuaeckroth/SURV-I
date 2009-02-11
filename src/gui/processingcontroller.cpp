@@ -102,11 +102,11 @@ void ProcessingController::numCamerasChanged(int n)
 
 void ProcessingController::newDetections(QString detections)
 {
-  qDebug() << detections;
+  qDebug() << "new detections";
   abducerThread->newDetections(detections);
 }
 
 void ProcessingController::newTracks(QString tracks)
 {
-  qDebug() << "new tracks: " << tracks;
+  qDebug() << "new tracks" << tracks;
 }

@@ -15,35 +15,44 @@ import Data.List ((\\))
 
 data WorldState = WorldState { mind     :: Mind Level Level Level, -- ^ The Mark-II Mind
                                hypIDs   :: [HypothesisID],         -- ^ Current set of hypothesis IDs
-                               acqIDs   :: [AcquisitionID],        -- ^ Most recent acquisitions
-                               acqMap   :: AcquisitionMap,         -- ^ Current map of acquisitions
+                               detIDs   :: [DetectionID],          -- ^ Most recent detections
+                               detMap   :: DetectionMap,           -- ^ Current map of detections
                                noiseIDs :: [NoiseID],              -- ^ Most recent noise hypotheses
                                noiseMap :: NoiseMap,               -- ^ Current map of noise hypotheses
                                trackIDs :: [TrackID],              -- ^ Most recent tracks
                                trackMap :: TrackMap,               -- ^ Current map of tracks
-                               frame    :: Frame                   -- ^ Most recent frame
+                               curFrame :: Frame                   -- ^ Most recent frame
                              }
 
 -- | Create a new blank world state
 newWorldState :: WorldState
 newWorldState = WorldState
                 -- (setTrace True (newMind confidenceBoost suggestStatus SparseTransitive))
+                -- mind
                 (newMind confidenceBoost suggestStatus SparseTransitive)
+                -- hypIDs
                 [HasInt 0]
+                -- detIDs
                 []
+                -- detMap
                 empty
+                -- noiseIDs
                 []
+                -- noiseMap
                 empty
+                -- trackIDs
                 []
+                -- trackMap
                 empty
-                (Frame (Frame_Attrs 0 0) [])
+                -- curFrame
+                (Frame (Frame_Attrs "" 0 0) [])
 
-type WorldLog = ([String], HaXml.Content) -- ^ Human and XML representation of events
+type WorldLog = ([String], HaXml.Content ()) -- ^ Human and XML representation of events
 
 newtype World a = World { worldState :: (a, WorldLog) } -- ^ World state plus the log
 
 instance Monad World where
-    return a = World (a, ([], HaXml.CElem (HaXml.Elem "WorldEvents" [] [])))
+    return a = World (a, ([], HaXml.CElem (HaXml.Elem "WorldEvents" [] []) ()))
 
     -- (>>=) :: World a
     --      -> (a -> World b)
@@ -54,106 +63,110 @@ instance Monad World where
               in World (b, (s ++ s', joinWorldEvents x x'))
 
 cleanWorld :: Frame -> WorldState -> WorldState
-cleanWorld f ws = ws { mind = newMind''', frame = f, acqIDs = [], acqMap = empty, hypIDs = newHypIDs,
+cleanWorld frame ws = ws { mind = newMind''', curFrame = frame, detIDs = [], detMap = empty, hypIDs = newHypIDs,
                        noiseIDs = [], noiseMap = empty }
     where
       newMind    = foldl (\m (c, _, _) -> removeConstrainer c m) (mind ws) (getConstrainers (mind ws))
       newMind'   = foldl (\m (a, _, _) -> removeAdjuster a m) newMind (getAdjusters newMind)
 
-      -- remove acquisitions
-      newMind''  = foldl (\m h -> removeHypothesis h m) newMind' (acqIDs ws)
+      -- remove detections
+      newMind''  = foldl (\m h -> removeHypothesis h m) newMind' (detIDs ws)
 
       -- remove noise
       newMind''' = foldl (\m h -> removeHypothesis h m) newMind' (noiseIDs ws)
 
       -- only tracks are left
       newHypIDs  = [0] ++ (trackIDs ws)
-
 -- | Writes a human and XML log
-recordWorldEvent :: ([String], HaXml.Content) -- ^ Human and XML content
-                 -> World ()                  -- ^ Resulting world with logged content
+recordWorldEvent :: ([String], HaXml.Content ()) -- ^ Human and XML content
+                 -> World ()                     -- ^ Resulting world with logged content
 recordWorldEvent (s, e) = World ((), (s, e))
 
--- | Writes an XML log in a particular frame number and frame time
-recordWorldEventInFrame :: String          -- ^ Frame number
-                        -> String          -- ^ Frame time
-                        -> [HaXml.Content] -- ^ XML log content
-                        -> HaXml.Content   -- ^ XML log content inside the frame
-recordWorldEventInFrame framenum frametime c =
+-- | Writes an XML log in a particular frame
+recordWorldEventInFrame :: Frame             -- ^ Frame of event
+                        -> [HaXml.Content ()] -- ^ XML log content
+                        -> HaXml.Content ()   -- ^ XML log content inside the frame
+recordWorldEventInFrame frame c =
     HaXml.CElem (HaXml.Elem "WorldEvents" [] 
-                          [(HaXml.CElem (HaXml.Elem "Frame" [("framenum", HaXml.AttValue [Left framenum]),
-                                                             ("time", HaXml.AttValue [Left frametime])]
-                                         c))])
+                          [(HaXml.CElem (HaXml.Elem "Frame" [("camera", HaXml.AttValue [Left camera]),
+                                                             ("number", HaXml.AttValue [Left $ show number]),
+                                                             ("time", HaXml.AttValue [Left $ show time])]
+                                         c) ())]) ()
+    where
+      camera = frameProp frameCamera frame
+      number = frameProp frameNumber frame
+      time   = frameProp frameTime frame
 
 -- | Create an XML element with attributes
 --
 -- This is just a helper function.
 worldElem :: String             -- ^ Element name
           -> [(String, String)] -- ^ Element attributes
-          -> [HaXml.Content]    -- ^ Child content
-          -> HaXml.Content      -- ^ Resulting content
+          -> [HaXml.Content ()]  -- ^ Child content
+          -> HaXml.Content ()    -- ^ Resulting content
 worldElem name attrs content =
-    HaXml.CElem (HaXml.Elem name (map (\(f,s) -> (f, HaXml.AttValue [Left s])) attrs) content)
+    HaXml.CElem (HaXml.Elem name (map (\(f,s) -> (f, HaXml.AttValue [Left s])) attrs) content) ()
 
 -- | Create an empty "WorldEvents" top-level element
-emptyElem :: HaXml.Content
-emptyElem = HaXml.CElem (HaXml.Elem "WorldEvents" [] [])
+emptyElem :: HaXml.Content ()
+emptyElem = HaXml.CElem (HaXml.Elem "WorldEvents" [] []) ()
 
 -- | Determine if some XML content is empty
 --
 -- > isEmptyElem emptyElem == True
-isEmptyElem :: HaXml.Content -> Bool
+isEmptyElem :: HaXml.Content () -> Bool
 isEmptyElem c = 0 == (length $ (children `o` tag "WorldEvents") c)
 
 -- | Join two XML logs
 --
 -- The two logs may be from the same frame or separate frames.
-joinWorldEvents :: HaXml.Content -> HaXml.Content -> HaXml.Content
+joinWorldEvents :: HaXml.Content () -> HaXml.Content () -> HaXml.Content ()
 joinWorldEvents c1 c2
     | isEmptyElem c1 = c2
     | isEmptyElem c2 = c1
     | otherwise      =
-        if framenum1 == framenum2 then
-            joinWorldEventsOneFrame framenum1 frametime1 c1 c2
+        if framenum1 == framenum2 && framecamera1 == framecamera2 then
+            joinWorldEventsOneFrame (Frame (Frame_Attrs framecamera1 framenum1 frametime1) []) c1 c2
         else
             joinWorldEventsTwoFrames c1 c2
     where
       frameattr s c = extractAttr s ((attr s `o` tag "Frame" `o` children `o` tag "WorldEvents") c)
-      framenum1     = frameattr "framenum" c1
-      frametime1    = frameattr "time" c1
-      framenum2     = frameattr "framenum" c2
+      framecamera1  = frameattr "camera" c1
+      framenum1     = read $ frameattr "number" c1
+      frametime1    = read $ frameattr "time" c1
+      framecamera2  = frameattr "camera" c2
+      framenum2     = read $ frameattr "number" c2
 
 -- | Join two XML logs from the same frame
-joinWorldEventsOneFrame :: String        -- ^ Frame number
-                        -> String        -- ^ Frame time
-                        -> HaXml.Content -- ^ XML content
-                        -> HaXml.Content -- ^ XML content
-                        -> HaXml.Content -- ^ Resulting joined content
-joinWorldEventsOneFrame framenum frametime c1 c2 =
-    recordWorldEventInFrame framenum frametime ((filterFrameEvents framenum $ c1)
-                                                ++
-                                                (filterFrameEvents framenum $ c2))
+joinWorldEventsOneFrame :: Frame            -- ^ Frame of interest
+                        -> HaXml.Content () -- ^ XML content
+                        -> HaXml.Content () -- ^ XML content
+                        -> HaXml.Content () -- ^ Resulting joined content
+joinWorldEventsOneFrame frame c1 c2 =
+    recordWorldEventInFrame frame ((filterFrameEvents frame c1)
+                                   ++
+                                   (filterFrameEvents frame c2))
 
 -- | Join two XML logs from different frames
-joinWorldEventsTwoFrames :: HaXml.Content -> HaXml.Content -> HaXml.Content
+joinWorldEventsTwoFrames :: HaXml.Content () -> HaXml.Content () -> HaXml.Content ()
 joinWorldEventsTwoFrames c1 c2 =
     HaXml.CElem (HaXml.Elem "WorldEvents" [] 
-                          ((children `o` tag "WorldEvents") c1 ++ (children `o` tag "WorldEvents") c2))
+                          ((children `o` tag "WorldEvents") c1 ++ (children `o` tag "WorldEvents") c2)) ()
 
 -- | Filter events in an XML log from the specified frame
-filterFrameEvents :: String  -- ^ Frame number of interest
-                  -> CFilter -- ^ Resulting XML filter
-filterFrameEvents framenum =
-    children `o` attrval ("framenum", HaXml.AttValue [Left framenum]) `o` tag "Frame"
+filterFrameEvents :: Frame     -- ^ Frame of interest
+                  -> CFilter () -- ^ Resulting XML filter
+filterFrameEvents frame =
+    children `o` attrval ("number", HaXml.AttValue [Left (show $ frameProp frameNumber frame)]) `o` tag "Frame"
              `o` children `o` tag "WorldEvents"
 
 -- | Extract an XML attribute of interest
 --
 -- This function requires that the first element has the attribute of interest.
-extractAttr :: String          -- ^ Attribute name
-            -> [HaXml.Content] -- ^ XML content
-            -> String          -- ^ Attribute value
-extractAttr s ((HaXml.CElem (HaXml.Elem _ attrs _)):c) = extractAttr' s attrs
+extractAttr :: String             -- ^ Attribute name
+            -> [HaXml.Content ()] -- ^ XML content
+            -> String             -- ^ Attribute value
+extractAttr s ((HaXml.CElem (HaXml.Elem _ attrs _) _):c) = extractAttr' s attrs
     where
       extractAttr' :: String -> [HaXml.Attribute] -> String
       extractAttr' s ((name, (HaXml.AttValue [Left value])):as) = if name == s then value
@@ -183,14 +196,14 @@ outputHuman m = (unlines $ ["Mind:"] ++ (showMind $ mind ws)
       (ws, _) = worldState m
 
 -- | Print log
-outputLog :: World WorldState -> IO ()
-outputLog m = putStrLn $ unlines $ map (show . HaXml.content) $ buildLog m
+outputLog :: World WorldState -> String
+outputLog m = unlines $ map (show . HaXml.content) $ buildLog m
     where
-      buildLog :: World WorldState -> [HaXml.Content]
+      buildLog :: World WorldState -> [HaXml.Content ()]
       buildLog m = [frameLog] ++ ((children `o` tag "WorldEvents") e)
           where
             (_, (s, e)) = worldState m
-            frameLog    = HaXml.CElem (HaXml.Elem "FrameLog" [] [HaXml.CString True $ (outputHuman m) ++ (unlines $ map ((++) "     ") s)])
+            frameLog    = HaXml.CElem (HaXml.Elem "FrameLog" [] [HaXml.CString True ((outputHuman m) ++ (unlines $ map ((++) "     ") s)) ()]) ()
 
 formatTrace :: (Show a) => Seq.Seq a -> [String]
 formatTrace s = formatTrace' s 0 (Seq.length s)
