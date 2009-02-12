@@ -10,19 +10,32 @@ TracksReader::TracksReader()
 bool TracksReader::startElement(const QString&, const QString&,
 				const QString& qName, const QXmlAttributes& attributes)
 {
-  qDebug() << "start: " << qName;
+  if(qName == "Frame")
+    {
+      qDebug() << "Got frame";
+    }
+  else if(qName == "Detection")
+    {
+      qDebug() << "Got detection";
+    }
+  else if(qName == "Track")
+    {
+      qDebug() << "Got track";
+    }
+  else if(qName == "FrameLog")
+    {
+      qDebug() << "Got frame log";
+    }
   return true;
 }
 
 bool TracksReader::endElement(const QString&, const QString&, const QString& qName)
 {
-  qDebug() << "end: " << qName;
   return true;
 }
 
 bool TracksReader::characters(const QString& str)
 {
-  qDebug() << "characters: " << str;
   return true;
 }
 

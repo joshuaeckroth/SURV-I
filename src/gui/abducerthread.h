@@ -8,6 +8,7 @@
 
 class TracksReader;
 class QXmlSimpleReader;
+class QXmlInputSource;
 
 class AbducerThread : public QThread
 {
@@ -33,6 +34,8 @@ private:
   QXmlSimpleReader* reader;
   TracksReader* handler;
   QProcess* abducer;
+  bool notParsing;
+  QXmlInputSource *abducerSource;
 };
 
 #endif

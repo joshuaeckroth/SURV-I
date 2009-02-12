@@ -22,14 +22,15 @@ AbducerThread::AbducerThread()
   connect(abducer, SIGNAL(started()), this, SLOT(abducerStarted()));
   connect(abducer, SIGNAL(error(QProcess::ProcessError)), this, SLOT(abducerError(QProcess::ProcessError)));
 
-  abducer->setStandardOutputFile("classifications.xml");
-
   abducer->start("build/abducer");
 
   if(!abducer->waitForStarted())
     {
       qDebug() << "abducer did not start";
     }
+
+  abducerSource = new QXmlInputSource(abducer);
+  notParsing = true;
 }
 
 void AbducerThread::run()
@@ -57,8 +58,13 @@ void AbducerThread::newDetections(QString d)
 
 void AbducerThread::readyTracks()
 {
-  qDebug() << "readyTracks";
-  //reader->parse(QXmlInputSource(abducer));
+  if(notParsing)
+    {
+      reader->parse(abducerSource, true);
+      notParsing = false;
+    }
+  else
+    reader->parseContinue();
 
   QString tracks = "";
   emit newTracks(tracks);
