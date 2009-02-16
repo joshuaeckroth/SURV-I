@@ -1,8 +1,13 @@
 syntax: glob
-src/*.hi
-src/*/*.hi
-src/*~
-src/*/*~
+*.hi
+*~
+*.prof
+*.aux
+*.lof
+*.log
+*.out
+*.toc
+*\#*
 api/*
 build/*
 libs/*
