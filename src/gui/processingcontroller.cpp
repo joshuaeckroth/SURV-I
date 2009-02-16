@@ -2,29 +2,28 @@
 #include <QDebug>
 
 #include "processingcontroller.h"
-#include "imagebuffer.h"
-#include "renderthread.h"
 #include "renderarea.h"
 #include "decoder.h"
 #include "abducerthread.h"
+#include "frames.h"
 
 ProcessingController::ProcessingController(RenderArea* r, int n)
-  : frameRate(6), numCameras(n), renderer(r)
+  : numCameras(n), renderer(r)
 {
+  frames = new Frames();
   renderer->setNumCameras(n);
+  connect(frames, SIGNAL(newFrame(const Frame*)), renderer, SLOT(newFrame(const Frame*)));
   init();
 }
 
 void ProcessingController::init()
 {
-  abducerThread = new AbducerThread();
+  abducerThread = new AbducerThread(frames);
 
   for(int i = 0; i < numCameras; i++)
     {
-      imageBuffer[i] = new ImageBuffer(20);
       decoder[i] = new Decoder(i, numCameras);
-      captureThread[i] = new CaptureThread(imageBuffer[i], decoder[i], i);
-      renderThread[i] = new RenderThread(imageBuffer[i], renderer, i);
+      captureThread[i] = new CaptureThread(frames, decoder[i], i);
       if(captureThread[i]->hasError())
 	{
 	  qDebug() << "Error in camera " << QString::number(i);
@@ -32,7 +31,6 @@ void ProcessingController::init()
       else
 	{
 	  connect(captureThread[i], SIGNAL(newDetections(QString)), this, SLOT(newDetections(QString)));
-	  renderThread[i]->start();
 	  connect(abducerThread, SIGNAL(newTracks(QString)), this, SLOT(newTracks(QString)));
 	  abducerThread->start();
 	}
@@ -45,7 +43,7 @@ void ProcessingController::startProcessing()
     {
       if(!captureThread[i]->hasError())
 	{
-	  captureThread[i]->startCapture(frameRate);
+	  captureThread[i]->startCapture();
 	  captureThread[i]->start(QThread::IdlePriority);
 	}
     }
@@ -84,13 +82,9 @@ void ProcessingController::numCamerasChanged(int n)
   for(int i = 0; i < numCameras; i++)
     {
       captureThread[i]->stopCapture();
-      imageBuffer[i]->exit();
-      //delete imageBuffer[i];
       captureThread[i]->exit();
       //delete captureThread[i];
       //delete decoder[i];
-      renderThread[i]->exit();
-      //delete renderThread[i];
     }
 
   numCameras = n;

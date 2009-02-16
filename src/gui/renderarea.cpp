@@ -3,6 +3,7 @@
 #include <QTime>
 
 #include "renderarea.h"
+#include "frame.h"
 
 RenderArea::RenderArea(QWidget* parent)
   : QWidget(parent), clear(true)
@@ -16,7 +17,7 @@ RenderArea::RenderArea(QWidget* parent)
   setAttribute(Qt::WA_OpaquePaintEvent, true);
   setAttribute(Qt::WA_PaintOnScreen, true);
   setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding));
-  time = frames = 0;
+  time = framesShown = 0;
 }
 
 void RenderArea::setNumCameras(int n)
@@ -33,10 +34,10 @@ void RenderArea::onFrameSizeChanged(int width, int height, int camera)
   imageHeight[camera] = height;
 }
 
-void RenderArea::showFrame(const IplImage* frame, int camera)
+void RenderArea::newFrame(const Frame* frame)
 {
   clear = false;
-  updatePixmap(frame, camera);
+  updatePixmap(frame->getImage(), frame->getCamera());
   update();
 }
 
@@ -80,7 +81,7 @@ void RenderArea::updatePixmap(const IplImage* frame, int camera)
 
   if(!start)
     {
-      ++frames;
+      ++framesShown;
       time += t.elapsed();
     }
 }

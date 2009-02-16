@@ -3,8 +3,12 @@
 #include <QDebug>
 
 #include "tracksreader.h"
+#include "frame.h"
+#include "frames.h"
+#include "noise.h"
 
-TracksReader::TracksReader()
+TracksReader::TracksReader(Frames *fs)
+  : frames(fs), curFrame(NULL)
 { }
 
 bool TracksReader::startElement(const QString&, const QString&,
@@ -12,19 +16,27 @@ bool TracksReader::startElement(const QString&, const QString&,
 {
   if(qName == "Frame")
     {
-      qDebug() << "Got frame";
+      frameCamera = attributes.value("camera").toInt();
+      frameNumber = attributes.value("number").toInt();
+      frameTime = attributes.value("time").toDouble();
+
+      curFrame = frames->findFrame(frameCamera, frameTime);
     }
-  else if(qName == "Detection")
+  else if(qName == "Noise")
     {
-      qDebug() << "Got detection";
+      int id = attributes.value("id").toInt();
+      double area = attributes.value("area").toDouble();
+      int cx = attributes.value("cx").toInt();
+      int cy = attributes.value("cy").toInt();
+
+      curFrame->addNoise(new Noise(id, area, cx, cy));
     }
   else if(qName == "Track")
     {
-      qDebug() << "Got track";
+
     }
   else if(qName == "FrameLog")
     {
-      qDebug() << "Got frame log";
     }
   return true;
 }

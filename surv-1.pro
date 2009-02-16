@@ -21,12 +21,15 @@ HEADERS += \
   src/gui/abducerthread.h \
   src/gui/capturethread.h \
   src/gui/decoder.h \
-  src/gui/imagebuffer.h \
+  src/gui/detection.h \
+  src/gui/frame.h \
+  src/gui/frames.h \
   src/gui/mainwindow.h \
+  src/gui/noise.h \
   src/gui/processingcontroller.h \
   src/gui/renderarea.h \
-  src/gui/renderthread.h \
   src/gui/settings.h \
+  src/gui/track.h \
   src/gui/tracksreader.h
 
 FORMS += \
@@ -37,13 +40,16 @@ SOURCES += \
   src/gui/abducerthread.cpp \
   src/gui/capturethread.cpp \
   src/gui/decoder.cpp \
-  src/gui/imagebuffer.cpp \
+  src/gui/detection.cpp \
+  src/gui/frame.cpp \
+  src/gui/frames.cpp \
   src/gui/main.cpp \
   src/gui/mainwindow.cpp \
+  src/gui/noise.cpp \
   src/gui/processingcontroller.cpp \
   src/gui/renderarea.cpp \
-  src/gui/renderthread.cpp \
   src/gui/settings.cpp \
+  src/gui/track.cpp \
   src/gui/tracksreader.cpp
 
 

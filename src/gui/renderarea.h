@@ -5,17 +5,19 @@
 
 #include "opencv/highgui.h"
 
+class Frame;
+
 class RenderArea : public QWidget
 {
   Q_OBJECT;
 
 public:
   RenderArea(QWidget* parent);
-  void showFrame(const IplImage* frame, int camera);
   void setNumCameras(int n);
 
 public slots:
   void onFrameSizeChanged(int width, int height, int camera);
+  void newFrame(const Frame *f);
 
 signals:
   void frameSizeChanged(int width, int height, int camera);
@@ -29,7 +31,7 @@ private:
   uchar* imageData[10];
   int imageWidth[10], imageHeight[10];
   int time;
-  int frames;
+  int framesShown;
   int numCameras;
   bool clear;
 };

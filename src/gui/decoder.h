@@ -3,11 +3,13 @@
 
 #include "opencv/cvaux.h"
 
+class Frame;
+
 class Decoder
 {
 public:
   Decoder(int c, int n);
-  QString decodeFrame(IplImage* f, int frameNum, double time);
+  QString decodeFrame(Frame *frame);
 
 private:
   QString findBlobs();
@@ -17,7 +19,6 @@ private:
   int camera;
   int numCameras;
   CvBGStatModel* bg_model;
-  IplImage* frame;
   CvMat** fmat;
 };
 

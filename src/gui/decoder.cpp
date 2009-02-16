@@ -6,11 +6,13 @@
 
 #include <math.h>
 
+#include "opencv/highgui.h"
+
 #include "decoder.h"
-#include "imagebuffer.h"
+#include "frame.h"
 
 Decoder::Decoder(int c, int n)
-  : camera(c), numCameras(n), bg_model(0), frame(0)
+  : camera(c), numCameras(n), bg_model(0)
 {
   fmat = (CvMat**)malloc(numCameras * sizeof(void*));
   fmat[0] = NULL; // self
@@ -27,22 +29,24 @@ Decoder::Decoder(int c, int n)
     }
 }
 
-QString Decoder::decodeFrame(IplImage* f, int frameNum, double time)
+QString Decoder::decodeFrame(Frame *frame)
 {
-  frame = f;
+  IplImage *image = frame->getImage();
+  int number = frame->getNumber();
+  double time = frame->getTime();
   QString result;
   QTextStream stream(&result);
   stream << "<Frame camera=\"" << camera << "\" "
-	 << "number=\"" << frameNum << "\" "
+	 << "number=\"" << number << "\" "
 	 << "time=\"" << time << "\">";
 
   if(!bg_model)
     {
-      bg_model = cvCreateFGDStatModel(frame);
+      bg_model = cvCreateFGDStatModel(image);
     }
   else
     {
-      cvUpdateBGStatModel(frame, bg_model);
+      cvUpdateBGStatModel(image, bg_model);
       stream << findBlobs();
     }
 

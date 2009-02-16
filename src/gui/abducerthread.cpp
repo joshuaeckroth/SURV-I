@@ -6,12 +6,13 @@
 
 #include "abducerthread.h"
 #include "tracksreader.h"
+#include "frames.h"
 
-AbducerThread::AbducerThread()
+AbducerThread::AbducerThread(Frames *frames)
   : QThread()
 {
   reader = new QXmlSimpleReader;
-  handler = new TracksReader;
+  handler = new TracksReader(frames);
   reader->setContentHandler(handler);
   reader->setErrorHandler(handler);
 

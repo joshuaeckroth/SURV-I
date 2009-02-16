@@ -6,11 +6,12 @@
 #include "opencv/highgui.h"
 
 #include "capturethread.h"
-#include "imagebuffer.h"
 #include "decoder.h"
+#include "frame.h"
+#include "frames.h"
 
-CaptureThread::CaptureThread(ImageBuffer* buffer, Decoder* d, int c)
-  : QThread(), imageBuffer(buffer), decoder(d), captureActive(false),
+CaptureThread::CaptureThread(Frames *fs, Decoder* d, int c)
+  : QThread(), frames(fs), decoder(d), captureActive(false),
     calculatedFps(0.0), fps(0.0), frameTime(0.0), frameNum(0), camera(c),
     error(false)
 {
@@ -29,7 +30,8 @@ void CaptureThread::run()
 {
   QTime time;
   time.start();
-  IplImage *frame;
+  IplImage *image;
+  Frame *frame;
   QString detections;
   while(true)
     {
@@ -43,13 +45,15 @@ void CaptureThread::run()
 	  updateFPS(time.elapsed());
 	  captureLock.unlock();
 	}
-      frame = cvQueryFrame(capture);
-      if(frame)
+      image = cvQueryFrame(capture);
+      if(image)
 	{
 	  frameNum++;
 	  frameTime = frameNum / fps;
-	  imageBuffer->addFrame(frame);
-	  detections = decoder->decodeFrame(frame, frameNum, frameTime);
+	  frame = new Frame(camera, frameNum, frameTime);
+	  frame->setImage(image);
+	  frames->addFrame(frame);
+	  detections = decoder->decodeFrame(frame);
 	  emit newDetections(detections);
 	}
       updateFPS(time.elapsed());
@@ -73,13 +77,13 @@ void CaptureThread::updateFPS(int time)
     }
 }
 
-bool CaptureThread::startCapture(int frameRate)
+bool CaptureThread::startCapture()
 {
   if(!captureActive)
     {
-      if(!capture || !imageBuffer)
+      if(!capture)
 	{
-	  qDebug() << "Error: capture not initialized or invalid buffer";
+	  qDebug() << "Error: capture not initialized";
 	  return false;
 	}
       captureActive = true;

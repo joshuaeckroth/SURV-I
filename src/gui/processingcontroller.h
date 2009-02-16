@@ -3,11 +3,10 @@
 
 #include "capturethread.h"
 
-class ImageBuffer;
 class RenderArea;
-class RenderThread;
 class Decoder;
 class AbducerThread;
+class Frames;
 
 class ProcessingController : public QObject
 {
@@ -16,8 +15,6 @@ class ProcessingController : public QObject
 public:
   ProcessingController(RenderArea* r, int n);
   bool isProcessing();
-  void setFrameRate(int rate) { frameRate = rate; }
-  int getFrameRate() { return frameRate; }
   double getCalculatedFPS();
   void numCamerasChanged(int n);
 
@@ -30,13 +27,11 @@ private slots:
   void newTracks(QString);
 
 private:
-  int frameRate;
+  Frames *frames;
   int numCameras;
   RenderArea* renderer;
   CaptureThread::FrameSize frameSize;
   CaptureThread* captureThread[10];
-  RenderThread* renderThread[10];
-  ImageBuffer* imageBuffer[10];
   Decoder* decoder[10];
   AbducerThread* abducerThread;
   void init();

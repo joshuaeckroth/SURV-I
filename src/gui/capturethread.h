@@ -6,9 +6,9 @@
 #include <QWaitCondition>
 #include <QQueue>
 
-class ImageBuffer;
 class Decoder;
 class CvCapture;
+class Frames;
 
 class CaptureThread : public QThread
 {
@@ -16,9 +16,10 @@ class CaptureThread : public QThread
 
 public:
   enum FrameSize { Size640, Size320 };
-  CaptureThread(ImageBuffer* buffer, Decoder* d, int c);
+
+  CaptureThread(Frames *fs, Decoder* d, int c);
   void run();
-  bool startCapture(int frameRate);
+  bool startCapture();
   void stopCapture();
   double getCalculatedFPS() { return calculatedFps; }
   double getFPS() { return fps; }
@@ -30,9 +31,9 @@ signals:
 
 private:
   void updateFPS(int time);
+  Frames *frames;
   QMutex captureLock;
   QWaitCondition captureWait;
-  ImageBuffer* imageBuffer;
   Decoder* decoder;
   bool captureActive;
   CvCapture* capture;
