@@ -37,7 +37,7 @@ scoreNoise hypID did m _ =
     if area < 20.0 then High
     else Lowest
         where
-          Detection (Detection_Attrs { detArea = area }) _ _ = IDMap.getItemFromMap m did
+          Detection (Detection_Attrs { detArea = area }) = IDMap.getItemFromMap m did
 
 showNoise :: [NoiseID] -> NoiseMap -> DetectionMap -> [String]
 showNoise []     _         _       = []

@@ -14,18 +14,12 @@
 Decoder::Decoder(int c, int n)
   : camera(c), numCameras(n), bg_model(0)
 {
-  fmat = (CvMat**)malloc(numCameras * sizeof(void*));
-  fmat[0] = NULL; // self
-  for(int i = 1; i < numCameras; i++)
+  QFile warp_file(QString("camera-") +
+		  QString::number(camera) + "-warp.xml");
+  warp = (CvMat*)cvLoad(warp_file.fileName().toAscii().constData());
+  if(warp == NULL)
     {
-      QFile fmat_file(QString("camera-fmat-") +
-		      QString::number(camera) + "-to-" +
-		      QString::number((camera + i) % numCameras) + ".xml");
-      fmat[i] = (CvMat*)cvLoad(fmat_file.fileName().toAscii().constData());
-      if(fmat[i] == NULL)
-	{
-	  qDebug() << "Error loading " << fmat_file.fileName();
-	}
+      qDebug() << "Error loading " << warp_file.fileName();
     }
 }
 
@@ -54,36 +48,6 @@ QString Decoder::decodeFrame(Frame *frame)
 
   return result;
 }
-
-
-// copied from OpenCV 1.1.0 cv3dtracker.cpp
-void Decoder::multVectorMatrix(float rv[4], const float v[4], const float m[4][4])
-{
-    for (int i=0; i<=3; i++)
-    {
-        rv[i] = 0.f;
-        for (int j=0;j<=3;j++)
-            rv[i] += v[j] * m[j][i];
-    }
-}
-
-// copied from OpenCV 1.1.0 cv3dtracker.cpp
-/*
-CvPoint3D32f Decoder::imageCStoWorldCS(CvPoint2D32f p)
-{
-  float tp[4];
-  tp[0] = (float)p.x - camera_info.principal_point.x;
-  tp[1] = (float)p.y - camera_info.principal_point.y;
-  tp[2] = 1.f;
-  tp[3] = 1.f;
-  
-  float tr[4];
-  //multiply tp by mat to get tr
-  multVectorMatrix(tr, tp, camera_info.mat);
-
-  return cvPoint3D32f(tr[0]/tr[3], tr[1]/tr[3], tr[2]/tr[3]);
-}
-*/
 
 // copied from OpenCV 1.1.0 enteringblobdetection.cpp
 int compareContour(const void* a, const void* b, void*)
@@ -151,9 +115,8 @@ QString Decoder::findBlobs()
   CvRect rect;
   double area;
   int cx, cy;
-  double ea, eb, ec;
-  CvMat *pmat = cvCreateMat(1, 3, CV_32FC1);
-  CvMat *rmat = cvCreateMat(1, 3, CV_32FC1);
+  CvMat *pmat = cvCreateMat(3, 1, CV_32FC1);
+  CvMat *rmat = cvCreateMat(3, 1, CV_32FC1);
   for(int claster_cur = 0; claster_cur < claster_num; ++claster_cur)
     {
       for(int cnt_cur = 0; cnt_cur < clasters->total; ++cnt_cur)
@@ -174,31 +137,23 @@ QString Decoder::findBlobs()
 	      cx = rect.x + rect.width / 2;
 	      cy = rect.y + rect.height / 2;
 
+	      cvSetReal1D(pmat, 0, cx);
+	      cvSetReal1D(pmat, 1, cy);
+	      cvSetReal1D(pmat, 2, 1);
+
+	      cvMatMul(warp, pmat, rmat);
+
+	      cx = cvGetReal1D(rmat, 0) / cvGetReal1D(rmat, 2);
+	      cy = cvGetReal1D(rmat, 1) / cvGetReal1D(rmat, 2);
+
 	      stream << "<Detection id=\"" << contour_id << "\" "
 		     << "area=\"" << area << "\" "
 		     << "cx=\"" << cx << "\" "
-		     << "cy=\"" << cy << "\">";
-
-	      for(int i = 1; i < numCameras; i++)
-		{
-		  cvSetReal1D(pmat, 0, cx);
-		  cvSetReal1D(pmat, 1, cy);
-		  cvSetReal1D(pmat, 2, 1);
-
-		  cvMatMul(pmat, fmat[i], rmat);
-
-		  ea = cvGetReal1D(rmat, 0);
-		  eb = cvGetReal1D(rmat, 1);
-		  ec = cvGetReal1D(rmat, 2);
-		  
-		  stream << "<Epiline to=\"" << ((camera + i) % numCameras) << "\" "
-			 << "ea=\"" << ea << "\" "
-			 << "eb=\"" << eb << "\" "
-			 << "ec=\"" << ec << "\" />";
-		}
+		     << "cy=\"" << cy << "\" />";
 
 	      contour_id++;
 
+	      /*
 	      CvSeqReader reader;
 	      int i, count = cnt->total;
 	      cvStartReadSeq(cnt, &reader, 0);
@@ -215,8 +170,9 @@ QString Decoder::findBlobs()
 		
 		  pt1 = pt2;
 		}
-
 	      stream << "</Detection>";
+
+	      */
 	    }
 	}
     }

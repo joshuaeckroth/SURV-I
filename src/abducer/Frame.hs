@@ -15,7 +15,7 @@ recordFrame ws = recordFrame' (curFrame ws) ws
 
 -- | Return the detections in the frame with the additional detFrame property added
 getDetections :: Frame -> [Detection]
-getDetections frame@(Frame _ dets) = map (\(Detection attrs e c) ->
-                                          Detection (attrs { detFrame = frame }) e c)
+getDetections frame@(Frame _ dets) = map (\(Detection attrs) ->
+                                          Detection (attrs { detFrame = frame }))
                                      dets
 
