@@ -8,10 +8,9 @@
 #include "capturethread.h"
 #include "decoder.h"
 #include "frame.h"
-#include "frames.h"
 
-CaptureThread::CaptureThread(Frames *fs, Decoder* d, int c)
-  : QThread(), frames(fs), decoder(d), captureActive(false),
+CaptureThread::CaptureThread(Decoder* d, int c)
+  : QThread(), decoder(d), captureActive(false),
     calculatedFps(0.0), fps(0.0), frameTime(0.0), frameNum(0), camera(c),
     error(false)
 {
@@ -52,9 +51,8 @@ void CaptureThread::run()
 	  frameTime = frameNum / fps;
 	  frame = new Frame(camera, frameNum, frameTime);
 	  frame->setImage(image);
-	  frames->addFrame(frame);
 	  detections = decoder->decodeFrame(frame);
-	  emit newDetections(detections);
+	  emit newDetections(detections, camera, frame);
 	}
       updateFPS(time.elapsed());
     }

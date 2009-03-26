@@ -14,10 +14,10 @@ class RenderArea : public QWidget
 public:
   RenderArea(QWidget* parent);
   void setNumCameras(int n);
+  void showFrames(Frame** frames);
 
 public slots:
   void onFrameSizeChanged(int width, int height, int camera);
-  void newFrame(const Frame *f);
 
 signals:
   void frameSizeChanged(int width, int height, int camera);

@@ -4,11 +4,10 @@
 
 #include "tracksreader.h"
 #include "frame.h"
-#include "frames.h"
 #include "noise.h"
 
-TracksReader::TracksReader(Frames *fs)
-  : frames(fs), curFrame(NULL)
+TracksReader::TracksReader()
+  : curFrame(NULL)
 { }
 
 bool TracksReader::startElement(const QString&, const QString&,
@@ -20,7 +19,7 @@ bool TracksReader::startElement(const QString&, const QString&,
       frameNumber = attributes.value("number").toInt();
       frameTime = attributes.value("time").toDouble();
 
-      curFrame = frames->findFrame(frameCamera, frameTime);
+      //curFrame = frames->findFrame(frameCamera, frameTime);
     }
   else if(qName == "Noise")
     {
@@ -29,7 +28,7 @@ bool TracksReader::startElement(const QString&, const QString&,
       int cx = attributes.value("cx").toInt();
       int cy = attributes.value("cy").toInt();
 
-      curFrame->addNoise(new Noise(id, area, cx, cy));
+      //curFrame->addNoise(new Noise(id, area, cx, cy));
     }
   else if(qName == "Track")
     {

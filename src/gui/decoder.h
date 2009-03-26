@@ -8,7 +8,7 @@ class Frame;
 class Decoder
 {
 public:
-  Decoder(int c, int n);
+  Decoder(int c);
   QString decodeFrame(Frame *frame);
 
 private:
@@ -16,7 +16,6 @@ private:
   void findBlobsByCCClasters(CvSeq** clasters, int& claster_num, CvSeq** cnt_list);
 
   int camera;
-  int numCameras;
   CvBGStatModel* bg_model;
   CvMat* warp;
 };

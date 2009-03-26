@@ -6,7 +6,7 @@
 class RenderArea;
 class Decoder;
 class AbducerThread;
-class Frames;
+class Frame;
 
 class ProcessingController : public QObject
 {
@@ -23,11 +23,12 @@ public slots:
   void stopProcessing();
 
 private slots:
-  void newDetections(QString);
+  void newDetections(QString, int, Frame*);
   void newTracks(QString);
 
 private:
-  Frames *frames;
+  Frame** frames;
+  QString* detections;
   int numCameras;
   RenderArea* renderer;
   CaptureThread::FrameSize frameSize;

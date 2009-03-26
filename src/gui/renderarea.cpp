@@ -34,10 +34,13 @@ void RenderArea::onFrameSizeChanged(int width, int height, int camera)
   imageHeight[camera] = height;
 }
 
-void RenderArea::newFrame(const Frame* frame)
+void RenderArea::showFrames(Frame** frames)
 {
   clear = false;
-  updatePixmap(frame->getImage(), frame->getCamera());
+  for(int i = 0; i < numCameras; i++)
+    {
+      updatePixmap(frames[i]->getImage(), frames[i]->getCamera());
+    }
   update();
 }
 

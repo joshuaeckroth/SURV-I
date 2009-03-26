@@ -52,14 +52,14 @@ detProp prop (Detection attrs) = prop attrs
 data Frame = Frame Frame_Attrs [Detection]
              deriving (Eq,Show)
 data Frame_Attrs = Frame_Attrs
-    { frameCamera :: String
-    , frameNumber :: Int
+    { frameNumber :: Int
     , frameTime :: Double
     } deriving (Eq,Show)
 data Detection = Detection Detection_Attrs
                  deriving (Eq,Show)
 data Detection_Attrs = Detection_Attrs
-    { detArea :: Double
+    { detCamera :: String
+    , detArea :: Double
     , detCx :: Double
     , detCy :: Double
     , detFrame :: Frame
@@ -80,13 +80,11 @@ instance XmlContent Frame where
 instance XmlAttributes Frame_Attrs where
     fromAttrs as =
         Frame_Attrs
-          { frameCamera = definiteA fromAttrToStr "Frame" "camera" as
-          , frameNumber = read $ definiteA fromAttrToStr "Frame" "number" as
+          { frameNumber = read $ definiteA fromAttrToStr "Frame" "number" as
           , frameTime = read $ definiteA fromAttrToStr "Frame" "time" as
           }
     toAttrs v = catMaybes 
-        [ toAttrFrStr "camera" (frameCamera v)
-        , toAttrFrStr "number" (show $ frameNumber v)
+        [ toAttrFrStr "number" (show $ frameNumber v)
         , toAttrFrStr "time" (show $ frameTime v)
         ]
 
@@ -102,13 +100,15 @@ instance XmlContent Detection where
 instance XmlAttributes Detection_Attrs where
     fromAttrs as =
         Detection_Attrs
-          { detArea = read $ definiteA fromAttrToStr "Detection" "area" as
+          { detCamera = definiteA fromAttrToStr "Detection" "camera" as
+          , detArea = read $ definiteA fromAttrToStr "Detection" "area" as
           , detCx = read $ definiteA fromAttrToStr "Detection" "cx" as
           , detCy = read $ definiteA fromAttrToStr "Detection" "cy" as
-          , detFrame = Frame (Frame_Attrs "" 0 0) []
+          , detFrame = Frame (Frame_Attrs 0 0) []
           }
     toAttrs v = catMaybes 
-        [ toAttrFrStr "area" (show $ detArea v)
+        [ toAttrFrStr "camera" (detCamera v)
+        , toAttrFrStr "area" (show $ detArea v)
         , toAttrFrStr "cx" (show $ detCx v)
         , toAttrFrStr "cy" (show $ detCy v)
         ]

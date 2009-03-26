@@ -6,13 +6,12 @@
 
 #include "abducerthread.h"
 #include "tracksreader.h"
-#include "frames.h"
 
-AbducerThread::AbducerThread(Frames *frames)
+AbducerThread::AbducerThread()
   : QThread()
 {
   reader = new QXmlSimpleReader;
-  handler = new TracksReader(frames);
+  handler = new TracksReader();
   reader->setContentHandler(handler);
   reader->setErrorHandler(handler);
 
@@ -43,7 +42,6 @@ void AbducerThread::run()
 
       abducer->write(detections.toAscii());
       abducer->write("\n");
-      detections = QString();
 
       mutex.unlock();
     }
@@ -52,7 +50,7 @@ void AbducerThread::run()
 void AbducerThread::newDetections(QString d)
 {
   mutex.lock();
-  detections += d;
+  detections = d;
   detectionsBuffer.wakeAll();
   mutex.unlock();
 }

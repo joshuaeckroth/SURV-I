@@ -45,7 +45,7 @@ newWorldState = WorldState
                 -- trackMap
                 empty
                 -- curFrame
-                (Frame (Frame_Attrs "" 0 0) [])
+                (Frame (Frame_Attrs 0 0) [])
 
 type WorldLog = ([String], HaXml.Content ()) -- ^ Human and XML representation of events
 
@@ -88,12 +88,10 @@ recordWorldEventInFrame :: Frame             -- ^ Frame of event
                         -> HaXml.Content ()   -- ^ XML log content inside the frame
 recordWorldEventInFrame frame c =
     HaXml.CElem (HaXml.Elem "WorldEvents" [] 
-                          [(HaXml.CElem (HaXml.Elem "Frame" [("camera", HaXml.AttValue [Left camera]),
-                                                             ("number", HaXml.AttValue [Left $ show number]),
+                          [(HaXml.CElem (HaXml.Elem "Frame" [("number", HaXml.AttValue [Left $ show number]),
                                                              ("time", HaXml.AttValue [Left $ show time])]
                                          c) ())]) ()
     where
-      camera = frameProp frameCamera frame
       number = frameProp frameNumber frame
       time   = frameProp frameTime frame
 
@@ -125,16 +123,14 @@ joinWorldEvents c1 c2
     | isEmptyElem c1 = c2
     | isEmptyElem c2 = c1
     | otherwise      =
-        if framenum1 == framenum2 && framecamera1 == framecamera2 then
-            joinWorldEventsOneFrame (Frame (Frame_Attrs framecamera1 framenum1 frametime1) []) c1 c2
+        if framenum1 == framenum2 then
+            joinWorldEventsOneFrame (Frame (Frame_Attrs framenum1 frametime1) []) c1 c2
         else
             joinWorldEventsTwoFrames c1 c2
     where
       frameattr s c = extractAttr s ((attr s `o` tag "Frame" `o` children `o` tag "WorldEvents") c)
-      framecamera1  = frameattr "camera" c1
       framenum1     = read $ frameattr "number" c1
       frametime1    = read $ frameattr "time" c1
-      framecamera2  = frameattr "camera" c2
       framenum2     = read $ frameattr "number" c2
 
 -- | Join two XML logs from the same frame

@@ -23,7 +23,6 @@ HEADERS += \
   src/gui/decoder.h \
   src/gui/detection.h \
   src/gui/frame.h \
-  src/gui/frames.h \
   src/gui/mainwindow.h \
   src/gui/noise.h \
   src/gui/processingcontroller.h \
@@ -42,7 +41,6 @@ SOURCES += \
   src/gui/decoder.cpp \
   src/gui/detection.cpp \
   src/gui/frame.cpp \
-  src/gui/frames.cpp \
   src/gui/main.cpp \
   src/gui/mainwindow.cpp \
   src/gui/noise.cpp \

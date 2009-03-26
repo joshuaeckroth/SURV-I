@@ -9,14 +9,13 @@
 class TracksReader;
 class QXmlSimpleReader;
 class QXmlInputSource;
-class Frames;
 
 class AbducerThread : public QThread
 {
   Q_OBJECT;
 
 public:
-  AbducerThread(Frames *frames);
+  AbducerThread();
   void run();
   void newDetections(QString d);
 

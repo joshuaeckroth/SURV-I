@@ -11,8 +11,8 @@
 #include "decoder.h"
 #include "frame.h"
 
-Decoder::Decoder(int c, int n)
-  : camera(c), numCameras(n), bg_model(0)
+Decoder::Decoder(int c)
+  : camera(c), bg_model(0)
 {
   QFile warp_file(QString("camera-") +
 		  QString::number(camera) + "-warp.xml");
@@ -26,13 +26,8 @@ Decoder::Decoder(int c, int n)
 QString Decoder::decodeFrame(Frame *frame)
 {
   IplImage *image = frame->getImage();
-  int number = frame->getNumber();
-  double time = frame->getTime();
+
   QString result;
-  QTextStream stream(&result);
-  stream << "<Frame camera=\"" << camera << "\" "
-	 << "number=\"" << number << "\" "
-	 << "time=\"" << time << "\">";
 
   if(!bg_model)
     {
@@ -41,10 +36,8 @@ QString Decoder::decodeFrame(Frame *frame)
   else
     {
       cvUpdateBGStatModel(image, bg_model);
-      stream << findBlobs();
+      result = findBlobs();
     }
-
-  stream << "</Frame>";
 
   return result;
 }
@@ -146,33 +139,13 @@ QString Decoder::findBlobs()
 	      cx = cvGetReal1D(rmat, 0) / cvGetReal1D(rmat, 2);
 	      cy = cvGetReal1D(rmat, 1) / cvGetReal1D(rmat, 2);
 
-	      stream << "<Detection id=\"" << contour_id << "\" "
+	      stream << "<Detection camera=\"" << camera << "\" "
+		     << "id=\"" << contour_id << "\" "
 		     << "area=\"" << area << "\" "
 		     << "cx=\"" << cx << "\" "
 		     << "cy=\"" << cy << "\" />";
 
 	      contour_id++;
-
-	      /*
-	      CvSeqReader reader;
-	      int i, count = cnt->total;
-	      cvStartReadSeq(cnt, &reader, 0);
-	      CvPoint pt1, pt2;
-	      count -= !CV_IS_SEQ_CLOSED(cnt);
-
-	      CV_READ_SEQ_ELEM(pt1, reader);
-
-	      for(i = 0; i < count; i++)
-		{
-		  CV_READ_SEQ_ELEM(pt2, reader);
-
-		  stream << "<Contour x1=\"" << pt1.x << "\" y1=\"" << pt1.y << "\" x2=\"" << pt2.x << "\" y2=\"" << pt2.y << "\" />";
-		
-		  pt1 = pt2;
-		}
-	      stream << "</Detection>";
-
-	      */
 	    }
 	}
     }

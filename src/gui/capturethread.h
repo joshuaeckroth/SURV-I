@@ -8,7 +8,7 @@
 
 class Decoder;
 class CvCapture;
-class Frames;
+class Frame;
 
 class CaptureThread : public QThread
 {
@@ -17,7 +17,7 @@ class CaptureThread : public QThread
 public:
   enum FrameSize { Size640, Size320 };
 
-  CaptureThread(Frames *fs, Decoder* d, int c);
+  CaptureThread(Decoder* d, int c);
   void run();
   bool startCapture();
   void stopCapture();
@@ -27,11 +27,10 @@ public:
   bool hasError() { return error; }
 
 signals:
-  void newDetections(QString);
+  void newDetections(QString, int, Frame*);
 
 private:
   void updateFPS(int time);
-  Frames *frames;
   QMutex captureLock;
   QWaitCondition captureWait;
   Decoder* decoder;

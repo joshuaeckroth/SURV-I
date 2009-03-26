@@ -40,7 +40,7 @@ detectionsToXml :: [DetectionID] -> DetectionMap -> [HaXml.Content ()]
 detectionsToXml []     _     = []
 detectionsToXml (did:dids) m =
     [worldElem "Detection" [("id", show did),
-                            ("camera", frameProp frameCamera $ detProp detFrame det),
+                            ("camera", detProp detCamera det),
                             ("area", show $ detProp detArea det),
                             ("cx", show $ detProp detCx det),
                             ("cy", show $ detProp detCy det)] []]
