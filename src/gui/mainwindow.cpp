@@ -27,7 +27,7 @@ MainWindow::MainWindow() : QMainWindow(0)
 
   updateTimer = new QTimer(this);
   connect(updateTimer, SIGNAL(timeout()), this, SLOT(updateStats()));
-  updateTimer->start(1000);
+  updateTimer->start(100);
 
   connect(ui.actionStart, SIGNAL(clicked()), this, SLOT(startProcessing()));
   connect(ui.actionStop, SIGNAL(clicked()), this, SLOT(stopProcessing()));
@@ -62,7 +62,12 @@ void MainWindow::stopProcessing()
 
 void MainWindow::updateStats()
 {
-  statusBar()->showMessage(QString("Calculated FPS: ") +
+  statusBar()->showMessage(QString("Frame ") + 
+			   QString::number(processingController->getFrameNumber()) +
+			   QString(" (") +
+			   QString::number(processingController->getFrameTime(), 'f', 2) +
+			   QString("s) - ") +
+			   QString("Processing FPS: ") +
 			   QString::number(processingController->getCalculatedFPS(), 'f', 1));
 }
 

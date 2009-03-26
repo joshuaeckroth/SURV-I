@@ -5,6 +5,9 @@
 
 #include <QXmlDefaultHandler>
 
+class Detection;
+class Noise;
+class Track;
 class Frame;
 
 class TracksReader : public QXmlDefaultHandler
@@ -18,14 +21,12 @@ public:
   bool characters(const QString& str);
   bool fatalError(const QXmlParseException& exception);
   QString errorString() const;
+  Frame* getFrame() const;
 
 private:
   Frame *curFrame;
   QString currentText;
   QString errorStr;
-  int frameCamera;
-  int frameNumber;
-  double frameTime;
 };
 
 #endif

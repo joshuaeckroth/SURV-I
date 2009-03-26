@@ -7,29 +7,27 @@ import Abducer
 import Types
 import World
 
-main =
-    do
-      let ws = newWorldState
-      debug <- openFile "abducer.log" WriteMode
-      outputXmlHeader ws
-      frame <- getFrame debug
-      processFrame frame ws debug
-      outputXmlFooter ws
+main = do
+  let ws = newWorldState
+  frame <- getFrame
+  processFrame frame ws
 
 processFrame :: Either String Frame
              -> WorldState
-             -> Handle
              -> IO ()
-processFrame (Left s)      ws debug = putStrLn "<!-- Done -->"
-processFrame (Right frame) ws debug = do let world    = runAbducer frame ws
-                                             log      = outputLog world
-                                             (ws', _) = worldState world
+processFrame (Left s)      ws = putStrLn "<!-- Done -->"
+processFrame (Right frame) ws = do let world    = runAbducer frame ws
+                                       log      = (xmlHeader ws) ++ (outputLog world) ++ (xmlFooter ws)
+                                       (ws', _) = worldState world
 
-                                         putStr log
-                                         frame <- getFrame debug
-                                         processFrame frame ws' debug
+                                   frameFile <- openFile ("tracks/frame-" ++ (show $ frameProp frameNumber frame) ++ ".xml") WriteMode
+                                   hPutStrLn frameFile log
+                                   hClose frameFile
+                                   putStrLn "Track file written."
+                                   frame <- getFrame
+                                   processFrame frame ws'
 
-getFrame :: Handle -> IO (Either String Frame)
-getFrame debug = do contents <- getLine
-                    hPutStrLn debug ("<!-- " ++ contents ++ " -->")
-                    return (fromXml $ xmlParse "stream" contents)
+getFrame :: IO (Either String Frame)
+getFrame = do 
+  contents <- getLine
+  return (fromXml $ xmlParse "stream" contents)

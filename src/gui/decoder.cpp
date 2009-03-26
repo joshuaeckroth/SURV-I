@@ -103,8 +103,6 @@ QString Decoder::findBlobs()
 
   findBlobsByCCClasters(&clasters, claster_num, &cnt_list);
 
-  int contour_id = 0;
-
   CvRect rect;
   double area;
   int cx, cy;
@@ -140,12 +138,9 @@ QString Decoder::findBlobs()
 	      cy = cvGetReal1D(rmat, 1) / cvGetReal1D(rmat, 2);
 
 	      stream << "<Detection camera=\"" << camera << "\" "
-		     << "id=\"" << contour_id << "\" "
 		     << "area=\"" << area << "\" "
 		     << "cx=\"" << cx << "\" "
 		     << "cy=\"" << cy << "\" />";
-
-	      contour_id++;
 	    }
 	}
     }

@@ -20,7 +20,7 @@ public:
   void newDetections(QString d);
 
 signals:
-  void newTracks(QString);
+  void newTracks();
 
 private slots:
   void readyTracks();
@@ -28,6 +28,7 @@ private slots:
   void abducerError(QProcess::ProcessError);
 
 private:
+  int frameNum;
   QWaitCondition detectionsBuffer;
   QMutex mutex;
   QString detections;

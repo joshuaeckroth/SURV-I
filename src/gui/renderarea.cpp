@@ -39,7 +39,7 @@ void RenderArea::showFrames(Frame** frames)
   clear = false;
   for(int i = 0; i < numCameras; i++)
     {
-      updatePixmap(frames[i]->getImage(), frames[i]->getCamera());
+      updatePixmap(frames[i]->getImage(), i);
     }
   update();
 }

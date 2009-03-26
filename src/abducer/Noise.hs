@@ -53,6 +53,7 @@ noiseToXml :: [NoiseID] -> NoiseMap -> DetectionMap -> [HaXml.Content ()]
 noiseToXml []     _  _  = []
 noiseToXml (n:ns) nm dm =
     [worldElem "Noise" [("id", show n),
+                        ("camera", detProp detCamera det),
                         ("cx", show $ detProp detCx det),
                         ("cy", show $ detProp detCy det),
                         ("area", show $ detProp detArea det)] []]

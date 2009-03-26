@@ -6,11 +6,12 @@ class Frame;
 class Noise
 {
 public:
-  Noise(int i, double a, double x, double y);
+  Noise(int i, int c, double a, double x, double y);
   void setFrame(Frame *f);
 
 private:
   int id;
+  int camera;
   double area;
   double cx;
   double cy;

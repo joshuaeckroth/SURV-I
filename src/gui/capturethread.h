@@ -32,6 +32,7 @@ signals:
 private:
   void updateFPS(int time);
   QMutex captureLock;
+  QMutex frameLock;
   QWaitCondition captureWait;
   Decoder* decoder;
   bool captureActive;

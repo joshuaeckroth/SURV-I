@@ -77,6 +77,7 @@ cleanWorld frame ws = ws { mind = newMind''', curFrame = frame, detIDs = [], det
 
       -- only tracks are left
       newHypIDs  = [0] ++ (trackIDs ws)
+
 -- | Writes a human and XML log
 recordWorldEvent :: ([String], HaXml.Content ()) -- ^ Human and XML content
                  -> World ()                     -- ^ Resulting world with logged content
@@ -170,15 +171,14 @@ extractAttr s ((HaXml.CElem (HaXml.Elem _ attrs _) _):c) = extractAttr' s attrs
 extractAttr s c = error ("extractAttr: first element of XML content does not have attribute of interest; " ++
                          "attribute: " ++ s)
 
--- | Print XML header for output
-outputXmlHeader :: WorldState -> IO ()
-outputXmlHeader ws =
+-- | XML header for output
+xmlHeader :: WorldState -> String
+xmlHeader ws =
     do
-      (putStrLn . show) (HaXml.prolog xmlProlog)
-      putStrLn "<WorldEvents>"
+      (show (HaXml.prolog xmlProlog)) ++ "<WorldEvents>"
 
-outputXmlFooter :: WorldState -> IO ()
-outputXmlFooter ws = putStrLn "</WorldEvents>"
+xmlFooter :: WorldState -> String
+xmlFooter ws = "</WorldEvents>"
 
 -- | Return human log
 outputHuman :: World WorldState -> String

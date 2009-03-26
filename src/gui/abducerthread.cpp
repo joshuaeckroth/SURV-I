@@ -18,11 +18,11 @@ AbducerThread::AbducerThread()
   QObject* parent = new QObject;
   abducer = new QProcess(parent);
 
-  connect(abducer, SIGNAL(readyReadStandardOutput()), this, SLOT(readyTracks()));
+  //connect(abducer, SIGNAL(readyReadStandardOutput()), this, SLOT(readyTracks()));
   connect(abducer, SIGNAL(started()), this, SLOT(abducerStarted()));
   connect(abducer, SIGNAL(error(QProcess::ProcessError)), this, SLOT(abducerError(QProcess::ProcessError)));
 
-  abducer->start("build/abducer");
+  //abducer->start("build/abducer");
 
   if(!abducer->waitForStarted())
     {
@@ -31,6 +31,8 @@ AbducerThread::AbducerThread()
 
   abducerSource = new QXmlInputSource(abducer);
   notParsing = true;
+
+  frameNum = 1;
 }
 
 void AbducerThread::run()
@@ -53,10 +55,19 @@ void AbducerThread::newDetections(QString d)
   detections = d;
   detectionsBuffer.wakeAll();
   mutex.unlock();
+
+  readyTracks();
 }
 
 void AbducerThread::readyTracks()
 {
+  QFile tracks(QString("tracks/frame-") + QString::number(frameNum) + QString(".xml"));
+  QXmlInputSource* source = new QXmlInputSource(&tracks);
+  reader->parse(source);
+
+  frameNum++;
+
+  /*
   if(notParsing)
     {
       reader->parse(abducerSource, true);
@@ -64,9 +75,9 @@ void AbducerThread::readyTracks()
     }
   else
     reader->parseContinue();
+  */
 
-  QString tracks = "";
-  emit newTracks(tracks);
+  emit newTracks();
 }
 
 void AbducerThread::abducerStarted()

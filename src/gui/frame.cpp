@@ -8,8 +8,8 @@
 #include "noise.h"
 #include "track.h"
 
-Frame::Frame(int c, int n, double t)
-  : camera(c), number(n), time(t)
+Frame::Frame(int n, double t)
+  : number(n), time(t)
 { }
 
 void Frame::addDetection(Detection *d)
@@ -33,11 +33,6 @@ void Frame::addTrack(Track *t)
 void Frame::setImage(IplImage* img)
 {
   image = img;
-}
-
-int Frame::getCamera() const
-{
-  return camera;
 }
 
 int Frame::getNumber() const

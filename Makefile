@@ -1,8 +1,7 @@
 
-GHCFLAGS = -O -prof -auto-all
-HMAKEFLAGS = -package HaXml -package containers -package array -package bytestring -dbuild -isrc/abducer
+GHCFLAGS = -O -auto-all -isrc/abducer -outputdir build
 CVLDPATH = LD_LIBRARY_PATH=`pwd`/libs/opencv/lib
-SRCS = $(wildcard src/abducer/*.hs) $(wildcard src/abducer/*/*.hs)
+ABDUCER_SRCS = $(wildcard src/abducer/*.hs) $(wildcard src/abducer/*/*.hs)
 
 all: gui abducer api
 
@@ -13,8 +12,7 @@ Makefile.gui: surv-1.pro
 	qmake -o Makefile.gui surv-1.pro
 
 abducer:
-	mkdir -p build/Reasoner build/WrappedInts
-	hmake $(HMAKEFLAGS) $(GHCFLAGS) abducer
+	ghc $(GHCFLAGS) -o build/abducer --make src/abducer/abducer.hs 
 
 runsurv:
 	$(CVLDPATH) build/runsurv

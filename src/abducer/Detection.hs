@@ -68,7 +68,7 @@ constrainDetectionExplainers ws = constrainDetectionExplainers' (detIDs ws) ws
       constrainDetectionExplainers' :: [DetectionID] -> WorldState -> World WorldState
       constrainDetectionExplainers' []         ws = return ws
       constrainDetectionExplainers' (did:dids) ws =
-          recordWorldEvent (["Constrained detection " ++ (show did) ++ ":"] ++ (map show (getConstrainers (mind ws'))), emptyElem) >>
+          recordWorldEvent ( {-- ["Constrained detection " ++ (show did) ++ ":"] ++ (map show (getConstrainers (mind ws'))) --} [""], emptyElem) >>
           constrainDetectionExplainers' dids ws'
               where
                 det          = getItemFromMap (detMap ws) did

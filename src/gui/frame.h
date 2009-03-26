@@ -12,13 +12,12 @@ class Track;
 class Frame
 {
 public:
-  Frame(int c, int n, double t);
+  Frame(int n, double t);
   void addDetection(Detection *d);
   void addNoise(Noise *n);
   void addTrack(Track *t);
   void setImage(IplImage* img);
 
-  int getCamera() const;
   int getNumber() const;
   double getTime() const;
   IplImage *getImage() const;
@@ -36,7 +35,6 @@ public:
   Track *tracks_next();
 
 private:
-  int camera;
   int number;
   double time;
   IplImage *image;

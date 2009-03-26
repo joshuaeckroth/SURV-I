@@ -3,11 +3,12 @@
 #include <QDebug>
 
 #include "tracksreader.h"
-#include "frame.h"
+#include "detection.h"
+#include "track.h"
 #include "noise.h"
+#include "frame.h"
 
 TracksReader::TracksReader()
-  : curFrame(NULL)
 { }
 
 bool TracksReader::startElement(const QString&, const QString&,
@@ -15,24 +16,45 @@ bool TracksReader::startElement(const QString&, const QString&,
 {
   if(qName == "Frame")
     {
-      frameCamera = attributes.value("camera").toInt();
-      frameNumber = attributes.value("number").toInt();
-      frameTime = attributes.value("time").toDouble();
+      int frameNumber = attributes.value("number").toInt();
+      double frameTime = attributes.value("time").toDouble();
 
-      //curFrame = frames->findFrame(frameCamera, frameTime);
+      curFrame = new Frame(frameNumber, frameTime);
     }
   else if(qName == "Noise")
     {
       int id = attributes.value("id").toInt();
+      int camera = attributes.value("camera").toInt();
       double area = attributes.value("area").toDouble();
       int cx = attributes.value("cx").toInt();
       int cy = attributes.value("cy").toInt();
 
-      //curFrame->addNoise(new Noise(id, area, cx, cy));
+      curFrame->addNoise(new Noise(id, camera, area, cx, cy));
     }
   else if(qName == "Track")
     {
+      int id = attributes.value("id").toInt();
+      double cx = attributes.value("cx").toDouble();
+      double cy = attributes.value("cy").toDouble();
+      double ocx = attributes.value("ocx").toDouble();
+      double ocy = attributes.value("ocy").toDouble();
+      int prevId = attributes.value("prevID").toInt();
+      int nextId = attributes.value("nextID").toInt();
+      double ecx = attributes.value("ecx").toDouble();
+      double ecy = attributes.value("ecy").toDouble();
+      double radius = attributes.value("radius").toDouble();
 
+      curFrame->addTrack(new Track(id, cx, cy, ocx, ocy, prevId, nextId, ecx, ecy, radius));
+    }
+  else if(qName == "Detection")
+    {
+      int id = attributes.value("id").toInt();
+      int camera = attributes.value("camera").toInt();
+      double area = attributes.value("area").toDouble();
+      int cx = attributes.value("cx").toInt();
+      int cy = attributes.value("cy").toInt();
+
+      curFrame->addDetection(new Detection(id, camera, area, cx, cy));
     }
   else if(qName == "FrameLog")
     {
@@ -63,4 +85,9 @@ bool TracksReader::fatalError(const QXmlParseException& exception)
 QString TracksReader::errorString() const
 {
   return errorStr;
+}
+
+Frame* TracksReader::getFrame() const
+{
+  return curFrame;
 }

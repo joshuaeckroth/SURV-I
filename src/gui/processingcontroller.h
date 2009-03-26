@@ -15,7 +15,9 @@ class ProcessingController : public QObject
 public:
   ProcessingController(RenderArea* r, int n);
   bool isProcessing();
-  double getCalculatedFPS();
+  double getCalculatedFPS() const;
+  int getFrameNumber() const;
+  double getFrameTime() const;
   void numCamerasChanged(int n);
 
 public slots:
@@ -24,12 +26,14 @@ public slots:
 
 private slots:
   void newDetections(QString, int, Frame*);
-  void newTracks(QString);
+  void newTracks();
 
 private:
   Frame** frames;
-  QString* detections;
+  Frame* curFrame;
+  int curFrameNumber;
   int numCameras;
+  QString* detections;
   RenderArea* renderer;
   CaptureThread::FrameSize frameSize;
   CaptureThread* captureThread[10];

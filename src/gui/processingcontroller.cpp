@@ -1,6 +1,8 @@
 
 #include <QDebug>
 
+#include <iostream>
+
 #include "processingcontroller.h"
 #include "renderarea.h"
 #include "decoder.h"
@@ -8,7 +10,7 @@
 #include "frame.h"
 
 ProcessingController::ProcessingController(RenderArea* r, int n)
-  : numCameras(n), renderer(r)
+  : curFrame(NULL), curFrameNumber(1), numCameras(n), renderer(r)
 {
   frames = new Frame*[numCameras];
   detections = new QString[numCameras];
@@ -39,7 +41,7 @@ void ProcessingController::init()
 	{
 	  connect(captureThread[i], SIGNAL(newDetections(QString, int, Frame*)),
 		  this, SLOT(newDetections(QString, int, Frame*)));
-	  connect(abducerThread, SIGNAL(newTracks(QString)), this, SLOT(newTracks(QString)));
+	  connect(abducerThread, SIGNAL(newTracks()), this, SLOT(newTracks()));
 	  abducerThread->start();
 	}
     }
@@ -75,7 +77,7 @@ void ProcessingController::stopProcessing()
     }
 }
 
-double ProcessingController::getCalculatedFPS()
+double ProcessingController::getCalculatedFPS() const
 {
   double fps = 0.0;
   for(int i = 0; i < numCameras; i++)
@@ -83,6 +85,22 @@ double ProcessingController::getCalculatedFPS()
       fps += captureThread[i]->getCalculatedFPS();
     }
   return (fps / (double)numCameras);
+}
+
+int ProcessingController::getFrameNumber() const
+{
+  if(curFrame != NULL)
+    return curFrame->getNumber();
+  else
+    return -1;
+}
+
+double ProcessingController::getFrameTime() const
+{
+  if(curFrame != NULL)
+    return curFrame->getTime();
+  else
+    return -1.0;
 }
 
 void ProcessingController::numCamerasChanged(int n)
@@ -104,20 +122,10 @@ void ProcessingController::numCamerasChanged(int n)
 
 void ProcessingController::newDetections(QString ds, int camera, Frame* f)
 {
-  detections[camera] = ds;
-
-  // delete old frame
-  if(frames[camera] != NULL)
-    delete frames[camera];
-
-  frames[camera] = f;
-
-  qDebug() << "decoder found new detections: " << detections[camera];
-
   bool allDetected = true;
   for(int i = 0; i < numCameras; i++)
     {
-      if(detections[camera].isEmpty())
+      if(frames[i] == NULL || frames[i]->getNumber() < curFrameNumber)
 	allDetected = false;
     }
 
@@ -125,8 +133,6 @@ void ProcessingController::newDetections(QString ds, int camera, Frame* f)
   // then give these detections to the abducer thread
   if(allDetected)
     {
-      qDebug() << "All detections found; sending to abducer.";
-
       // build collected detections string
       // get frame info from a single frame (they should all have same info)
       QString allDetections;
@@ -137,23 +143,48 @@ void ProcessingController::newDetections(QString ds, int camera, Frame* f)
       for(int i = 0; i < numCameras; i++)
 	{
 	  stream << detections[i];
-
-	  // clear detection
 	  detections[i].clear();
 	}
 
       stream << "</Frame>";
 
-      qDebug() << "what is sent to abducer: " << allDetections;
-
+      qDebug() << "Sending to abducer" << allDetections;
+      
       abducerThread->newDetections(allDetections);
-    } 
+
+      curFrame = frames[0]; // update current frame
+      curFrameNumber++;
+
+      // stop grabbing frames until the abducer returns
+      //for(int i = 0; i < numCameras; i++)
+      //captureThread[i]->stopCapture();
+    }
+  else
+    {
+      detections[camera] = ds;
+      if(frames[camera] != NULL)
+	delete frames[camera];
+      frames[camera] = f;
+    }
 }
 
-void ProcessingController::newTracks(QString tracks)
+void ProcessingController::newTracks()
 {
-  qDebug() << "abducer returned new tracks: " << tracks;
-
   qDebug() << "Showing frames in GUI.";
   renderer->showFrames(frames);
+
+  for(int i = 0; i < numCameras; i++)
+    {
+      //delete frames[i];
+      //frames[i] = NULL;
+
+      // start capturing again
+      //if(!captureThread[i]->hasError())
+      //{
+      //  captureThread[i]->startCapture();
+      //  captureThread[i]->start(QThread::IdlePriority);
+      //}
+      //else
+      //qDebug() << "capture thread for camera " << QString::number(i) << " has an error";
+    }
 }

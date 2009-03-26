@@ -47,10 +47,13 @@ void CaptureThread::run()
       image = cvQueryFrame(capture);
       if(image)
 	{
+	  frameLock.lock();
 	  frameNum++;
 	  frameTime = frameNum / fps;
-	  frame = new Frame(camera, frameNum, frameTime);
+	  frame = new Frame(frameNum, frameTime);
 	  frame->setImage(image);
+	  frameLock.unlock();
+
 	  detections = decoder->decodeFrame(frame);
 	  emit newDetections(detections, camera, frame);
 	}
@@ -60,6 +63,8 @@ void CaptureThread::run()
 
 void CaptureThread::updateFPS(int time)
 {
+  frameLock.lock();
+
   frameTimes.enqueue(time);
   if(frameTimes.size() > 15)
     {
@@ -73,6 +78,7 @@ void CaptureThread::updateFPS(int time)
     {
       calculatedFps = 0;
     }
+  frameLock.unlock();
 }
 
 bool CaptureThread::startCapture()
