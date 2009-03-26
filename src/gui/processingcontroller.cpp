@@ -41,7 +41,7 @@ void ProcessingController::init()
 	{
 	  connect(captureThread[i], SIGNAL(newDetections(QString, int, Frame*)),
 		  this, SLOT(newDetections(QString, int, Frame*)));
-	  connect(abducerThread, SIGNAL(newTracks()), this, SLOT(newTracks()));
+	  connect(abducerThread, SIGNAL(newTracks(Frame*)), this, SLOT(newTracks(Frame*)));
 	  abducerThread->start();
 	}
     }
@@ -168,10 +168,10 @@ void ProcessingController::newDetections(QString ds, int camera, Frame* f)
     }
 }
 
-void ProcessingController::newTracks()
+void ProcessingController::newTracks(Frame* f)
 {
-  qDebug() << "Showing frames in GUI.";
-  renderer->showFrames(frames);
+  qDebug() << "Showing frame in GUI.";
+  renderer->showFrames(frames, f);
 
   for(int i = 0; i < numCameras; i++)
     {

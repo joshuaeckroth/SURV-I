@@ -77,7 +77,7 @@ void AbducerThread::readyTracks()
     reader->parseContinue();
   */
 
-  emit newTracks();
+  emit newTracks(handler->getFrame());
 }
 
 void AbducerThread::abducerStarted()

@@ -11,3 +11,29 @@ void Noise::setFrame(Frame *f)
   frame = f;
 }
 
+int Noise::getId() const
+{
+  return id;
+}
+
+int Noise::getCamera() const
+{
+  return camera;
+}
+
+double Noise::getArea() const
+{
+  return area;
+}
+
+double Noise::getCx() const
+{
+  return cx;
+}
+
+double Noise::getCy() const
+{
+  return cy;
+}
+
+

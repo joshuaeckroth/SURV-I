@@ -1,12 +1,17 @@
 
 #include <QPainter>
 #include <QTime>
+#include <QDebug>
+#include <QPen>
 
 #include "renderarea.h"
 #include "frame.h"
+#include "detection.h"
+#include "noise.h"
+#include "track.h"
 
 RenderArea::RenderArea(QWidget* parent)
-  : QWidget(parent), clear(true)
+  : QWidget(parent), clear(true), entities(NULL)
 {
   for(int i = 0; i < 10; i++)
     {
@@ -34,13 +39,16 @@ void RenderArea::onFrameSizeChanged(int width, int height, int camera)
   imageHeight[camera] = height;
 }
 
-void RenderArea::showFrames(Frame** frames)
+void RenderArea::showFrames(Frame** frames, Frame* f)
 {
+  entities = f;
+
   clear = false;
   for(int i = 0; i < numCameras; i++)
     {
       updatePixmap(frames[i]->getImage(), i);
     }
+
   update();
 }
 
@@ -92,6 +100,8 @@ void RenderArea::updatePixmap(const IplImage* frame, int camera)
 void RenderArea::paintEvent(QPaintEvent*)
 {
   QPainter painter(this);
+  painter.setRenderHint(QPainter::Antialiasing);
+
   bool hasAllFrames = true;
   for(int i = 0; i < numCameras; i++)
     {
@@ -117,6 +127,41 @@ void RenderArea::paintEvent(QPaintEvent*)
 				 QPoint(i * eachWidth + eachWidth, heightTop - 1)));
 	  painter.drawRect(QRect(QPoint(i * eachWidth, height() - heightTop),
 				 QPoint(i * eachWidth + eachWidth, height())));
+	}
+
+      QPen pen;
+
+      pen.setColor(Qt::blue);
+      pen.setWidth(3);
+      painter.setPen(pen);
+
+      entities->detections_begin();
+      while(!entities->detections_end())
+	{
+	  Detection* d = entities->detections_next();
+	  painter.drawArc(d->getCx(), d->getCy(), 20, 20, 0, 5760);
+	}
+
+
+      pen.setColor(Qt::black);
+      painter.setPen(pen);
+
+      entities->noise_begin();
+      while(!entities->noise_end())
+	{
+	  Noise* n = entities->noise_next();
+	  painter.drawArc(n->getCx(), n->getCy(), 20, 20, 0, 5760);
+	}
+
+
+      pen.setColor(Qt::green);
+      painter.setPen(pen);
+
+      entities->tracks_begin();
+      while(!entities->tracks_end())
+	{
+	  Track* t = entities->tracks_next();
+	  painter.drawArc(t->getCx(), t->getCy(), 20, 20, 0, 5760);
 	}
     }
   else

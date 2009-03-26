@@ -26,8 +26,8 @@ bool TracksReader::startElement(const QString&, const QString&,
       int id = attributes.value("id").toInt();
       int camera = attributes.value("camera").toInt();
       double area = attributes.value("area").toDouble();
-      int cx = attributes.value("cx").toInt();
-      int cy = attributes.value("cy").toInt();
+      int cx = attributes.value("cx").toDouble();
+      int cy = attributes.value("cy").toDouble();
 
       curFrame->addNoise(new Noise(id, camera, area, cx, cy));
     }
@@ -51,8 +51,8 @@ bool TracksReader::startElement(const QString&, const QString&,
       int id = attributes.value("id").toInt();
       int camera = attributes.value("camera").toInt();
       double area = attributes.value("area").toDouble();
-      int cx = attributes.value("cx").toInt();
-      int cy = attributes.value("cy").toInt();
+      int cx = attributes.value("cx").toDouble();
+      int cy = attributes.value("cy").toDouble();
 
       curFrame->addDetection(new Detection(id, camera, area, cx, cy));
     }

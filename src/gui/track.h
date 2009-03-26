@@ -9,6 +9,9 @@ public:
   Track(int i, double x, double y, double ox, double oy,
 	int p, int n, double ex, double ey, double r);
   void setFrame(Frame *f);
+  int getId() const;
+  double getCx() const;
+  double getCy() const;
 
 private:
   int id;

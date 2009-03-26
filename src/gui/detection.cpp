@@ -10,3 +10,29 @@ void Detection::setFrame(Frame *f)
 {
   frame = f;
 }
+
+int Detection::getId() const
+{
+  return id;
+}
+
+int Detection::getCamera() const
+{
+  return camera;
+}
+
+double Detection::getArea() const
+{
+  return area;
+}
+
+double Detection::getCx() const
+{
+  return cx;
+}
+
+double Detection::getCy() const
+{
+  return cy;
+}
+

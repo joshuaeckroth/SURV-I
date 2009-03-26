@@ -26,7 +26,7 @@ public slots:
 
 private slots:
   void newDetections(QString, int, Frame*);
-  void newTracks();
+  void newTracks(Frame*);
 
 private:
   Frame** frames;

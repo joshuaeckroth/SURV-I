@@ -12,3 +12,19 @@ void Track::setFrame(Frame *f)
 {
   frame = f;
 }
+
+int Track::getId() const
+{
+  return id;
+}
+
+double Track::getCx() const
+{
+  return cx;
+}
+
+double Track::getCy() const
+{
+  return cy;
+}
+

@@ -9,6 +9,7 @@
 class TracksReader;
 class QXmlSimpleReader;
 class QXmlInputSource;
+class Frame;
 
 class AbducerThread : public QThread
 {
@@ -20,7 +21,7 @@ public:
   void newDetections(QString d);
 
 signals:
-  void newTracks();
+  void newTracks(Frame*);
 
 private slots:
   void readyTracks();
