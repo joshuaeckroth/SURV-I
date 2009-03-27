@@ -7,6 +7,8 @@
 #include <QPair>
 #include <QImage>
 
+#include <cmath>
+
 #include "renderarea.h"
 #include "frame.h"
 #include "detection.h"
@@ -154,12 +156,42 @@ void RenderArea::paintEvent(QPaintEvent*)
       if(entities != NULL)
 	{
 	  int scaledX, scaledY;
+	  int radius;
 
-	  QPen pen;
-	  
-	  pen.setColor(Qt::blue);
-	  pen.setWidth(3);
-	  painter.setPen(pen);
+	  QPen detectionPen;
+	  detectionPen.setColor(Qt::blue);
+	  detectionPen.setWidth(2);
+
+	  QPen noisePen;
+	  noisePen.setColor(Qt::black);
+	  noisePen.setWidth(2);
+
+	  QPen trackHeadPen;
+	  trackHeadPen.setColor(Qt::green);
+	  trackHeadPen.setWidth(2);
+
+	  QPen trackTextPen;
+	  trackTextPen.setColor(Qt::green);
+
+	  QPen trackPathPen;
+	  trackPathPen.setColor(Qt::green);
+	  trackPathPen.setWidth(2);
+
+	  QPen trackExpectedPathPen;
+	  trackExpectedPathPen.setColor(Qt::red);
+	  trackExpectedPathPen.setWidth(2);
+	  trackExpectedPathPen.setStyle(Qt::DotLine);
+
+	  QPen trackExpectedCirclePen;
+	  trackExpectedCirclePen.setColor(Qt::red);
+	  trackExpectedCirclePen.setWidth(2);
+	  trackExpectedCirclePen.setStyle(Qt::DotLine);
+
+	  QPen trackMapPen;
+	  trackMapPen.setColor(Qt::green);
+	  trackMapPen.setWidth(2);
+
+	  painter.setPen(detectionPen);
 	  
 	  entities->detections_begin();
 	  while(!entities->detections_end())
@@ -173,12 +205,13 @@ void RenderArea::paintEvent(QPaintEvent*)
 	      scaledX = p.first * scaleFactor[camera];
 	      scaledY = p.second * scaleFactor[camera];
 
-	      painter.drawArc(camera * eachWidth + scaledX, scaledY, 20, 20, 0, 5760);
+	      radius = std::sqrt(d->getArea()) * scaleFactor[camera];
+
+	      painter.drawArc(camera * eachWidth + scaledX, scaledY, radius, radius, 0, 5760);
 	    }
+
 	  
-	  
-	  pen.setColor(Qt::black);
-	  painter.setPen(pen);
+	  painter.setPen(noisePen);
 	  
 	  entities->noise_begin();
 	  while(!entities->noise_end())
@@ -192,12 +225,11 @@ void RenderArea::paintEvent(QPaintEvent*)
 	      scaledX = p.first * scaleFactor[camera];
 	      scaledY = p.second * scaleFactor[camera];
 
-	      painter.drawArc(camera * eachWidth + scaledX, scaledY, 20, 20, 0, 5760);
+	      radius = std::sqrt(n->getArea()) * scaleFactor[camera];
+
+	      painter.drawArc(camera * eachWidth + scaledX, scaledY, radius, radius, 0, 5760);
 	    }
 	  
-	  
-	  pen.setColor(Qt::green);
-	  painter.setPen(pen);
 	  
 	  entities->tracks_begin();
 	  while(!entities->tracks_end())
@@ -215,12 +247,22 @@ void RenderArea::paintEvent(QPaintEvent*)
 		      scaledY = c.second * scaleFactor[i];
 
 		      if(t->getThisFrame())
-			painter.drawArc(i * eachWidth + scaledX, scaledY, 20, 20, 0, 5760);
-
+			{
+			  // draw an X
+			  painter.setPen(trackHeadPen);
+	  
+			  painter.drawLine((i * eachWidth + scaledX) - 5, scaledY - 5,
+					   (i * eachWidth + scaledX) + 5, scaledY + 5);
+			  painter.drawLine((i * eachWidth + scaledX) - 5, scaledY + 5,
+					   (i * eachWidth + scaledX) + 5, scaledY - 5);
+			}
 		    }
 		  
 		  // draw line to previous track point (on the camera view)
 		  QPair<int,int> o = CameraModel::warpToImage(i, QPair<double,double>(t->getOcx(), t->getOcy()));
+
+		  // and expected point
+		  QPair<int,int> e = CameraModel::warpToImage(i, QPair<double,double>(t->getEcx(), t->getEcy()));
 
 		  // either the center point or old point need to be in-view
 		  if((c.first >= 0 && c.first <= imageWidth[i]
@@ -236,32 +278,60 @@ void RenderArea::paintEvent(QPaintEvent*)
 		      if(o.first < 0) o.first = 0;
 		      if(o.first > imageWidth[i]) o.first = imageWidth[i];
 		      if(o.second < 0) o.second = 0;
-		      if(o.second > imageWidth[i]) o.second = imageWidth[i];
+		      if(o.second > imageHeight[i]) o.second = imageHeight[i];
+		      if(e.first < 0) e.first = 0;
+		      if(e.first > imageWidth[i]) e.first = imageWidth[i];
+		      if(e.second < 0) e.second = 0;
+		      if(e.second > imageHeight[i]) e.second = imageHeight[i];
 
 		      // scale the points
 		      int scaledCx = c.first * scaleFactor[i];
 		      int scaledCy = c.second * scaleFactor[i];
 		      int scaledOx = o.first * scaleFactor[i];
 		      int scaledOy = o.second * scaleFactor[i];
+		      int scaledEx = e.first * scaleFactor[i];
+		      int scaledEy = e.second * scaleFactor[i];
 
 		      // draw the line
+		      painter.setPen(trackPathPen);
+
 		      painter.drawLine(i * eachWidth + scaledCx, scaledCy,
 				       i * eachWidth + scaledOx, scaledOy);
+
+		      // draw expected line
+		      painter.setPen(trackExpectedPathPen);
+
+		      painter.drawLine(i * eachWidth + scaledCx, scaledCy,
+				       i * eachWidth + scaledEx, scaledEy);
+
+		      // draw expected circle
+		      painter.setPen(trackExpectedCirclePen);
+
+		      painter.drawArc(i * eachWidth + scaledEx, scaledEy,
+				      t->getRadius() * scaleFactor[i], t->getRadius() * scaleFactor[i],
+				      0, 5760);
+
+		      // draw track id
+		      painter.setPen(trackTextPen);
+
+		      painter.drawText(i * eachWidth + scaledCx + 7, scaledCy - 7, QString::number(t->getId()));
 		    }
 		      
 		}
 
 	      // draw on map
+	      painter.setPen(trackMapPen);
+
 	      QPair<int,int> c = CameraModel::warpToMap(QPair<double,double>(t->getCx(), t->getCy()));
 	      if(c.first >= mapTopLeftX && c.first <= mapBottomRightX
 		 && c.second >= mapTopLeftY && c.second <= mapBottomRightY)
 		{
-		  painter.drawArc(c.first - mapTopLeftX, maxHeight + c.second - mapTopLeftY, 20, 20, 0, 5760);
+		  painter.drawArc(c.first - mapTopLeftX, maxHeight + c.second - mapTopLeftY, 2, 2, 0, 5760);
 		}
 
 	      // draw line to previous track point (on the map)
 	      QPair<int,int> o = CameraModel::warpToMap(QPair<double,double>(t->getOcx(), t->getOcy()));
-	      
+
 	      // either the center point or old point need to be in-view
 	      if((c.first >= mapTopLeftX && c.first <= mapBottomRightX
 		  && c.second >= mapTopLeftY && c.second <= mapBottomRightY)

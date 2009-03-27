@@ -23,7 +23,7 @@ processFrame (Right frame) ws = do let world    = runAbducer frame ws
                                    frameFile <- openFile ("tracks/frame-" ++ (show $ frameProp frameNumber frame) ++ ".xml") WriteMode
                                    hPutStrLn frameFile log
                                    hClose frameFile
-                                   putStrLn "Track file written."
+                                   putStrLn ("Track file written for frame " ++ (show $ frameProp frameNumber frame))
                                    frame <- getFrame
                                    processFrame frame ws'
 

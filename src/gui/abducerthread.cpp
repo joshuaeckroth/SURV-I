@@ -61,7 +61,7 @@ void AbducerThread::newDetections(QString d)
 
 void AbducerThread::readyTracks()
 {
-  QFile tracks(QString("tracks/frame-") + QString::number(frameNum) + QString(".xml"));
+  QFile tracks(QString("tracks/frame-") + QString::number(frameNum + 1) + QString(".xml"));
   if(tracks.exists())
     {
       QXmlInputSource* source = new QXmlInputSource(&tracks);

@@ -203,11 +203,11 @@ scoreTrack frame tid tm l = level
                       delta                     = detDelta det det'
 
                       level'
-                         | duration > 1.0 || expectedDist < 10.0 = Highest
-                         | delta < 0.4 && (duration > 0.6 || expectedDist < 20.0) = VeryHigh
-                         | delta < 0.4 && expectedDist < 30.0 = High
+                         | duration > 1.0 || expectedDist < 5.0 = Highest
+                         | delta < 0.4 && (duration > 0.6 || expectedDist < 10.0) = VeryHigh
+                         | delta < 0.4 && expectedDist < 20.0 = High
                          | delta < 0.4 = SlightlyHigh
-                         | expectedDist < 100.0 = Medium
+                         | expectedDist < 50.0 = Medium
                          | otherwise    = Lowest
 
 -- | Find all detections that \'intersect\' the given tracks
@@ -440,12 +440,12 @@ trackDuration (Track det _ _ (Just ptid)) tm = (frameProp frameTime $ detProp de
 -- Speed of track with most recent detection acq and second most recent detection det\' =
 -- (detDist det det\') (detDelta det det\')
 --
--- The maximum possible speed is 100 (forced limitation)
+-- The maximum possible speed is 40 (forced limitation)
 trackSpeed :: Track
            -> TrackMap
            -> Double
 trackSpeed (Track det _ _ Nothing)     _  = 0.0
-trackSpeed (Track det _ _ (Just ptid)) tm = min 100 $ (detDist det det') / (detDelta det det')
+trackSpeed (Track det _ _ (Just ptid)) tm = min 40 $ (detDist det det') / (detDelta det det')
     where
       (Track det' _ _ _) = getItemFromMap tm ptid
 
@@ -496,9 +496,9 @@ trackExpectedLocation frame track@(Track det _ _ (Just ptid)) tm = (cx3, cy3)
 
 trackRadius :: (Double, Double) -> Track -> TrackMap -> Double
 trackRadius (ecx, ecy) track@(Track det _ _ _) tm
-    | speed == 0.0 = 75.0
-    | speed < 50.0 = min (3 * expDist) $ 3 * speed
-    | otherwise    = min (3 * expDist) $ 150.0
+    | speed == 0.0 = 30.0
+    | speed < 10.0 = min (3 * expDist) $ 3 * speed
+    | otherwise    = min (3 * expDist) $ 50.0
     where
       speed    = trackSpeed track tm
       (cx,cy)  = (detProp detCx det, detProp detCy det)

@@ -43,7 +43,7 @@ showNoise :: [NoiseID] -> NoiseMap -> DetectionMap -> [String]
 showNoise []     _         _       = []
 showNoise (n:ns) nm dm =
     ["Noise " ++ (show n) ++
-     " [acquisition: " ++ (show did) ++ ", " ++
+     " [detection: " ++ (show did) ++ ", " ++
      "score: " ++ (show $ scoreNoise n did dm Medium) ++ "]"]
     ++ showNoise ns nm dm
     where
