@@ -34,6 +34,7 @@ private:
   QImage map;
   uchar* imageData[10];
   int imageWidth[10], imageHeight[10];
+  double scaleFactor[10];
   int time;
   int framesShown;
   int numCameras;

@@ -28,6 +28,41 @@ double Track::getCy() const
   return cy;
 }
 
+double Track::getOcx() const
+{
+  return ocx;
+}
+
+double Track::getOcy() const
+{
+  return ocy;
+}
+
+int Track::getPrevId() const
+{
+  return prevId;
+}
+
+int Track::getNextId() const
+{
+  return nextId;
+}
+
+double Track::getEcx() const
+{
+  return ecx;
+}
+
+double Track::getEcy() const
+{
+  return ecy;
+}
+
+double Track::getRadius() const
+{
+  return radius;
+}
+
 bool Track::getThisFrame() const
 {
   return thisFrame;

@@ -100,8 +100,6 @@ QString Decoder::findBlobs()
   CvRect rect;
   double area;
   int cx, cy;
-  CvMat *pmat = cvCreateMat(3, 1, CV_32FC1);
-  CvMat *rmat = cvCreateMat(3, 1, CV_32FC1);
   for(int claster_cur = 0; claster_cur < claster_num; ++claster_cur)
     {
       for(int cnt_cur = 0; cnt_cur < clasters->total; ++cnt_cur)

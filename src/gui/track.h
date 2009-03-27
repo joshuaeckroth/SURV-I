@@ -12,6 +12,13 @@ public:
   int getId() const;
   double getCx() const;
   double getCy() const;
+  double getOcx() const;
+  double getOcy() const;
+  int getPrevId() const;
+  int getNextId() const;
+  double getEcx() const;
+  double getEcy() const;
+  double getRadius() const;
   bool getThisFrame() const;
 
 private:

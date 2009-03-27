@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<opencv_storage>
+<map-warp type_id="opencv-matrix">
+  <rows>3</rows>
+  <cols>3</cols>
+  <dt>f</dt>
+  <data>
+    1.643836 0.0 -1400.547974
+    0.0 2.432432 -1272.162109
+    0.0 0.0 1.0
+  </data>
+</map-warp>
+</opencv_storage>

@@ -14,14 +14,14 @@ if( argc == 2 && ((src=cvLoadImage(argv[1],1)) != 0 )) {
   dst->origin = src->origin;
   cvZero(dst);
 
-  srcQuad[0].x = 232;
-  srcQuad[0].y = 267;
-  srcQuad[1].x = 397;
-  srcQuad[1].y = 209;
-  srcQuad[2].x = 167;
-  srcQuad[2].y = 167;
-  srcQuad[3].x = 6;
-  srcQuad[3].y = 206;
+  srcQuad[0].x = 852;
+  srcQuad[0].y = 523;
+  srcQuad[1].x = 852;
+  srcQuad[1].y = 560;
+  srcQuad[2].x = 925;
+  srcQuad[2].y = 560;
+  srcQuad[3].x = 925;
+  srcQuad[3].y = 523;
 
   dstQuad[0].x = 0;
   dstQuad[0].y = 0;

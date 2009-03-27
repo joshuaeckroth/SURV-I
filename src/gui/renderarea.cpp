@@ -22,6 +22,7 @@ RenderArea::RenderArea(QWidget* parent)
       imageData[i] = 0;
       imageWidth[i] = 0;
       imageHeight[i] = 0;
+      scaleFactor[i] = 1.0;
     }
   setAttribute(Qt::WA_OpaquePaintEvent, true);
   setAttribute(Qt::WA_PaintOnScreen, true);
@@ -129,6 +130,8 @@ void RenderArea::paintEvent(QPaintEvent*)
 	{
 	  QImage tImg(imageData[i], imageWidth[i], imageHeight[i], QImage::Format_RGB32);
 	  QImage sImg = tImg.scaledToWidth(eachWidth, Qt::SmoothTransformation);
+	  scaleFactor[i] = static_cast<double>(eachWidth) / static_cast<double>(imageWidth[i]);
+
 	  painter.drawImage(QPoint(i * eachWidth, 0), sImg);
 
 	  for(int i = 0; i < numCameras; i++)
@@ -142,12 +145,16 @@ void RenderArea::paintEvent(QPaintEvent*)
       QPoint mapcenter = QPoint(857, 577);
       int cropHeight = height() - maxHeight;
       int cropWidth = width();
-      painter.drawImage(0, maxHeight, map,
-			mapcenter.x() - (cropWidth / 2), mapcenter.y() - (cropHeight / 2), // top left of map
-			cropWidth, cropHeight); // size of map
+      int mapTopLeftX = mapcenter.x() - (cropWidth / 2);
+      int mapTopLeftY = mapcenter.y() - (cropHeight / 2);
+      int mapBottomRightX = mapTopLeftX + cropWidth; // used to determine if warpToMap coordinates are in view
+      int mapBottomRightY = mapTopLeftY + cropHeight;
+      painter.drawImage(0, maxHeight, map, mapTopLeftX, mapTopLeftY, cropWidth, cropHeight);
 
       if(entities != NULL)
 	{
+	  int scaledX, scaledY;
+
 	  QPen pen;
 	  
 	  pen.setColor(Qt::blue);
@@ -159,8 +166,14 @@ void RenderArea::paintEvent(QPaintEvent*)
 	    {
 	      Detection* d = entities->detections_next();
 	      int camera = d->getCamera();
+
+	      // draw on camera image
 	      QPair<int,int> p = CameraModel::warpToImage(camera, QPair<double,double>(d->getCx(), d->getCy()));
-	      painter.drawArc(camera * eachWidth + p.first, p.second, 20, 20, 0, 5760);
+
+	      scaledX = p.first * scaleFactor[camera];
+	      scaledY = p.second * scaleFactor[camera];
+
+	      painter.drawArc(camera * eachWidth + scaledX, scaledY, 20, 20, 0, 5760);
 	    }
 	  
 	  
@@ -172,8 +185,14 @@ void RenderArea::paintEvent(QPaintEvent*)
 	    {
 	      Noise* n = entities->noise_next();
 	      int camera = n->getCamera();
+
+	      // draw on camera image
 	      QPair<int,int> p = CameraModel::warpToImage(camera, QPair<double,double>(n->getCx(), n->getCy()));
-	      painter.drawArc(camera * eachWidth + p.first, p.second, 20, 20, 0, 5760);
+
+	      scaledX = p.first * scaleFactor[camera];
+	      scaledY = p.second * scaleFactor[camera];
+
+	      painter.drawArc(camera * eachWidth + scaledX, scaledY, 20, 20, 0, 5760);
 	    }
 	  
 	  
@@ -184,12 +203,84 @@ void RenderArea::paintEvent(QPaintEvent*)
 	  while(!entities->tracks_end())
 	    {
 	      Track* t = entities->tracks_next();
-	      // show the track on all cameras
+
+	      // draw the track on all cameras (if within camera view)
 	      for(int i = 0; i < numCameras; i++)
 		{
-		  QPair<int,int> p = CameraModel::warpToImage(i, QPair<double,double>(t->getCx(), t->getCy()));
-		  if(t->getThisFrame())
-		    painter.drawArc(i * eachWidth + p.first, p.second, 20, 20, 0, 5760);
+		  QPair<int,int> c = CameraModel::warpToImage(i, QPair<double,double>(t->getCx(), t->getCy()));
+		  if(c.first >= 0 && c.first <= imageWidth[i]
+		     && c.second >= 0 && c.second <= imageHeight[i])
+		    {
+		      scaledX = c.first * scaleFactor[i];
+		      scaledY = c.second * scaleFactor[i];
+
+		      if(t->getThisFrame())
+			painter.drawArc(i * eachWidth + scaledX, scaledY, 20, 20, 0, 5760);
+
+		    }
+		  
+		  // draw line to previous track point (on the camera view)
+		  QPair<int,int> o = CameraModel::warpToImage(i, QPair<double,double>(t->getOcx(), t->getOcy()));
+
+		  // either the center point or old point need to be in-view
+		  if((c.first >= 0 && c.first <= imageWidth[i]
+		      && c.second >= 0 && c.second <= imageHeight[i])
+		     || (o.first >= 0 && o.first <= imageWidth[i]
+			 && o.second >= 0 && o.second <= imageHeight[i]))
+		    {
+		      // don't draw onto other camera views
+		      if(c.first < 0) c.first = 0;
+		      if(c.first > imageWidth[i]) c.first = imageWidth[i];
+		      if(c.second < 0) c.second = 0;
+		      if(c.second > imageHeight[i]) c.second = imageHeight[i];
+		      if(o.first < 0) o.first = 0;
+		      if(o.first > imageWidth[i]) o.first = imageWidth[i];
+		      if(o.second < 0) o.second = 0;
+		      if(o.second > imageWidth[i]) o.second = imageWidth[i];
+
+		      // scale the points
+		      int scaledCx = c.first * scaleFactor[i];
+		      int scaledCy = c.second * scaleFactor[i];
+		      int scaledOx = o.first * scaleFactor[i];
+		      int scaledOy = o.second * scaleFactor[i];
+
+		      // draw the line
+		      painter.drawLine(i * eachWidth + scaledCx, scaledCy,
+				       i * eachWidth + scaledOx, scaledOy);
+		    }
+		      
+		}
+
+	      // draw on map
+	      QPair<int,int> c = CameraModel::warpToMap(QPair<double,double>(t->getCx(), t->getCy()));
+	      if(c.first >= mapTopLeftX && c.first <= mapBottomRightX
+		 && c.second >= mapTopLeftY && c.second <= mapBottomRightY)
+		{
+		  painter.drawArc(c.first - mapTopLeftX, maxHeight + c.second - mapTopLeftY, 20, 20, 0, 5760);
+		}
+
+	      // draw line to previous track point (on the map)
+	      QPair<int,int> o = CameraModel::warpToMap(QPair<double,double>(t->getOcx(), t->getOcy()));
+	      
+	      // either the center point or old point need to be in-view
+	      if((c.first >= mapTopLeftX && c.first <= mapBottomRightX
+		  && c.second >= mapTopLeftY && c.second <= mapBottomRightY)
+		 || (o.first >= mapTopLeftX && o.first <= mapBottomRightX
+		     && o.second >= mapTopLeftY && o.second <= mapBottomRightY))
+		{
+		  // don't draw onto other camera views
+		  if(c.first < mapTopLeftX) c.first = mapTopLeftX;
+		  if(c.first > mapBottomRightX) c.first = mapBottomRightX;
+		  if(c.second < mapTopLeftY) c.second = mapTopLeftY;
+		  if(c.second > mapBottomRightY) c.second = mapBottomRightY;
+		  if(o.first < mapTopLeftX) o.first = mapTopLeftX;
+		  if(o.first > mapBottomRightX) o.first = mapBottomRightX;
+		  if(o.second < mapTopLeftY) o.second = mapTopLeftY;
+		  if(o.second > mapBottomRightX) o.second = mapBottomRightX;
+		  
+		  // draw the line
+		  painter.drawLine(c.first - mapTopLeftX, maxHeight + c.second - mapTopLeftY,
+				   o.first - mapTopLeftX, maxHeight + o.second - mapTopLeftY);
 		}
 	    }
 	}
