@@ -1,5 +1,7 @@
 
 #include <QDebug>
+#include <QMap>
+#include <QPair>
 
 #include <iostream>
 
@@ -8,20 +10,13 @@
 #include "decoder.h"
 #include "abducerthread.h"
 #include "frame.h"
+#include "cameramodel.h"
 
 ProcessingController::ProcessingController(RenderArea* r, int n)
   : curFrame(NULL), curFrameNumber(1), numCameras(n), renderer(r)
 {
-  frames = new Frame*[numCameras];
-  detections = new QString[numCameras];
-
-  for(int i = 0; i < numCameras; i++)
-    {
-      frames[i] = NULL;
-      detections[i] = QString();
-    }
-
   renderer->setNumCameras(numCameras);
+  CameraModel::setNumCameras(numCameras);
   init();
 }
 
@@ -122,10 +117,30 @@ void ProcessingController::numCamerasChanged(int n)
 
 void ProcessingController::newDetections(QString ds, int camera, Frame* f)
 {
+  // if already some detections for this frame
+  if(detections.contains(f->getNumber()))
+    {
+      // add this camera's detections for this frame
+      QPair<Frame*, QString> pair(f, ds);
+      QMap<int, QPair<Frame*, QString> > t = detections.value(f->getNumber());
+      t.insert(camera, pair);
+      detections.insert(f->getNumber(), t);
+    }
+  else
+    {
+      // create new map for detections for this frame
+      QMap<int, QPair<Frame*, QString> > m;
+      QPair<Frame*, QString> pair(f, ds);
+      m.insert(camera, pair);
+      detections.insert(f->getNumber(), m);
+    }
+
   bool allDetected = true;
   for(int i = 0; i < numCameras; i++)
     {
-      if(frames[i] == NULL || frames[i]->getNumber() < curFrameNumber)
+      // determine if the detections map contains a camera detection for
+      // the current frame and this camera
+      if(!detections.value(curFrameNumber).contains(i))
 	allDetected = false;
     }
 
@@ -133,45 +148,43 @@ void ProcessingController::newDetections(QString ds, int camera, Frame* f)
   // then give these detections to the abducer thread
   if(allDetected)
     {
+      // update current frame with frame from camera 0
+      curFrame = detections.value(curFrameNumber).value(0).first;
+
+      // wait for the next frame
       // build collected detections string
       // get frame info from a single frame (they should all have same info)
       QString allDetections;
       QTextStream stream(&allDetections);
-      stream << "<Frame number=\"" << frames[0]->getNumber() << "\" "
-	     << "time=\"" << frames[0]->getTime() << "\">";
+      stream << "<Frame number=\"" << getFrameNumber() << "\" "
+	     << "time=\"" << getFrameTime() << "\">";
 
       for(int i = 0; i < numCameras; i++)
 	{
-	  stream << detections[i];
-	  detections[i].clear();
+	  // grab string of detections for current frame and this camera
+	  stream << detections.value(curFrameNumber).value(i).second;
 	}
 
       stream << "</Frame>";
 
-      qDebug() << "Sending to abducer" << allDetections;
+      //qDebug() << "Sending to abducer" << allDetections;
+      std::cout << allDetections.toStdString() << std::endl;
       
       abducerThread->newDetections(allDetections);
 
-      curFrame = frames[0]; // update current frame
+      // wait for the next frame
       curFrameNumber++;
 
       // stop grabbing frames until the abducer returns
       //for(int i = 0; i < numCameras; i++)
       //captureThread[i]->stopCapture();
     }
-  else
-    {
-      detections[camera] = ds;
-      if(frames[camera] != NULL)
-	delete frames[camera];
-      frames[camera] = f;
-    }
 }
 
 void ProcessingController::newTracks(Frame* f)
 {
-  qDebug() << "Showing frame in GUI.";
-  renderer->showFrames(frames, f);
+  //qDebug() << "Showing frame in GUI.";
+  renderer->showFrames(detections, curFrameNumber, f);
 
   for(int i = 0; i < numCameras; i++)
     {

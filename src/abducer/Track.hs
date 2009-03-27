@@ -292,6 +292,7 @@ tracksToXml (tid:tids) tm frame =
       track = getItemFromMap tm tid
       trackToXml (Track det _ ntid ptid) =
           [worldElem "Track" [("id", show tid),
+                              ("camera", detProp detCamera det),
                               ("cx", show $ detProp detCx det),
                               ("cy", show $ detProp detCy det),
                               ("ocx", show $ detProp detCx det'),

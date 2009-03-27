@@ -3,6 +3,7 @@
 #include <QFile>
 #include <QTextStream>
 #include <QDebug>
+#include <QPair>
 
 #include <math.h>
 
@@ -10,18 +11,11 @@
 
 #include "decoder.h"
 #include "frame.h"
+#include "cameramodel.h"
 
 Decoder::Decoder(int c)
   : camera(c), bg_model(0)
-{
-  QFile warp_file(QString("camera-") +
-		  QString::number(camera) + "-warp.xml");
-  warp = (CvMat*)cvLoad(warp_file.fileName().toAscii().constData());
-  if(warp == NULL)
-    {
-      qDebug() << "Error loading " << warp_file.fileName();
-    }
-}
+{ }
 
 QString Decoder::decodeFrame(Frame *frame)
 {
@@ -127,20 +121,13 @@ QString Decoder::findBlobs()
 
 	      cx = rect.x + rect.width / 2;
 	      cy = rect.y + rect.height / 2;
-
-	      cvSetReal1D(pmat, 0, cx);
-	      cvSetReal1D(pmat, 1, cy);
-	      cvSetReal1D(pmat, 2, 1);
-
-	      cvMatMul(warp, pmat, rmat);
-
-	      cx = cvGetReal1D(rmat, 0) / cvGetReal1D(rmat, 2);
-	      cy = cvGetReal1D(rmat, 1) / cvGetReal1D(rmat, 2);
+	      
+	      QPair<double,double> p = CameraModel::warpToGround(camera, QPair<int,int>(cx, cy));
 
 	      stream << "<Detection camera=\"" << camera << "\" "
 		     << "area=\"" << area << "\" "
-		     << "cx=\"" << cx << "\" "
-		     << "cy=\"" << cy << "\" />";
+		     << "cx=\"" << p.first << "\" "
+		     << "cy=\"" << p.second << "\" />";
 	    }
 	}
     }

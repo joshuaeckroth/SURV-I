@@ -3,12 +3,16 @@
 #include <QTime>
 #include <QDebug>
 #include <QPen>
+#include <QMap>
+#include <QPair>
+#include <QImage>
 
 #include "renderarea.h"
 #include "frame.h"
 #include "detection.h"
 #include "noise.h"
 #include "track.h"
+#include "cameramodel.h"
 
 RenderArea::RenderArea(QWidget* parent)
   : QWidget(parent), clear(true), entities(NULL)
@@ -23,6 +27,10 @@ RenderArea::RenderArea(QWidget* parent)
   setAttribute(Qt::WA_PaintOnScreen, true);
   setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding));
   time = framesShown = 0;
+
+  map = QImage("../videos/ARL1.jpg");
+  if(map.isNull())
+    qDebug() << "Unable to load map image.";
 }
 
 void RenderArea::setNumCameras(int n)
@@ -39,14 +47,14 @@ void RenderArea::onFrameSizeChanged(int width, int height, int camera)
   imageHeight[camera] = height;
 }
 
-void RenderArea::showFrames(Frame** frames, Frame* f)
+void RenderArea::showFrames(QMap<int, QMap<int, QPair<Frame*, QString> > > detections, int number, Frame* f)
 {
   entities = f;
 
   clear = false;
   for(int i = 0; i < numCameras; i++)
     {
-      updatePixmap(frames[i]->getImage(), i);
+      updatePixmap(detections.value(number).value(i).first->getImage(), i);
     }
 
   update();
@@ -114,54 +122,76 @@ void RenderArea::paintEvent(QPaintEvent*)
 
   if(!clear && hasAllFrames)
     {
+      // draw camera frames
+      int maxHeight = 0;
       int eachWidth = width() / numCameras;
       for(int i = 0; i < numCameras; i++)
 	{
 	  QImage tImg(imageData[i], imageWidth[i], imageHeight[i], QImage::Format_RGB32);
 	  QImage sImg = tImg.scaledToWidth(eachWidth, Qt::SmoothTransformation);
-	  int heightTop = (height() - sImg.height()) / 2;
-	  painter.drawImage(QPoint(i * eachWidth, heightTop), sImg);
+	  painter.drawImage(QPoint(i * eachWidth, 0), sImg);
 
-	  painter.setBrush(Qt::black);
-	  painter.drawRect(QRect(QPoint(i * eachWidth, 0),
-				 QPoint(i * eachWidth + eachWidth, heightTop - 1)));
-	  painter.drawRect(QRect(QPoint(i * eachWidth, height() - heightTop),
-				 QPoint(i * eachWidth + eachWidth, height())));
+	  for(int i = 0; i < numCameras; i++)
+	    {
+	      if(sImg.height() > maxHeight)
+		maxHeight = sImg.height();
+	    }
 	}
 
-      QPen pen;
+      // draw map
+      QPoint mapcenter = QPoint(857, 577);
+      int cropHeight = height() - maxHeight;
+      int cropWidth = width();
+      painter.drawImage(0, maxHeight, map,
+			mapcenter.x() - (cropWidth / 2), mapcenter.y() - (cropHeight / 2), // top left of map
+			cropWidth, cropHeight); // size of map
 
-      pen.setColor(Qt::blue);
-      pen.setWidth(3);
-      painter.setPen(pen);
-
-      entities->detections_begin();
-      while(!entities->detections_end())
+      if(entities != NULL)
 	{
-	  Detection* d = entities->detections_next();
-	  painter.drawArc(d->getCx(), d->getCy(), 20, 20, 0, 5760);
-	}
-
-
-      pen.setColor(Qt::black);
-      painter.setPen(pen);
-
-      entities->noise_begin();
-      while(!entities->noise_end())
-	{
-	  Noise* n = entities->noise_next();
-	  painter.drawArc(n->getCx(), n->getCy(), 20, 20, 0, 5760);
-	}
-
-
-      pen.setColor(Qt::green);
-      painter.setPen(pen);
-
-      entities->tracks_begin();
-      while(!entities->tracks_end())
-	{
-	  Track* t = entities->tracks_next();
-	  painter.drawArc(t->getCx(), t->getCy(), 20, 20, 0, 5760);
+	  QPen pen;
+	  
+	  pen.setColor(Qt::blue);
+	  pen.setWidth(3);
+	  painter.setPen(pen);
+	  
+	  entities->detections_begin();
+	  while(!entities->detections_end())
+	    {
+	      Detection* d = entities->detections_next();
+	      int camera = d->getCamera();
+	      QPair<int,int> p = CameraModel::warpToImage(camera, QPair<double,double>(d->getCx(), d->getCy()));
+	      painter.drawArc(camera * eachWidth + p.first, p.second, 20, 20, 0, 5760);
+	    }
+	  
+	  
+	  pen.setColor(Qt::black);
+	  painter.setPen(pen);
+	  
+	  entities->noise_begin();
+	  while(!entities->noise_end())
+	    {
+	      Noise* n = entities->noise_next();
+	      int camera = n->getCamera();
+	      QPair<int,int> p = CameraModel::warpToImage(camera, QPair<double,double>(n->getCx(), n->getCy()));
+	      painter.drawArc(camera * eachWidth + p.first, p.second, 20, 20, 0, 5760);
+	    }
+	  
+	  
+	  pen.setColor(Qt::green);
+	  painter.setPen(pen);
+	  
+	  entities->tracks_begin();
+	  while(!entities->tracks_end())
+	    {
+	      Track* t = entities->tracks_next();
+	      // show the track on all cameras
+	      for(int i = 0; i < numCameras; i++)
+		{
+		  QPair<int,int> p = CameraModel::warpToImage(i, QPair<double,double>(t->getCx(), t->getCy()));
+		  if(t->getThisFrame())
+		    painter.drawArc(i * eachWidth + p.first, p.second, 20, 20, 0, 5760);
+		}
+	    }
 	}
     }
   else

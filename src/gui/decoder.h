@@ -17,7 +17,6 @@ private:
 
   int camera;
   CvBGStatModel* bg_model;
-  CvMat* warp;
 };
 
 #endif

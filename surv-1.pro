@@ -19,6 +19,7 @@ LIBS += -lcv -lcxcore -lhighgui -lcvaux
 
 HEADERS += \
   src/gui/abducerthread.h \
+  src/gui/cameramodel.h \
   src/gui/capturethread.h \
   src/gui/decoder.h \
   src/gui/detection.h \
@@ -37,6 +38,7 @@ FORMS += \
 
 SOURCES += \
   src/gui/abducerthread.cpp \
+  src/gui/cameramodel.cpp \
   src/gui/capturethread.cpp \
   src/gui/decoder.cpp \
   src/gui/detection.cpp \

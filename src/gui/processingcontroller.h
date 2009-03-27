@@ -3,6 +3,9 @@
 
 #include "capturethread.h"
 
+#include <QMap>
+#include <QPair>
+
 class RenderArea;
 class Decoder;
 class AbducerThread;
@@ -29,11 +32,11 @@ private slots:
   void newTracks(Frame*);
 
 private:
-  Frame** frames;
   Frame* curFrame;
   int curFrameNumber;
   int numCameras;
-  QString* detections;
+  // types: frame number, camera, frame instance, string of detections
+  QMap<int, QMap<int, QPair<Frame*, QString> > > detections;
   RenderArea* renderer;
   CaptureThread::FrameSize frameSize;
   CaptureThread* captureThread[10];

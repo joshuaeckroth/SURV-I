@@ -21,6 +21,16 @@ bool TracksReader::startElement(const QString&, const QString&,
 
       curFrame = new Frame(frameNumber, frameTime);
     }
+  else if(qName == "Detection")
+    {
+      int id = attributes.value("id").toInt();
+      int camera = attributes.value("camera").toInt();
+      double area = attributes.value("area").toDouble();
+      int cx = attributes.value("cx").toDouble();
+      int cy = attributes.value("cy").toDouble();
+
+      curFrame->addDetection(new Detection(id, camera, area, cx, cy));
+    }
   else if(qName == "Noise")
     {
       int id = attributes.value("id").toInt();
@@ -43,18 +53,9 @@ bool TracksReader::startElement(const QString&, const QString&,
       double ecx = attributes.value("ecx").toDouble();
       double ecy = attributes.value("ecy").toDouble();
       double radius = attributes.value("radius").toDouble();
+      bool thisFrame = (attributes.value("thisFrame") == QString("True") ? true : false);
 
-      curFrame->addTrack(new Track(id, cx, cy, ocx, ocy, prevId, nextId, ecx, ecy, radius));
-    }
-  else if(qName == "Detection")
-    {
-      int id = attributes.value("id").toInt();
-      int camera = attributes.value("camera").toInt();
-      double area = attributes.value("area").toDouble();
-      int cx = attributes.value("cx").toDouble();
-      int cy = attributes.value("cy").toDouble();
-
-      curFrame->addDetection(new Detection(id, camera, area, cx, cy));
+      curFrame->addTrack(new Track(id, cx, cy, ocx, ocy, prevId, nextId, ecx, ecy, radius, thisFrame));
     }
   else if(qName == "FrameLog")
     {

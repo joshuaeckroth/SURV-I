@@ -7,11 +7,12 @@ class Track
 {
 public:
   Track(int i, double x, double y, double ox, double oy,
-	int p, int n, double ex, double ey, double r);
+	int p, int n, double ex, double ey, double r, bool thisF);
   void setFrame(Frame *f);
   int getId() const;
   double getCx() const;
   double getCy() const;
+  bool getThisFrame() const;
 
 private:
   int id;
@@ -24,6 +25,7 @@ private:
   double ecx;
   double ecy;
   double radius;
+  bool thisFrame;
   Frame *frame;
 };
 
