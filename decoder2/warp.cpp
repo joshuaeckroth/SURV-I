@@ -23,14 +23,14 @@ if( argc == 2 && ((src=cvLoadImage(argv[1],1)) != 0 )) {
   srcQuad[3].x = 925;
   srcQuad[3].y = 523;
 
-  dstQuad[0].x = 0;
-  dstQuad[0].y = 0;
-  dstQuad[1].x = 0;
-  dstQuad[1].y = 90;
-  dstQuad[2].x = 120;
-  dstQuad[2].y = 90;
-  dstQuad[3].x = 120;
-  dstQuad[3].y = 0;
+  dstQuad[0].x = 1260;
+  dstQuad[0].y = 1115;
+  dstQuad[1].x = 1260;
+  dstQuad[1].y = 1300;
+  dstQuad[2].x = 1625;
+  dstQuad[2].y = 1300;
+  dstQuad[3].x = 1625;
+  dstQuad[3].y = 1115;
 
   cvGetPerspectiveTransform(
     srcQuad,

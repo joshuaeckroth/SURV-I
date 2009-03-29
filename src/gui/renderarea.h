@@ -6,6 +6,7 @@
 #include <QPair>
 #include <QImage>
 #include <QRegion>
+#include <QPen>
 
 #include "opencv/highgui.h"
 
@@ -44,6 +45,9 @@ private:
   int numCameras;
   bool clear;
   Entities* entities;
+  QPen detectionPen, detectionCenterPen, detectionTextPen,
+    noisePen, trackHeadPen, trackTextPen, trackPathPen,
+    trackExpectedPathPen, trackExpectedCirclePen, trackMapPen;
 };
 
 #endif

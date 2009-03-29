@@ -36,6 +36,36 @@ RenderArea::RenderArea(QWidget* parent)
   map = QImage("../videos/ARL1.jpg");
   if(map.isNull())
     qDebug() << "Unable to load map image.";
+
+  detectionPen.setColor(Qt::blue);
+  detectionPen.setWidth(1);
+  
+  detectionCenterPen.setColor(Qt::blue);
+  detectionCenterPen.setWidth(3);
+  
+  detectionTextPen.setColor(Qt::blue);
+  
+  noisePen.setColor(Qt::black);
+  noisePen.setWidth(1);
+  
+  trackHeadPen.setColor(Qt::black);
+  trackHeadPen.setWidth(3);
+  
+  trackTextPen.setColor(Qt::black);
+  
+  trackPathPen.setColor(Qt::black);
+  trackPathPen.setWidth(3);
+  
+  trackExpectedPathPen.setColor(Qt::red);
+  trackExpectedPathPen.setWidth(1);
+  trackExpectedPathPen.setStyle(Qt::DotLine);
+  
+  trackExpectedCirclePen.setColor(Qt::red);
+  trackExpectedCirclePen.setWidth(1);
+  trackExpectedCirclePen.setStyle(Qt::DotLine);
+  
+  trackMapPen.setColor(Qt::black);
+  trackMapPen.setWidth(3);
 }
 
 void RenderArea::setNumCameras(int n)
@@ -163,45 +193,6 @@ void RenderArea::paintEvent(QPaintEvent*)
 	  int scaledX, scaledY;
 	  int radius;
 
-	  QPen detectionPen;
-	  detectionPen.setColor(Qt::blue);
-	  detectionPen.setWidth(1);
-
-	  QPen detectionCenterPen;
-	  detectionCenterPen.setColor(Qt::blue);
-	  detectionCenterPen.setWidth(3);
-
-	  QPen detectionTextPen;
-	  detectionTextPen.setColor(Qt::blue);
-
-	  QPen noisePen;
-	  noisePen.setColor(Qt::black);
-	  noisePen.setWidth(1);
-
-	  QPen trackHeadPen;
-	  trackHeadPen.setColor(Qt::black);
-	  trackHeadPen.setWidth(3);
-
-	  QPen trackTextPen;
-	  trackTextPen.setColor(Qt::black);
-
-	  QPen trackPathPen;
-	  trackPathPen.setColor(Qt::black);
-	  trackPathPen.setWidth(3);
-
-	  QPen trackExpectedPathPen;
-	  trackExpectedPathPen.setColor(Qt::red);
-	  trackExpectedPathPen.setWidth(1);
-	  trackExpectedPathPen.setStyle(Qt::DotLine);
-
-	  QPen trackExpectedCirclePen;
-	  trackExpectedCirclePen.setColor(Qt::red);
-	  trackExpectedCirclePen.setWidth(1);
-	  trackExpectedCirclePen.setStyle(Qt::DotLine);
-
-	  QPen trackMapPen;
-	  trackMapPen.setColor(Qt::black);
-	  trackMapPen.setWidth(3);
 
 	  entities->detections_begin();
 	  while(!entities->detections_end())
@@ -229,7 +220,7 @@ void RenderArea::paintEvent(QPaintEvent*)
 	      painter.drawEllipse(QPoint(camera * eachWidth + scaledX, scaledY), radius, radius);
 
 	      // draw id
-	      painter.drawText(camera * eachWidth + scaledX + 7, scaledY - 7, QString::number(d->getId()));
+	      //painter.drawText(camera * eachWidth + scaledX + 7, scaledY - 7, QString::number(d->getId()));
 	    }
 
 	  

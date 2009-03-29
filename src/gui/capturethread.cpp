@@ -3,6 +3,8 @@
 #include <QDebug>
 #include <QFile>
 
+#include <unistd.h>
+
 #include "opencv/highgui.h"
 
 #include "capturethread.h"
@@ -53,7 +55,8 @@ void CaptureThread::run()
 	  frame = new Frame(frameNum, frameTime);
 	  frame->setImage(image);
 
-	  detections = decoder->decodeFrame(frame);
+	  //detections = decoder->decodeFrame(frame);
+	  sleep(1);
 	  emit newDetections(detections, camera, frame);
 	}
       updateFPS(time.elapsed());

@@ -502,8 +502,15 @@ trackExpectedLocation frame track@(Track det _ _ (Just ptid)) tm =
             dist       = speed * delta -- expected distance
             angle      = atan ((cy2 - cy1) / (cx2 - cx1))
             (cx3, cy3)
-                | cx2 == cx1 = (cx2, dist + cy2) -- angle = NaN
-                | otherwise  = (dist * (cos angle) + cx2, dist * (sin angle) + cy2)
+                | cx2 == cx1 && cy2 < cy1 = (cx2, cy2 - dist) -- downward; angle = NaN
+                | cx2 == cx1 && cy2 > cy1 = (cx2, cy2 + dist) -- upward
+                | cy2 == cy1 && cx2 < cx1 = (cx2 - dist, cy2) -- right
+                | cy2 == cy2 && cx2 > cx1 = (cx2 + dist, cy2) -- left
+                | cx2 > cx1  && cy2 < cy1 = (cx2 + dist * (cos angle), cy2 - dist * (sin angle)) -- down-left
+                | cx2 > cx1  && cy2 > cy1 = (cx2 + dist * (cos angle), cy2 + dist * (sin angle)) -- up-left
+                | cx2 < cx1  && cy2 < cy1 = (cx2 - dist * (cos angle), cy2 - dist * (abs $ sin angle)) -- down-right
+                | cx2 < cx1  && cy2 > cy1 = (cx2 - dist * (cos angle), cy2 + dist * (abs $ sin angle)) -- up-right
+                | otherwise = (cx2, cy2) -- track points overlap (detections overlap)
 
 -- | Radius of expected location (see 'trackExpectedLocation')
 trackRadius :: (Double, Double) -> Track -> TrackMap -> Double
