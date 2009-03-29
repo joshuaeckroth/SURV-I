@@ -6,9 +6,10 @@
 #include "detection.h"
 #include "track.h"
 #include "noise.h"
-#include "frame.h"
+#include "entities.h"
 
 TracksReader::TracksReader()
+  : curEntities(NULL)
 { }
 
 bool TracksReader::startElement(const QString&, const QString&,
@@ -19,7 +20,7 @@ bool TracksReader::startElement(const QString&, const QString&,
       int frameNumber = attributes.value("number").toInt();
       double frameTime = attributes.value("time").toDouble();
 
-      curFrame = new Frame(frameNumber, frameTime);
+      curEntities = new Entities(frameNumber, frameTime);
     }
   else if(qName == "Detection")
     {
@@ -29,7 +30,7 @@ bool TracksReader::startElement(const QString&, const QString&,
       int cx = attributes.value("cx").toDouble();
       int cy = attributes.value("cy").toDouble();
 
-      curFrame->addDetection(new Detection(id, camera, area, cx, cy));
+      curEntities->addDetection(new Detection(id, camera, area, cx, cy));
     }
   else if(qName == "Noise")
     {
@@ -39,7 +40,7 @@ bool TracksReader::startElement(const QString&, const QString&,
       int cx = attributes.value("cx").toDouble();
       int cy = attributes.value("cy").toDouble();
 
-      curFrame->addNoise(new Noise(id, camera, area, cx, cy));
+      curEntities->addNoise(new Noise(id, camera, area, cx, cy));
     }
   else if(qName == "Track")
     {
@@ -55,7 +56,7 @@ bool TracksReader::startElement(const QString&, const QString&,
       double radius = attributes.value("radius").toDouble();
       bool thisFrame = (attributes.value("thisFrame") == QString("True") ? true : false);
 
-      curFrame->addTrack(new Track(id, cx, cy, ocx, ocy, prevId, nextId, ecx, ecy, radius, thisFrame));
+      curEntities->addTrack(new Track(id, cx, cy, ocx, ocy, prevId, nextId, ecx, ecy, radius, thisFrame));
     }
   else if(qName == "FrameLog")
     {
@@ -88,7 +89,7 @@ QString TracksReader::errorString() const
   return errorStr;
 }
 
-Frame* TracksReader::getFrame() const
+Entities* TracksReader::getEntities() const
 {
-  return curFrame;
+  return curEntities;
 }

@@ -11,6 +11,7 @@ import WrappedInts.IDMap (insert, foldWithKey, getItemFromMap, keys, elems)
 import qualified WrappedInts.IDMap as IDMap
 import qualified WrappedInts.IDSet as IDSet
 import Data.List ((\\))
+import qualified Data.List
 import Text.XML.HaXml.Types as HaXml
 import Text.Printf (printf)
 
@@ -28,7 +29,7 @@ hypothesizeTracks catID ws =
       tm             = trackMap ws
       dm             = detMap ws
       ts             = keys tm
-      dids           = detIDs ws
+      dids           = currentDetIDs ws
       intersections  = intersectDetections (trackHeads tm) tm dids dm frame
       intersectingAs = IDMap.keys intersections
 
@@ -108,7 +109,7 @@ hypothesizeSplitTracks :: CategoryID       -- ^ Hypothesis category
 hypothesizeSplitTracks catID ws =
     recordWorldEvent (["Continuing tracks:"] ++ (showTracks continuingTracks (trackMap ws') (detMap ws') (curFrame ws')) ++ ["END"], emptyElem) >>
     recordWorldEvent (["Nonheads and their continuations:"] ++ (map (\(t, ts) -> (show t) ++ ": " ++ (show ts)) splits) ++ ["END"], emptyElem) >>
-    recordWorldEvent (["\"New\" tracks for each continued track:"] ++ [(show newTracks)] ++ ["END"], emptyElem) >>
+    recordWorldEvent (["Split \"New\" tracks for each continued track:"] ++ [(show newTracks)] ++ ["END"], emptyElem) >>
                      return ws'
     where
       tm               = trackMap ws
@@ -142,7 +143,7 @@ hypothesizeSplitTracks catID ws =
             newMind         = addExplains explainID hypID did
                               (addHypothesis hypID catID (scoreTrack (curFrame ws) hypID newTrackMap) (mind ws))
             ws'             = constrainSplitTracks ([hypID] ++ ts) $
-                              -- addSplitAdjusters hypID ts $
+                              addSplitAdjusters hypID ts $
                               ws { mind = newMind, hypIDs = newHypIDs, trackIDs = newTrackIDs, trackMap = newTrackMap }
 
       addSplitAdjusters :: TrackID -> [TrackID] -> WorldState -> WorldState
@@ -174,41 +175,44 @@ addTrackImplications :: Track      -- ^ Track to connect by way of implications
                      -> WorldState -- ^ World state
                      -> WorldState -- ^ Resulting world state
 addTrackImplications (Track _ _   _ Nothing)     ws = ws
-addTrackImplications (Track _ tid _ (Just tid')) ws = addTrackImplications t' ws'
+addTrackImplications (Track _ tid _ (Just ptid)) ws =
+    case IDMap.lookup ptid (trackMap ws) of -- check if previous track point is still present
+      Just t' -> addTrackImplications t' ws'
+      Nothing -> ws -- no previous track point
     where
-      t'      = getItemFromMap (trackMap ws) tid'
-      newMind = addConstrainer (nextConstrainer ws) (IDSet.singleton tid') implies tid $
-                addConstrainer (1 + (nextConstrainer ws)) (IDSet.singleton tid) impliedBy tid' (mind ws)
+      newMind = addConstrainer (nextConstrainer ws) (IDSet.singleton ptid) implies tid $
+                addConstrainer (1 + (nextConstrainer ws)) (IDSet.singleton tid) impliedBy ptid (mind ws)
       ws'     = ws { mind = newMind }
 
 -- | Score a track hypothesis (this is the hypothesis's a prior score)
 scoreTrack :: Frame    -- ^ Current frame
            -> TrackID  -- ^ Track ID to score
            -> TrackMap -- ^ Current track map
-           -> Level    -- ^ "Current situation"
+           -> Level    -- ^ \'Current situation\'
            -> Level    -- ^ Resulting score
 scoreTrack frame tid tm l = level
     where
       track = getItemFromMap tm tid
       level = case track of
                 Track det _ _ Nothing     -> Medium
-                Track det _ _ (Just tid') -> level'
-                    where
-                      track'@(Track det' _ _ _) = getItemFromMap tm tid'
-                      
-                      (expectedCx, expectedCy)  = trackExpectedLocation frame track' tm
-                      expectedDist              = sqrt (((detProp detCx det) - expectedCx)^2 +
-                                                        ((detProp detCy det) - expectedCy)^2)
-                      duration                  = trackDuration track tm
-                      delta                     = detDelta det det'
-
-                      level'
-                         | duration > 1.0 || expectedDist < 5.0 = Highest
-                         | delta < 0.4 && (duration > 0.6 || expectedDist < 10.0) = VeryHigh
-                         | delta < 0.4 && expectedDist < 20.0 = High
-                         | delta < 0.4 = SlightlyHigh
-                         | expectedDist < 50.0 = Medium
-                         | otherwise    = Lowest
+                Track det _ _ (Just ptid) ->
+                    case IDMap.lookup ptid tm of -- check if previous track point is still present
+                      Nothing                          -> SlightlyLow -- no previous track point
+                      Just (track'@(Track det' _ _ _)) -> level'
+                        where
+                          (expectedCx, expectedCy) = trackExpectedLocation frame track' tm
+                          expectedDist             = sqrt (((detProp detCx det) - expectedCx)^2 +
+                                                           ((detProp detCy det) - expectedCy)^2)
+                          duration                 = trackDuration track tm
+                          delta                    = detDelta det det'
+                          areaFactor               = (detProp detArea det) / (detProp detArea det')
+                                                      
+                          level'
+                              | duration > 1.0 && expectedDist < 5.0 && areaFactor <= 1.25 && areaFactor >= 0.75 = VeryHigh
+                              | delta < 0.7 && (duration > 0.6 || expectedDist < 10.0) && areaFactor <= 1.25 && areaFactor >= 0.75 = High
+                              | delta < 0.7 && expectedDist < 20.0 = SlightlyHigh
+                              | delta < 0.7 && expectedDist < 30.0 = Medium
+                              | otherwise = Low
 
 -- | Find all detections that \'intersect\' the given tracks
 intersectDetections :: [TrackID]               -- ^ Tracks to intersect
@@ -229,7 +233,7 @@ intersectDetections tids tm dids dm f = intersectDetections' tids tm dids dids d
       intersectDetections' []     _         _       _  _       _ = IDMap.empty
       intersectDetections' (tid:tids) tm []         dids' dm f = intersectDetections' tids tm dids' dids' dm f
       intersectDetections' (tid:tids) tm (did:dids) dids' dm f =
-          if dist <= radius && dist /= 0 && delta <= time then
+          if dist <= radius && dist /= 0 then
               -- track 'intersects' detection
               -- add the track ID to the map
               IDMap.insertWithKey (\det tids tids' -> tids ++ tids') did [tid]
@@ -244,8 +248,6 @@ intersectDetections tids tm dids dm f = intersectDetections' tids tm dids dids d
             cy                       = detProp detCy det
             dist                     = sqrt ((expectedCx - cx)^2 + (expectedCy - cy)^2)
             radius                   = trackRadius (expectedCx, expectedCy) track tm
-            delta                    = trackDelta f track
-            time                     = 0.7 -- seconds
 
 -- | Human format of track log
 showTracks :: [TrackID]    -- ^ Track IDs to log
@@ -265,6 +267,9 @@ showTracks (tid:tids) tm dm frame =
      "\n\tspeed: " ++ (printf "%.2f" $ trackSpeed track tm) ++ ", " ++
      "\n\tdistance: " ++ (printf "%.2f" $ trackDistance track tm) ++ ", " ++
      "\n\texpected location: " ++ (show $ trackExpectedLocation frame track tm) ++ ", " ++
+     "\n\tradius: " ++ (show $ trackRadius (trackExpectedLocation frame track tm) track tm) ++ ", " ++
+     (if ptid == 0 then "" else
+          (if (IDMap.member ptid tm) then (let track' = getItemFromMap tm ptid in ("\n\tdistance from expectation: " ++ (show $ (let (ecx,ecy) = (trackExpectedLocation frame track' tm) in sqrt ((ecx - (detProp detCx det))^2 + (ecy - (detProp detCy det))^2))) ++ ", ")) else "")) ++
      "\n\tscore: " ++ (show $ scoreTrack frame tid tm Medium) ++ "]"]
     ++ showTracks tids tm dm frame
     where
@@ -308,7 +313,10 @@ tracksToXml (tid:tids) tm frame =
                                        Just ptid' -> ptid'
             Track det' _ _ _         = case ptid of
                                        Nothing    -> track
-                                       Just ptid' -> getItemFromMap tm ptid'
+                                       Just ptid' ->
+                                           case IDMap.lookup ptid' tm of -- check if previous track point is still present
+                                             Just track' -> track'
+                                             Nothing     -> track -- no previous track point
             ntid'                    = case ntid of
                                        Nothing    -> 0
                                        Just ntid' -> ntid'
@@ -319,67 +327,76 @@ tracksToXml (tid:tids) tm frame =
                                          trackExpectedLocation frame track tm
             radius                   = trackRadius (expectedCx, expectedCy) track tm
 
--- | Keep only track hypotheses considered \'irrefutable\' or \'accepted\'
+-- | Keep only track hypotheses considered \'irrefutable\', \'accepted\', or \'considering\', as well as newer tracks (see 'removeOldTracks')
 updateTracks :: WorldState       -- ^ World state
              -> World WorldState -- ^ Resulting world
 updateTracks ws =
     recordWorldEvent (["Removed tracks:"] ++ (showTracks ((trackIDs ws) \\ newTrackIDs) (trackMap ws) (detMap ws) (curFrame ws)) ++ ["END"], emptyElem) >>
-                     return (ws { mind = newMind, hypIDs = newHypIDs, trackIDs = newTrackIDs, trackMap = newTrackMap })
+                     return (ws { mind = newMind, trackIDs = newTrackIDs, trackMap = newTrackMap })
     where
       m              = mind ws
-      frametime      = frameProp frameTime (curFrame ws)
       badHs          = IDSet.toList $ refutedHypotheses m
-      goodHs         = IDSet.toList $ IDSet.union (irrefutableHypotheses m)
-                       (IDSet.union (acceptedHypotheses m)
-                             (IDSet.union (consideringHypotheses m) (unacceptableHypotheses m)))
 
-      -- filter out refuted track heads and tracks whose head is older than 1 sec
-      freshTrackMap  = foldl (\tm h -> removeTrack (getItemFromMap tm h) tm)
-                       (trackMap ws)
-                       (IDMap.keys (IDMap.filterWithKey (\h _ -> (elem h badHs) && (isTrackHead h (trackMap ws))) (trackMap ws)))
-      freshTrackMap' = removeOldTracks (curFrame ws) (trackHeads freshTrackMap) freshTrackMap
+      freshTrackMap  = updateLinks (removeOldTracks (curFrame ws) (trackHeads (trackMap ws)) (trackMap ws))
+      freshTrackMap' = updateLinks (foldl (\tm h -> IDMap.delete h tm) freshTrackMap badHs)
 
-      newTrackMap    = updateLinks freshTrackMap'
-      newTrackIDs    = filter (\n -> elem n $ IDMap.keys newTrackMap) (trackIDs ws)
+      newTrackMap    = freshTrackMap'
+      newTrackIDs    = filter (\h -> elem h $ IDMap.keys newTrackMap) (trackIDs ws)
       newMind        = foldl (\m h -> removeHypothesis h m) (mind ws) ((trackIDs ws) \\ newTrackIDs)
-      newHypIDs      = (IDMap.keys newTrackMap) ++ (IDMap.keys (noiseMap ws)) ++ (IDMap.keys (detMap ws))
 
-      removeOldTracks :: Frame -> [TrackID] -> TrackMap -> TrackMap
-      removeOldTracks _ []         tm = tm
-      removeOldTracks f (tid:tids) tm = if (trackDelta f (getItemFromMap tm tid)) <= 1.0 then -- track is 'fresh'
-                                            removeOldTracks f tids tm
-                                        else -- remove entire track
-                                            removeOldTracks f tids $ removeTrack (getItemFromMap tm tid) tm
+-- Filter out tracks whose head is older than 2 seconds
+removeOldTracks :: Frame -> [TrackID] -> TrackMap -> TrackMap
+removeOldTracks _ []         tm = tm
+removeOldTracks f (tid:tids) tm = if (trackDelta f (getItemFromMap tm tid)) < 2.0 then -- track is 'fresh'
+                                      removeOldTracks f tids tm
+                                  else -- remove entire track
+                                      removeOldTracks f tids $ removeTrack (getItemFromMap tm tid) tm
 
-      -- remove a whole track (following 'previous' links)
-      removeTrack :: Track -> TrackMap -> TrackMap
-      removeTrack (Track _ tid _ Nothing)     tm = IDMap.delete tid tm
-      removeTrack (Track _ tid _ (Just ptid)) tm = IDMap.delete tid $
-                                                   if IDMap.member ptid tm then
-                                                       removeTrack (getItemFromMap tm ptid) tm
-                                                   else tm
+-- | Remove a whole track (following 'previous' links)
+removeTrack :: Track -> TrackMap -> TrackMap
+removeTrack (Track _ tid _ Nothing)     tm = IDMap.delete tid tm
+removeTrack (Track _ tid _ (Just ptid)) tm = IDMap.delete tid $
+                                             if IDMap.member ptid tm then -- check if previous track point is still present
+                                                 removeTrack (getItemFromMap tm ptid) tm
+                                             else tm -- no previous track point
 
-      -- update "next" and "prev" links in all tracks (since some track points may have been removed)
-      updateLinks :: TrackMap -> TrackMap
-      updateLinks tm = foldl (\tm tid -> updateLink tid 0 tm) tm (trackHeads' tm)
+-- | Update \'next\' and \'prev\' links in all tracks
+--
+-- Tracks points may have been removed if the associated detections have been removed
+-- from the function 'updateDetections' or a track's head has been removed because
+-- it was deemed refuted.
+updateLinks :: TrackMap -> TrackMap
+updateLinks tm = updateMissingHeads $ foldl (\tm tid -> updateLink tid 0 tm) tm (trackHeads' tm)
 
-      updateLink :: TrackID  -- ^ The new "next" link
-                 -> TrackID  -- ^ Track to change
-                 -> TrackMap
-                 -> TrackMap
-      -- initial call: second argument is 0, so get "prev" track from this head
-      updateLink ntid 0   tm = updateLink ntid tid tm
-          where Track _ _ _ (Just tid) = getItemFromMap tm ntid
-      updateLink ntid tid tm =
-          if IDMap.member tid tm then
-              let Track det _ _ ptid = getItemFromMap tm tid in
-              insert tid (Track det tid (Just ntid) ptid) $
-                     case ptid of
-                       Nothing   -> tm
-                       Just ptid -> updateLink tid ptid tm
-          else -- rewrite "next" track as having no previous track
-              let Track det _ ntid' _ = getItemFromMap tm ntid
-              in insert ntid (Track det ntid ntid' Nothing) tm
+updateMissingHeads :: TrackMap -> TrackMap
+updateMissingHeads tm = foldl (\tm tid -> updateMissingHead tid tm) tm (IDMap.keys tm)
+
+updateMissingHead :: TrackID -> TrackMap -> TrackMap
+updateMissingHead tid tm = case getItemFromMap tm tid of
+                             (Track det tid Nothing      ptid) -> tm
+                             (Track det tid (Just ntid') ptid) -> if (IDMap.member ntid' tm) then
+                                                                      insert tid (Track det tid (Just ntid') ptid) tm
+                                                                  else
+                                                                      insert tid (Track det tid Nothing ptid) tm
+
+-- | Update a single \'new\' link
+updateLink :: TrackID  -- ^ The new "next" link
+           -> TrackID  -- ^ Track to change
+           -> TrackMap
+           -> TrackMap
+-- initial call: second argument is 0, so get "prev" track from this head
+updateLink ntid 0   tm = updateLink ntid ptid tm
+    where Track _ _ _ (Just ptid) = getItemFromMap tm ntid
+updateLink ntid tid tm =
+    if IDMap.member tid tm then
+        let Track det _ _ ptid = getItemFromMap tm tid in
+        insert tid (Track det tid (Just ntid) ptid) $
+               case ptid of
+                 Nothing   -> tm
+                 Just ptid -> updateLink tid ptid tm
+    else -- rewrite "next" track as having no previous track
+        let Track det _ ntid' _ = getItemFromMap tm ntid
+        in insert ntid (Track det ntid ntid' Nothing) tm
 
 -- | Record recent track hypotheses
 recordTracks :: WorldState       -- ^ World state
@@ -396,14 +413,14 @@ recordTracks ws =
 
 -- | Construct a list of track heads
 --
--- Here, track heads are any tracks without a previous track point (so this includes new tracks).
+-- Here, track heads are any tracks without a next track point (so this includes new tracks).
 trackHeads :: TrackMap  -- ^ Current track map
            -> [TrackID] -- ^ Track heads
 trackHeads tm = IDMap.keys $ IDMap.filter (\(Track _ _ ntid _) -> case ntid of
                                                                     Nothing -> True
                                                                     Just _  -> False) tm
 
--- | Construct a list of head tracks that are not new tracks
+-- | Construct a list of head tracks that are not new tracks, i.e., whose prevID does not equal 0
 trackHeads' :: TrackMap -> [TrackID]
 trackHeads' tm = IDMap.keys $ IDMap.filter (\(Track _ _ ntid ptid) -> case (ntid,ptid) of
                                                                         (Nothing, Just _) -> True
@@ -428,35 +445,38 @@ trackHead       (Track _ _ (Just ntid) _) tm = trackHead (getItemFromMap tm ntid
 trackDuration :: Track  -- ^ Track of interest
               -> TrackMap
               -> Double -- ^ Track duration
-trackDuration (Track det _ _ Nothing)     _  = 0.0 -- no previous track
-trackDuration (Track det _ _ (Just ptid)) tm = (frameProp frameTime $ detProp detFrame det) -
-                                               (frameProp frameTime $ detProp detFrame det') +
-                                               (trackDuration ptrack tm)
-    where
-      ptrack@(Track det' _ _ _) = getItemFromMap tm ptid
+trackDuration (Track det _ _ Nothing)     _  = 0.0 -- no previous track point
+trackDuration (Track det _ _ (Just ptid)) tm =
+    case IDMap.lookup ptid tm of -- check if previous track point is still present
+      Just (ptrack@(Track det' _ _ _)) -> (frameProp frameTime $ detProp detFrame det) -
+                                          (frameProp frameTime $ detProp detFrame det') +
+                                         (trackDuration ptrack tm)
+      Nothing                          -> 0.0 -- no previous track point
 
 -- | Track speed
 --
 -- Speed of track with most recent detection acq and second most recent detection det\' =
 -- (detDist det det\') (detDelta det det\')
 --
--- The maximum possible speed is 40 (forced limitation)
+-- The maximum possible speed is 50 (forced limitation)
 trackSpeed :: Track
            -> TrackMap
            -> Double
-trackSpeed (Track det _ _ Nothing)     _  = 0.0
-trackSpeed (Track det _ _ (Just ptid)) tm = min 40 $ (detDist det det') / (detDelta det det')
-    where
-      (Track det' _ _ _) = getItemFromMap tm ptid
+trackSpeed (Track det _ _ Nothing)     _  = 0.0 -- no previous track point
+trackSpeed (Track det _ _ (Just ptid)) tm =
+    case IDMap.lookup ptid tm of -- check if previous track point is still present
+      Just (Track det' _ _ _) -> min 50 $ (detDist det det') / (detDelta det det')
+      Nothing                 -> 0.0 -- no previous track point
 
 -- | Overall track distance since origin
 trackDistance :: Track
               -> TrackMap
               -> Double
 trackDistance (Track det _ _ Nothing)     _  = 0.0
-trackDistance (Track det _ _ (Just ptid)) tm = (detDist det det') + (trackDistance ptrack tm)
-    where
-      ptrack@(Track det' _ _ _) = getItemFromMap tm ptid
+trackDistance (Track det _ _ (Just ptid)) tm =
+    case IDMap.lookup ptid tm of -- check if previous track point is still present
+      Just (ptrack@(Track det' _ _ _)) -> (detDist det det') + (trackDistance ptrack tm)
+      Nothing                          -> 0.0 -- no previous track point
 
 trackDelta :: Frame
            -> Track
@@ -470,35 +490,27 @@ trackExpectedLocation :: Frame
                       -> (Double, Double)
 trackExpectedLocation frame       (Track det _ _ Nothing)     _  = (detProp detCx det,
                                                                     detProp detCy det)
-trackExpectedLocation frame track@(Track det _ _ (Just ptid)) tm = (cx3, cy3)
-    where
-      (Track det' _ _ _) = getItemFromMap tm ptid
-      (cx1, cy1)         = (detProp detCx det', detProp detCy det') -- old position
-      (cx2, cy2)         = (detProp detCx det,  detProp detCy det)  -- current position
-      speed              = trackSpeed track tm
-      delta              = (trackDelta frame track) + 0.333 -- add one frame's time
-      dist               = speed * delta -- expected distance
-      m                  = (cy1 - cy2) / (cx2 - cx1) -- cy1 - cy2 due to coordinate system
-      (cx3, cy3) 
-          | (cy1 - cy2) == 0 = if (cx2 - cx1) > 0 then -- moved right
-                                   (cx2 + dist, cy2)
-                               else                  -- moved left
-                                   (cx2 - dist, cy2)
-          | (cx2 - cx1) == 0 = if (cy1 - cy2) > 0 then -- moved up
-                                   (cx2, cy2 - dist)
-                               else                  -- moved down
-                                   (cx2, cy2 + dist)
-          | otherwise        = let cx3 = if (cx2 - cx1) > 0 then -- moved right
-                                             dist / ((sqrt 2) * m) + cx2
-                                         else                  -- moved left
-                                             (0 - dist / ((sqrt 2) * m)) + cx2
-                               in (cx3, cy2 - m * (cx3 - cx2))
+trackExpectedLocation frame track@(Track det _ _ (Just ptid)) tm =
+    case IDMap.lookup ptid tm of -- check if previous track point is still present
+      Nothing                 -> (detProp detCx det, detProp detCy det)
+      Just (Track det' _ _ _) -> (cx3, cy3)
+          where
+            (cx1, cy1) = (detProp detCx det', detProp detCy det') -- old position
+            (cx2, cy2) = (detProp detCx det,  detProp detCy det)  -- current position
+            speed      = trackSpeed track tm
+            delta      = 0.333 -- look one frame into the future
+            dist       = speed * delta -- expected distance
+            angle      = atan ((cy2 - cy1) / (cx2 - cx1))
+            (cx3, cy3)
+                | cx2 == cx1 = (cx2, dist + cy2) -- angle = NaN
+                | otherwise  = (dist * (cos angle) + cx2, dist * (sin angle) + cy2)
 
+-- | Radius of expected location (see 'trackExpectedLocation')
 trackRadius :: (Double, Double) -> Track -> TrackMap -> Double
 trackRadius (ecx, ecy) track@(Track det _ _ _) tm
     | speed == 0.0 = 30.0
-    | speed < 10.0 = min (3 * expDist) $ 3 * speed
-    | otherwise    = min (3 * expDist) $ 50.0
+    | speed < 20.0 = min (5 * expDist) $ 3 * speed
+    | otherwise    = min (5 * expDist) $ 60.0
     where
       speed    = trackSpeed track tm
       (cx,cy)  = (detProp detCx det, detProp detCy det)

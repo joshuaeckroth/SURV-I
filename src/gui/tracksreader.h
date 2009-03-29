@@ -8,7 +8,7 @@
 class Detection;
 class Noise;
 class Track;
-class Frame;
+class Entities;
 
 class TracksReader : public QXmlDefaultHandler
 {
@@ -21,10 +21,10 @@ public:
   bool characters(const QString& str);
   bool fatalError(const QXmlParseException& exception);
   QString errorString() const;
-  Frame* getFrame() const;
+  Entities* getEntities() const;
 
 private:
-  Frame *curFrame;
+  Entities *curEntities;
   QString currentText;
   QString errorStr;
 };

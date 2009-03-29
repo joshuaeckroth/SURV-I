@@ -18,12 +18,14 @@ MainWindow::MainWindow() : QMainWindow(0)
   processingController = new ProcessingController(renderArea, 2 /* num of cameras */);
 
   // settings dock widget
+  /*
   settingsDock = new QDockWidget("Settings", this);
   settingsDock->setAllowedAreas(Qt::RightDockWidgetArea);
   settingsWidget = new SettingsWidget(this);
   settingsDock->setWidget(settingsWidget);
   settingsDock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable);
   addDockWidget(Qt::RightDockWidgetArea, settingsDock);
+  */
 
   updateTimer = new QTimer(this);
   connect(updateTimer, SIGNAL(timeout()), this, SLOT(updateStats()));

@@ -1,23 +1,25 @@
 #ifndef RENDER_AREA_H
 #define RENDER_AREA_H
 
-#include <QWidget>
+#include <QGLWidget>
 #include <QMap>
 #include <QPair>
 #include <QImage>
+#include <QRegion>
 
 #include "opencv/highgui.h"
 
+class Entities;
 class Frame;
 
-class RenderArea : public QWidget
+class RenderArea : public QGLWidget
 {
   Q_OBJECT;
 
 public:
   RenderArea(QWidget* parent);
   void setNumCameras(int n);
-  void showFrames(QMap<int, QMap<int, QPair<Frame*, QString> > > detections, int number, Frame* f);
+  void showFrames(QMap<int, QMap<int, QPair<Frame*, QString> > > detections, int number, Entities* e);
 
 public slots:
   void onFrameSizeChanged(int width, int height, int camera);
@@ -35,11 +37,13 @@ private:
   uchar* imageData[10];
   int imageWidth[10], imageHeight[10];
   double scaleFactor[10];
+  QRegion cameraRegion[10];
+  QRegion mapRegion;
   int time;
   int framesShown;
   int numCameras;
   bool clear;
-  Frame* entities;
+  Entities* entities;
 };
 
 #endif

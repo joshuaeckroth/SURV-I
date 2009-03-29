@@ -1,0 +1,16 @@
+#ifndef CAMERA_MODEL_H
+#define CAMERA_MODEL_H
+
+class CameraModel
+{
+public:
+  static CameraModel* instance();
+
+protected:
+  CameraModel();
+
+private:
+  static CameraModel* pinstance;
+};
+
+#endif

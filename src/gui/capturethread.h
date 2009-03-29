@@ -39,7 +39,6 @@ private:
   CvCapture* capture;
   double calculatedFps;
   double fps;
-  double frameTime;
   int frameNum;
   QQueue<int> frameTimes;
   int camera;

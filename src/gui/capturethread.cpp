@@ -11,7 +11,7 @@
 
 CaptureThread::CaptureThread(Decoder* d, int c)
   : QThread(), decoder(d), captureActive(false),
-    calculatedFps(0.0), fps(0.0), frameTime(0.0), frameNum(0), camera(c),
+    calculatedFps(0.0), fps(0.0), frameNum(0), camera(c),
     error(false)
 {
   char filename[20];
@@ -31,6 +31,7 @@ void CaptureThread::run()
   time.start();
   IplImage *image;
   Frame *frame;
+  double frameTime;
   QString detections;
   while(true)
     {
@@ -47,12 +48,10 @@ void CaptureThread::run()
       image = cvQueryFrame(capture);
       if(image)
 	{
-	  frameLock.lock();
 	  frameNum++;
 	  frameTime = frameNum / fps;
 	  frame = new Frame(frameNum, frameTime);
 	  frame->setImage(image);
-	  frameLock.unlock();
 
 	  detections = decoder->decodeFrame(frame);
 	  emit newDetections(detections, camera, frame);

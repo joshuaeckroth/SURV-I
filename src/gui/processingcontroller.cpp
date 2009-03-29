@@ -11,6 +11,7 @@
 #include "abducerthread.h"
 #include "frame.h"
 #include "cameramodel.h"
+#include "entities.h"
 
 ProcessingController::ProcessingController(RenderArea* r, int n)
   : curFrame(NULL), curFrameNumber(1), numCameras(n), renderer(r)
@@ -23,6 +24,8 @@ ProcessingController::ProcessingController(RenderArea* r, int n)
 void ProcessingController::init()
 {
   abducerThread = new AbducerThread();
+  connect(abducerThread, SIGNAL(newTracks(Entities*)), this, SLOT(newTracks(Entities*)));
+  abducerThread->start();
 
   for(int i = 0; i < numCameras; i++)
     {
@@ -36,8 +39,6 @@ void ProcessingController::init()
 	{
 	  connect(captureThread[i], SIGNAL(newDetections(QString, int, Frame*)),
 		  this, SLOT(newDetections(QString, int, Frame*)));
-	  connect(abducerThread, SIGNAL(newTracks(Frame*)), this, SLOT(newTracks(Frame*)));
-	  abducerThread->start();
 	}
     }
 }
@@ -181,10 +182,9 @@ void ProcessingController::newDetections(QString ds, int camera, Frame* f)
     }
 }
 
-void ProcessingController::newTracks(Frame* f)
+void ProcessingController::newTracks(Entities* e)
 {
-  //qDebug() << "Showing frame in GUI.";
-  renderer->showFrames(detections, curFrameNumber, f);
+  renderer->showFrames(detections, curFrameNumber, e);
 
   for(int i = 0; i < numCameras; i++)
     {

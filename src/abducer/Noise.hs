@@ -16,7 +16,7 @@ import Data.List ((\\))
 hypothesizeNoise :: CategoryID       -- ^ Hypothesis category
                  -> WorldState       -- ^ World state
                  -> World WorldState -- ^ Resulting world
-hypothesizeNoise catID ws = hypothesizeNoise' catID (detIDs ws) ws
+hypothesizeNoise catID ws = hypothesizeNoise' catID (currentDetIDs ws) ws
     where 
       hypothesizeNoise' :: CategoryID -> [DetectionID] -> WorldState -> World WorldState
       hypothesizeNoise' catID []         ws = return ws
@@ -33,17 +33,19 @@ hypothesizeNoise catID ws = hypothesizeNoise' catID (detIDs ws) ws
                 ws'         = ws { mind = newMind, hypIDs = newHypIDs, noiseIDs = newNoiseIDs, noiseMap = newNoiseMap }
 
 scoreNoise :: HypothesisID -> DetectionID -> DetectionMap -> Level -> Level
-scoreNoise hypID did m _ =
-    if area < 20.0 then High
+scoreNoise hypID did dm _ =
+    if (area > 0.0 && area < 30.0) then Highest
     else Lowest
         where
-          Detection (Detection_Attrs { detArea = area }) = IDMap.getItemFromMap m did
+          area = case IDMap.lookup did dm of
+                   Just (Detection (Detection_Attrs { detArea = area' })) -> area'
+                   Nothing                                                -> -1.0
 
 showNoise :: [NoiseID] -> NoiseMap -> DetectionMap -> [String]
 showNoise []     _         _       = []
 showNoise (n:ns) nm dm =
-    ["Noise " ++ (show n) ++
-     " [detection: " ++ (show did) ++ ", " ++
+    ["Noise " ++ (show n) ++ " [" ++
+     "detection: " ++ (show did) ++ ", " ++
      "score: " ++ (show $ scoreNoise n did dm Medium) ++ "]"]
     ++ showNoise ns nm dm
     where
@@ -61,28 +63,27 @@ noiseToXml (n:ns) nm dm =
     where
       det = IDMap.getItemFromMap dm (IDMap.getItemFromMap nm n)
 
+-- | Keep only noise that is believed and whose detection is \'current\'
 updateNoise :: WorldState       -- ^ World state
             -> World WorldState -- ^ Resulting world
 updateNoise ws =
     recordWorldEvent (["Removed noise:"] ++ (showNoise ((noiseIDs ws) \\ newNoiseIDs) (noiseMap ws) (detMap ws)) ++ ["END"], emptyElem) >>
-                     return (ws { mind = newMind, hypIDs = newHypIDs, noiseIDs = newNoiseIDs, noiseMap = newNoiseMap })
+                     return (ws { mind = newMind, noiseIDs = newNoiseIDs })
     where
       m             = mind ws
-      goodHs        = IDSet.toList $ IDSet.union (irrefutableHypotheses m) (IDSet.union (acceptedHypotheses m) (consideringHypotheses m))
-      newNoiseMap   = IDMap.filterWithKey (\n _ -> elem n goodHs) (noiseMap ws)
+      goodHs        = IDSet.toList $ acceptedHypotheses m
+      -- create new noiseMap to build new noiseIDs list but don't save new map to the mind
+      newNoiseMap   = IDMap.filterWithKey (\n _ -> (elem n goodHs) && (elem (IDMap.getItemFromMap (noiseMap ws) n) (currentDetIDs ws))) (noiseMap ws)
       newNoiseIDs   = filter (\n -> elem n $ IDMap.keys newNoiseMap) (noiseIDs ws)
-      newHypIDs     = (hypIDs ws) \\ ((noiseIDs ws) \\ newNoiseIDs)
-      newMind       = foldl (\m h -> removeHypothesis h m) (mind ws) ((noiseIDs ws) \\ newNoiseIDs)
+      newMind       = foldl (\m h -> removeHypothesis h m) m ((noiseIDs ws) \\ newNoiseIDs)
 
 recordNoise :: WorldState -> World WorldState
 recordNoise ws =
-    recordWorldEvent
-    (showNoise ns nm dm,
-     recordWorldEventInFrame frame $ noiseToXml ns nm dm) >>
+    recordWorldEvent (showNoise ns nm dm, recordWorldEventInFrame frame $ noiseToXml ns nm dm) >>
     return ws
     where
-      ns        = noiseIDs ws
-      nm        = noiseMap ws
-      dm        = detMap ws
-      frame     = curFrame ws
+      ns    = noiseIDs ws
+      nm    = noiseMap ws
+      dm    = detMap ws
+      frame = curFrame ws
 

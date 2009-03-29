@@ -10,6 +10,7 @@ class RenderArea;
 class Decoder;
 class AbducerThread;
 class Frame;
+class Entities;
 
 class ProcessingController : public QObject
 {
@@ -29,7 +30,7 @@ public slots:
 
 private slots:
   void newDetections(QString, int, Frame*);
-  void newTracks(Frame*);
+  void newTracks(Entities*);
 
 private:
   Frame* curFrame;

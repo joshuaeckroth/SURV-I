@@ -1,6 +1,6 @@
 
 CONFIG += qt debug
-QT += xml
+QT += xml opengl
 
 TARGET = build/runsurv
 
@@ -23,6 +23,7 @@ HEADERS += \
   src/gui/capturethread.h \
   src/gui/decoder.h \
   src/gui/detection.h \
+  src/gui/entities.h \
   src/gui/frame.h \
   src/gui/mainwindow.h \
   src/gui/noise.h \
@@ -42,6 +43,7 @@ SOURCES += \
   src/gui/capturethread.cpp \
   src/gui/decoder.cpp \
   src/gui/detection.cpp \
+  src/gui/entities.cpp \
   src/gui/frame.cpp \
   src/gui/main.cpp \
   src/gui/mainwindow.cpp \

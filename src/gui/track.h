@@ -1,14 +1,14 @@
 #ifndef TRACK_H
 #define TRACK_H
 
-class Frame;
+class Entities;
 
 class Track
 {
 public:
   Track(int i, double x, double y, double ox, double oy,
 	int p, int n, double ex, double ey, double r, bool thisF);
-  void setFrame(Frame *f);
+  void setEntities(Entities *e);
   int getId() const;
   double getCx() const;
   double getCy() const;
@@ -33,7 +33,7 @@ private:
   double ecy;
   double radius;
   bool thisFrame;
-  Frame *frame;
+  Entities *entities;
 };
 
 #endif

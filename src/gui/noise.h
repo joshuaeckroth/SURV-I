@@ -1,13 +1,13 @@
 #ifndef NOISE_H
 #define NOISE_H
 
-class Frame;
+class Entities;
 
 class Noise
 {
 public:
   Noise(int i, int c, double a, double x, double y);
-  void setFrame(Frame *f);
+  void setEntities(Entities *e);
   int getId() const;
   int getCamera() const;
   double getArea() const;
@@ -20,7 +20,7 @@ private:
   double area;
   double cx;
   double cy;
-  Frame *frame;
+  Entities *entities;
 };
 
 #endif

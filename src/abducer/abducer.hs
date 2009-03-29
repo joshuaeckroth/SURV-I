@@ -9,25 +9,33 @@ import World
 
 main = do
   let ws = newWorldState
-  frame <- getFrame
-  processFrame frame ws
+  input <- openFile "detections.xml" ReadMode
+  frame <- getFrame input
+  processFrame input frame ws
 
-processFrame :: Either String Frame
+processFrame :: Handle
+             -> Either String Frame
              -> WorldState
              -> IO ()
-processFrame (Left s)      ws = putStrLn "<!-- Done -->"
-processFrame (Right frame) ws = do let world    = runAbducer frame ws
-                                       log      = (xmlHeader ws) ++ (outputLog world) ++ (xmlFooter ws)
-                                       (ws', _) = worldState world
+processFrame _     (Left s)      ws = putStrLn "<!-- Done -->"
+processFrame input (Right frame) ws = case frame of
+                                        (Frame _ []) -> do
+                                                   putStrLn ("Skipping empty frame " ++ (show $ frameProp frameNumber frame))
+                                                   frame <- getFrame input
+                                                   processFrame input frame ws
+                                        otherwise    ->
+                                            do let world    = runAbducer frame ws
+                                                   log      = (xmlHeader ws) ++ (outputLog world) ++ (xmlFooter ws)
+                                                   (ws', _) = worldState world
 
-                                   frameFile <- openFile ("tracks/frame-" ++ (show $ frameProp frameNumber frame) ++ ".xml") WriteMode
-                                   hPutStrLn frameFile log
-                                   hClose frameFile
-                                   putStrLn ("Track file written for frame " ++ (show $ frameProp frameNumber frame))
-                                   frame <- getFrame
-                                   processFrame frame ws'
+                                               frameFile <- openFile ("tracks/frame-" ++ (show $ frameProp frameNumber frame) ++ ".xml") WriteMode
+                                               hPutStrLn frameFile log
+                                               hClose frameFile
+                                               putStrLn ("Track file written for frame " ++ (show $ frameProp frameNumber frame))
+                                               frame <- getFrame input
+                                               processFrame input frame ws'
 
-getFrame :: IO (Either String Frame)
-getFrame = do 
-  contents <- getLine
+getFrame :: Handle -> IO (Either String Frame)
+getFrame input = do 
+  contents <- hGetLine input
   return (fromXml $ xmlParse "stream" contents)

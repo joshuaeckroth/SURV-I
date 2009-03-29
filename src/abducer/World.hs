@@ -13,25 +13,28 @@ import qualified Text.XML.HaXml.Pretty as HaXml
 import qualified Data.Sequence as Seq
 import Data.List ((\\))
 
-data WorldState = WorldState { mind     :: Mind Level Level Level, -- ^ The Mark-II Mind
-                               hypIDs   :: [HypothesisID],         -- ^ Current set of hypothesis IDs
-                               detIDs   :: [DetectionID],          -- ^ Most recent detections
-                               detMap   :: DetectionMap,           -- ^ Current map of detections
-                               noiseIDs :: [NoiseID],              -- ^ Most recent noise hypotheses
-                               noiseMap :: NoiseMap,               -- ^ Current map of noise hypotheses
-                               trackIDs :: [TrackID],              -- ^ Most recent tracks
-                               trackMap :: TrackMap,               -- ^ Current map of tracks
-                               curFrame :: Frame                   -- ^ Most recent frame
+data WorldState = WorldState { mind          :: Mind Level Level Level, -- ^ The Mark-II Mind
+                               hypIDs        :: [HypothesisID],         -- ^ Current set of hypothesis IDs
+                               currentDetIDs :: [DetectionID],          -- ^ Most recent detections
+                               detIDs        :: [DetectionID],          -- ^ All detections (younger than a few seconds)
+                               detMap        :: DetectionMap,           -- ^ Map of most recent and \'all\' detections
+                               noiseIDs      :: [NoiseID],              -- ^ Most recent noise hypotheses
+                               noiseMap      :: NoiseMap,               -- ^ Current map of noise hypotheses
+                               trackIDs      :: [TrackID],              -- ^ Most recent tracks
+                               trackMap      :: TrackMap,               -- ^ Current map of tracks
+                               curFrame      :: Frame                   -- ^ Most recent frame
                              }
 
 -- | Create a new blank world state
 newWorldState :: WorldState
 newWorldState = WorldState
-                -- (setTrace True (newMind confidenceBoost suggestStatus SparseTransitive))
+                --(setTrace True (newMind confidenceBoost suggestStatus NoTransitive))
                 -- mind
-                (newMind confidenceBoost suggestStatus SparseTransitive)
+                (newMind confidenceBoost suggestStatus NoTransitive)
                 -- hypIDs
                 [HasInt 0]
+                -- currentDetIDs
+                []
                 -- detIDs
                 []
                 -- detMap
@@ -47,9 +50,11 @@ newWorldState = WorldState
                 -- curFrame
                 (Frame (Frame_Attrs 0 0) [])
 
-type WorldLog = ([String], HaXml.Content ()) -- ^ Human and XML representation of events
+-- | Human and XML representation of events
+type WorldLog = ([String], HaXml.Content ())
 
-newtype World a = World { worldState :: (a, WorldLog) } -- ^ World state plus the log
+-- | World state plus the log
+newtype World a = World { worldState :: (a, WorldLog) }
 
 instance Monad World where
     return a = World (a, ([], HaXml.CElem (HaXml.Elem "WorldEvents" [] []) ()))
@@ -63,20 +68,10 @@ instance Monad World where
               in World (b, (s ++ s', joinWorldEvents x x'))
 
 cleanWorld :: Frame -> WorldState -> WorldState
-cleanWorld frame ws = ws { mind = newMind''', curFrame = frame, detIDs = [], detMap = empty, hypIDs = newHypIDs,
-                       noiseIDs = [], noiseMap = empty }
+cleanWorld frame ws = ws { mind = newMind2, curFrame = frame }
     where
-      newMind    = foldl (\m (c, _, _) -> removeConstrainer c m) (mind ws) (getConstrainers (mind ws))
-      newMind'   = foldl (\m (a, _, _) -> removeAdjuster a m) newMind (getAdjusters newMind)
-
-      -- remove detections
-      newMind''  = foldl (\m h -> removeHypothesis h m) newMind' (detIDs ws)
-
-      -- remove noise
-      newMind''' = foldl (\m h -> removeHypothesis h m) newMind' (noiseIDs ws)
-
-      -- only tracks are left
-      newHypIDs  = [0] ++ (trackIDs ws)
+      newMind1  = foldl (\m (c, _, _) -> removeConstrainer c m) (mind ws) (getConstrainers (mind ws))
+      newMind2  = foldl (\m (a, _, _) -> removeAdjuster a m) newMind1 (getAdjusters newMind1)
 
 -- | Writes a human and XML log
 recordWorldEvent :: ([String], HaXml.Content ()) -- ^ Human and XML content
@@ -183,10 +178,12 @@ xmlFooter ws = "</WorldEvents>"
 -- | Return human log
 outputHuman :: World WorldState -> String
 outputHuman m = (unlines $ ["Mind:"] ++ (showMind $ mind ws)
-                 -- ++ ["Mind trace:"] ++ (formatTrace $ mindTrace $ mind ws)
-                 -- ++ ["Constrainers:"] ++ (map show $ getConstrainers $ mind ws)
-                 -- ++ ["Explainers:"] ++ (map show $ getExplainers $ mind ws)
-                 -- ++ ["Hypotheses:"] ++ (map (\h -> unlines $ showHypothesis h (mind ws)) ((hypIDs ws) \\ [0]))
+                 {--
+                 ++ ["Mind trace:"] ++ (formatTrace $ mindTrace $ mind ws)
+                 ++ ["Constrainers:"] ++ (map show $ getConstrainers $ mind ws)
+                 ++ ["Explainers:"] ++ (map show $ getExplainers $ mind ws)
+                 ++ ["Hypotheses:"] ++ (map (\h -> unlines $ showHypothesis h (mind ws)) ((detIDs ws) ++ (noiseIDs ws) ++ (trackIDs ws)))
+                 --}
                 )
     where
       (ws, _) = worldState m
