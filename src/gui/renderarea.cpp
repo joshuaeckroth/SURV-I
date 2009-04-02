@@ -33,7 +33,7 @@ RenderArea::RenderArea(QWidget* parent)
   setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding));
   time = framesShown = 0;
 
-  map = QImage("../videos/ARL1.jpg");
+  map = QImage("../videos/ARL1-with-lines.jpg");
   if(map.isNull())
     qDebug() << "Unable to load map image.";
 
@@ -313,9 +313,9 @@ void RenderArea::paintEvent(QPaintEvent*)
 			      // draw expected circle
 			      painter.setPen(trackExpectedCirclePen);
 			      
-			      painter.drawEllipse(QPoint(i * eachWidth + scaledEx, scaledEy),
-						  static_cast<int>(t->getRadius() * scaleFactor[i]),
-						  static_cast<int>(t->getRadius() * scaleFactor[i]));
+			      //painter.drawEllipse(QPoint(i * eachWidth + scaledEx, scaledEy),
+			      //		  static_cast<int>(t->getRadius() * scaleFactor[i]),
+			      //		  static_cast<int>(t->getRadius() * scaleFactor[i]));
 			    }
 			  
 			  // draw track id

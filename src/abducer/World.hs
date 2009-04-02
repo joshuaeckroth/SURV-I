@@ -2,9 +2,10 @@ module World where
 import Types
 import Reasoner.Core
 import Reasoner.Types
+import Reasoner.Constrainers
 import Vocabulary
 import WrappedInts.Types (HasInt(..), wrappedInts)
-import WrappedInts.IDMap (empty, toList, keysSet)
+import WrappedInts.IDMap (empty, toList, keysSet, getItemFromMap)
 import qualified WrappedInts.IDSet as IDSet
 import qualified WrappedInts.IDMap as IDMap
 import qualified Text.XML.HaXml.Types as HaXml
@@ -13,24 +14,39 @@ import qualified Text.XML.HaXml.Pretty as HaXml
 import qualified Data.Sequence as Seq
 import Data.List ((\\))
 
-data WorldState = WorldState { mind          :: Mind Level Level Level, -- ^ The Mark-II Mind
-                               hypIDs        :: [HypothesisID],         -- ^ Current set of hypothesis IDs
-                               currentDetIDs :: [DetectionID],          -- ^ Most recent detections
-                               detIDs        :: [DetectionID],          -- ^ All detections (younger than a few seconds)
-                               detMap        :: DetectionMap,           -- ^ Map of most recent and \'all\' detections
-                               noiseIDs      :: [NoiseID],              -- ^ Most recent noise hypotheses
-                               noiseMap      :: NoiseMap,               -- ^ Current map of noise hypotheses
-                               trackIDs      :: [TrackID],              -- ^ Most recent tracks
-                               trackMap      :: TrackMap,               -- ^ Current map of tracks
-                               curFrame      :: Frame                   -- ^ Most recent frame
+data WorldState = WorldState { mind             :: Mind Level Level Level, -- ^ The Mark-II Mind
+                               hypIDs           :: [HypothesisID],         -- ^ Current set of hypothesis IDs
+                               currentDetIDs    :: [DetectionID],          -- ^ Most recent detections
+                               detIDs           :: [DetectionID],          -- ^ All detections (younger than a few seconds)
+                               detMap           :: DetectionMap,           -- ^ Map of most recent and \'all\' detections
+                               noiseIDs         :: [NoiseID],              -- ^ Most recent noise hypotheses
+                               noiseMap         :: NoiseMap,               -- ^ Current map of noise hypotheses
+                               trackIDs         :: [TrackID],              -- ^ Most recent tracks
+                               trackMap         :: TrackMap,               -- ^ Current map of tracks
+                               curFrame         :: Frame,                  -- ^ Most recent frame
+                               constrainers     :: [([HypothesisID], HypothesisID, ConstrainerType)] -- ^ Current set of constrainers
                              }
+
+type ConstrainerType = (String, [Level] -> [Bound Level])
+
+constrainerImplies :: ConstrainerType
+constrainerImplies = ("implies", implies)
+
+constrainerImpliedBy :: ConstrainerType
+constrainerImpliedBy = ("impliedBy", impliedBy)
+
+constrainerOneOf :: ConstrainerType
+constrainerOneOf = ("oneOf", oneOf)
+
+constrainerNotOverOneOf :: ConstrainerType
+constrainerNotOverOneOf = ("notOverOneOf", notOverOneOf)
 
 -- | Create a new blank world state
 newWorldState :: WorldState
 newWorldState = WorldState
-                --(setTrace True (newMind confidenceBoost suggestStatus NoTransitive))
+                (setTrace True (newMind confidenceBoost suggestStatus NoTransitive))
                 -- mind
-                (newMind confidenceBoost suggestStatus NoTransitive)
+                --(newMind confidenceBoost suggestStatus NoTransitive)
                 -- hypIDs
                 [HasInt 0]
                 -- currentDetIDs
@@ -49,6 +65,8 @@ newWorldState = WorldState
                 empty
                 -- curFrame
                 (Frame (Frame_Attrs 0 0) [])
+                -- constrainers
+                []
 
 -- | Human and XML representation of events
 type WorldLog = ([String], HaXml.Content ())
@@ -68,10 +86,11 @@ instance Monad World where
               in World (b, (s ++ s', joinWorldEvents x x'))
 
 cleanWorld :: Frame -> WorldState -> WorldState
-cleanWorld frame ws = ws { mind = newMind2, curFrame = frame }
+cleanWorld frame ws = ws { mind = newMind3, curFrame = frame, constrainers = [] }
     where
-      newMind1  = foldl (\m (c, _, _) -> removeConstrainer c m) (mind ws) (getConstrainers (mind ws))
-      newMind2  = foldl (\m (a, _, _) -> removeAdjuster a m) newMind1 (getAdjusters newMind1)
+      newMind1 = foldl (\m (c, _, _) -> removeConstrainer c m) (mind ws) (getConstrainers (mind ws))
+      newMind2 = foldl (\m (a, _, _) -> removeAdjuster a m) newMind1 (getAdjusters newMind1)
+      newMind3 = setTrace True newMind2
 
 -- | Writes a human and XML log
 recordWorldEvent :: ([String], HaXml.Content ()) -- ^ Human and XML content
@@ -178,12 +197,9 @@ xmlFooter ws = "</WorldEvents>"
 -- | Return human log
 outputHuman :: World WorldState -> String
 outputHuman m = (unlines $ ["Mind:"] ++ (showMind $ mind ws)
-                 {--
                  ++ ["Mind trace:"] ++ (formatTrace $ mindTrace $ mind ws)
-                 ++ ["Constrainers:"] ++ (map show $ getConstrainers $ mind ws)
                  ++ ["Explainers:"] ++ (map show $ getExplainers $ mind ws)
                  ++ ["Hypotheses:"] ++ (map (\h -> unlines $ showHypothesis h (mind ws)) ((detIDs ws) ++ (noiseIDs ws) ++ (trackIDs ws)))
-                 --}
                 )
     where
       (ws, _) = worldState m
@@ -210,6 +226,44 @@ xmlProlog :: HaXml.Prolog
 xmlProlog = HaXml.Prolog (Just (HaXml.XMLDecl "1.0" (Just (HaXml.EncodingDecl "UTF-8")) Nothing))
             [] (Just (HaXml.DTD "classifications.dtd" Nothing [])) []
 
+addConstrainerType :: ConstrainerType
+                   -> HypothesisID
+                   -> [HypothesisID]
+                   -> WorldState -- ^ World state
+                   -> WorldState -- ^ Resulting world state
+addConstrainerType constrainer object subjects ws =
+    ws { mind = addConstrainer (nextConstrainer ws) (IDSet.fromList subjects) (snd constrainer) object (mind ws),
+         constrainers = (subjects, object, constrainer):(constrainers ws) }
+
+addCyclicConstrainers :: [HypothesisID] -> ConstrainerType -> WorldState -> WorldState
+addCyclicConstrainers hs constrainer ws = foldl (\ws (ss, o) -> if (null ss) then ws
+                                                                else addConstrainerType constrainer o ss ws)
+                                          ws
+                                          ([(hs \\ [object], object) | object <- hs] :: [([HypothesisID], HypothesisID)])
+
+-- | Print a list of constrainers
+showConstrainers :: WorldState -- ^ World state
+                 -> [String]   -- ^ List of constrainers
+showConstrainers ws = foldl (\s (subjects, object, (cstring, func)) ->
+                                 [cstring ++ " on object " ++ (formatHypothesis object) ++ "->" ++ (runConstrainer object subjects func)
+                                  ++ " from subjects [" ++ (formatHypotheses subjects) ++ " ]"] ++ s)
+                      [] (constrainers ws)
+    where
+      runConstrainer :: HypothesisID -> [HypothesisID] -> ([Level] -> [Bound Level]) -> String
+      runConstrainer object subjects func = show $ func $ map (\h -> (getItemFromMap (aPriori (mind ws)) h) High) subjects
+
+      formatHypotheses :: [HypothesisID] -> String
+      formatHypotheses []     = ""
+      formatHypotheses (h:hs) = " " ++ (formatHypothesis h) ++ (formatHypotheses hs)
+
+      formatHypothesis :: HypothesisID -> String
+      formatHypothesis h = case (hypothesisStatus h (mind ws)) of
+                             (_, Just (lowerBound, upperBound), _, status) ->
+                                 (show h) ++ " (" ++ (show $ (getItemFromMap (aPriori (mind ws)) h) High) ++ ")[" ++ (show lowerBound) ++ "/" ++ (show upperBound) ++ "]"
+                             (_, Nothing, _, status)                       ->
+                                 (show h) ++ " (" ++ (show $ (getItemFromMap (aPriori (mind ws)) h) High) ++ ")"
+
+-- | Get next hypothesis ID
 nextHypID ws = 1 + maximum [head $ hypIDs ws,
                             foldr max 0 $ IDSet.toList $ unacceptableHypotheses $ mind ws,
                             foldr max 0 $ IDSet.toList $ refutedHypotheses $ mind ws,
@@ -220,6 +274,8 @@ nextHypID ws = 1 + maximum [head $ hypIDs ws,
 -- | Get next constrainer ID
 nextConstrainer ws = 1 + (foldr max 0 $ (\(a, _, _) -> a) $ unzip3 $ getConstrainers (mind ws))
 
+-- | Get next explainer ID
 nextExplainer ws = 1 + (foldr max 0 $ IDMap.keys (explainers $ mind ws))
 
+-- | Get next adjuster ID
 nextAdjuster ws = 1 + (foldr max 0 $ (\(a, _, _) -> a) $ unzip3 $ getAdjusters (mind ws))

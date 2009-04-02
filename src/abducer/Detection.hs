@@ -15,28 +15,36 @@ import qualified WrappedInts.IDSet as IDSet
 import Text.XML.HaXml.Types as HaXml
 import Data.List ((\\))
 
--- | Assert detections
---
--- Hypothesize the detections then declare them as factual,
--- and requiring explanation.
-assertDetections :: CategoryID       -- ^ Hypothesis category
-                 -> WorldState       -- ^ World state
-                 -> World WorldState -- ^ Resulting world
-assertDetections catID ws = assertDetections' catID (getDetections (curFrame ws)) ws
+-- | Hypothesize detections
+hypothesizeDetections :: CategoryID       -- ^ Hypothesis category
+                      -> WorldState       -- ^ World state
+                      -> World WorldState -- ^ Resulting world
+hypothesizeDetections catID ws = hypothesizeDetections' catID (getDetections (curFrame ws)) ws
     where
-      assertDetections' _     []         ws = return ws
-      assertDetections' catID (det:dets) ws =
-          assertDetections' catID dets ws'
+      hypothesizeDetections' _     []         ws = return ws
+      hypothesizeDetections' catID (det:dets) ws = hypothesizeDetections' catID dets ws'
               where
                 hypID            = nextHypID ws
                 newCurrentDetIDs = [hypID] ++ (currentDetIDs ws)
                 newHypIDs        = [hypID] ++ (hypIDs ws)
                 newDetIDs        = (detIDs ws) ++ [hypID]
                 newDetMap        = insert hypID det (detMap ws)
-                newMind          = setFactual (fromList [hypID])
-                                   (addHypothesis hypID catID (const Medium) (mind ws))
+                newMind          = addHypothesis hypID catID (scoreDetection (curFrame ws) hypID newDetMap) (mind ws)
                 ws'              = ws { mind = newMind, hypIDs = newHypIDs, currentDetIDs = newCurrentDetIDs,
                                         detMap = newDetMap, detIDs = newDetIDs }
+
+-- | Score a detection hypothesis (this is the hypothesis's a priori score)
+scoreDetection :: Frame        -- ^ Current frame
+               -> DetectionID  -- ^ Detection ID to score
+               -> DetectionMap -- ^ Current detection map
+               -> Level        -- ^ \'Current situation\'
+               -> Level        -- ^ Resulting score
+scoreDetection frame did dm l
+    | area < 30.0 = Highest
+    | otherwise   = Lowest
+    where
+      det   = getItemFromMap dm did
+      area  = detProp detArea det
 
 -- | Human format of detections log
 showDetections :: [DetectionID] -- ^ Detection IDs to log
@@ -107,13 +115,10 @@ constrainDetectionExplainers ws = constrainDetectionExplainers' (detIDs ws) ws
           recordWorldEvent ( [""] {-- ["Constrained detection " ++ (show did) ++ ":"] ++ (map show (getConstrainers (mind ws'))) --}, emptyElem) >>
           constrainDetectionExplainers' dids ws'
               where
-                det          = getItemFromMap (detMap ws) did
-                nids         = filter (\h -> (getItemFromMap (noiseMap ws) h) == did) (noiseIDs ws)
-                tids         = filter (\h -> let (Track det' _ _ _) = (getItemFromMap (trackMap ws) h) in det' == det) (trackIDs ws)
-                hs           = IDSet.fromList (tids ++ nids)
-                cID          = read $ show $ nextConstrainer ws
-                cIDs         = map HasInt [cID..(cID + (IDSet.size hs))] :: [ConstrainerID]
-                constrainers = [(constrainer, IDSet.delete object hs, object)
-                                | (constrainer, object) <- zip cIDs (IDSet.toList hs) :: [(ConstrainerID, ObjectID)]]
-                               :: [(ConstrainerID, SubjectIDs, ObjectID)]
-                ws'          = ws { mind = foldl (\m (c, ss, o) -> addConstrainer c ss oneOf o m) (mind ws) constrainers }
+                det  = getItemFromMap (detMap ws) did
+                nids = filter (\h -> (getItemFromMap (noiseMap ws) h) == did) (noiseIDs ws)
+                tids = filter (\h -> let (Track det' _ _ _) = (getItemFromMap (trackMap ws) h) in det' == det) (trackIDs ws)
+                ws'  = addCyclicConstrainers (tids ++ nids) constrainerOneOf ws
+
+lookupDetectionID :: Detection -> DetectionMap -> DetectionID
+lookupDetectionID det dm = IDMap.foldWithKey (\k e d -> if e == det then k else d) 0 dm
