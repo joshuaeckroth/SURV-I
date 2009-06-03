@@ -1,6 +1,6 @@
 
 GHCFLAGS = -O -auto-all -isrc/abducer -outputdir build
-CVLDPATH = LD_LIBRARY_PATH=`pwd`/libs/opencv/lib
+CVLDPATH = LD_LIBRARY_PATH=/home/josh/bin/installations/opencv/lib
 ABDUCER_SRCS = $(wildcard src/abducer/*.hs) $(wildcard src/abducer/*/*.hs)
 
 all: gui abducer api
@@ -12,6 +12,8 @@ Makefile.gui: surv-1.pro
 	qmake -o Makefile.gui surv-1.pro
 
 abducer:
+	mkdir -p build/WrappedInts
+	mkdir -p build/Reasoner
 	ghc $(GHCFLAGS) -o build/abducer --make src/abducer/abducer.hs 
 
 runsurv:
@@ -21,8 +23,7 @@ debug:
 	$(CVLDPATH) gdb --args build/runsurv
 
 clean:
-	make -f Makefile.gui clean
-	hmake $(HMAKEFLAGS) -realclean abducer
+	rm -Rvf build/*
 
 .PHONY : api
 api:
@@ -32,6 +33,6 @@ api:
 	done
 
 	haddock -o api -h --title="SURV-I" \
-		--source-module="file:///home/josh/school/surveillance/surv-1/api/src/%{MODULE/.//}.html" \
-		--source-entity="file:///home/josh/school/surveillance/surv-1/api/src/%{MODULE/.//}.html#%N" \
+		--source-module="file:///home/josh/research/surv-1/api/src/%{MODULE/.//}.html" \
+		--source-entity="file:///home/josh/research/surv-1/api/src/%{MODULE/.//}.html#%N" \
 		$(ABDUCER_SRCS)

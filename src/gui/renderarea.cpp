@@ -33,7 +33,7 @@ RenderArea::RenderArea(QWidget* parent)
   setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding));
   time = framesShown = 0;
 
-  map = QImage("../videos/ARL1-with-lines.jpg");
+  map = QImage("videos/ARL1-with-lines.jpg");
   if(map.isNull())
     qDebug() << "Unable to load map image.";
 
@@ -250,6 +250,8 @@ void RenderArea::paintEvent(QPaintEvent*)
 	    {
 	      Track* t = entities->tracks_next();
 
+	      if(t->getCy() > 1100) continue;
+
 	      if(t->getPrevId() != 0 || t->getNextId() != 0) // skip tracks that have only one point
 		{
 		  // draw the track on all cameras (if within camera view)
@@ -354,6 +356,14 @@ void RenderArea::paintEvent(QPaintEvent*)
 		      // draw the line
 		      painter.drawLine(c.first - mapTopLeftX, maxHeight + c.second - mapTopLeftY,
 				       o.first - mapTopLeftX, maxHeight + o.second - mapTopLeftY);
+		      
+		      // draw track id
+		      if(t->getThisFrame())
+			{
+			  painter.setPen(trackTextPen);
+			  
+			  painter.drawText(o.first - mapTopLeftX + 7, maxHeight + o.second - mapTopLeftY + 8, QString::number(t->getId()));
+			}
 		    }
 		}
 	    }

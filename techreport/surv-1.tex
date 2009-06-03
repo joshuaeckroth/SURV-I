@@ -350,6 +350,33 @@ below.
 \section{Player}
 \label{sec:player}
 
+
+\chapter{Recent Changes (to incorporate)}
+
+\section{Generating hypotheses}
+
+\subsection{Noise hypotheses}
+
+For every detection, hypothesize that the detection is noise.
+
+\subsection{Track hypotheses}
+
+\begin{itemize}
+
+\item Determine which detections intersect expected locations of
+  existing tracks.
+
+\item Generate `new track' hypotheses for all detections that do not
+  intersect expected locations.
+
+\item Generate `continuing track' hypotheses for all detections that
+  do intersect expected locations.
+
+\end{itemize}
+
+Thus, if a detection intersects any expected location, there is no
+possibility that a new track will start at that detection location.
+
 \chapter{Evaluation}
 
 \section{Other abductive solutions}

@@ -1,7 +1,7 @@
 #ifndef DECODER_H
 #define DECODER_H
 
-#include "opencv/cvaux.h"
+#include "cvaux.h"
 
 class Frame;
 

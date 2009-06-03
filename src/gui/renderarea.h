@@ -8,7 +8,7 @@
 #include <QRegion>
 #include <QPen>
 
-#include "opencv/highgui.h"
+#include "highgui.h"
 
 class Entities;
 class Frame;

@@ -5,7 +5,7 @@
 
 #include <unistd.h>
 
-#include "opencv/highgui.h"
+#include "highgui.h"
 
 #include "capturethread.h"
 #include "decoder.h"
@@ -21,10 +21,20 @@ CaptureThread::CaptureThread(Decoder* d, int c)
   QFile file(filename);
   if(!file.exists() || !(capture = cvCaptureFromFile(filename)))
     {
+
       error = true;
     }
 
   fps = cvGetCaptureProperty(capture, CV_CAP_PROP_FPS);
+
+  // synchronize the cameras
+  if(camera == 1)
+    {
+      cvQueryFrame(capture);
+      cvQueryFrame(capture);
+      cvQueryFrame(capture);
+      cvQueryFrame(capture);
+    }
 }
 
 void CaptureThread::run()
@@ -51,6 +61,9 @@ void CaptureThread::run()
       if(image)
 	{
 	  frameNum++;
+
+	  if(frameNum == 453) break;
+
 	  frameTime = frameNum / fps;
 	  frame = new Frame(frameNum, frameTime);
 	  frame->setImage(image);

@@ -7,7 +7,7 @@
 #include <math.h>
 #include <vector>
 
-#include "opencv/highgui.h"
+#include "highgui.h"
 
 #include "decoder.h"
 #include "frame.h"

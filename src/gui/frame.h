@@ -1,7 +1,7 @@
 #ifndef FRAME_H
 #define FRAME_H
 
-#include "opencv/highgui.h"
+#include "highgui.h"
 
 class Frame
 {

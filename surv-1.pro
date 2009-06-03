@@ -12,8 +12,8 @@ MOC_DIR = build
 RESOURCES += src/gui/surv-1.qrc
 
 unix {
-  LIBS += -L"/home/josh/school/surveillance/surv-1/libs/opencv/lib"
-  INCLUDEPATH += "/home/josh/school/surveillance/surv-1/libs/opencv/include"
+  LIBS += -L"/home/josh/bin/installations/opencv/lib"
+  INCLUDEPATH += "/home/josh/bin/installations/opencv/include/opencv"
 }
 LIBS += -lcv -lcxcore -lhighgui -lcvaux
 

@@ -1,7 +1,7 @@
 
 #include <vector>
 
-#include "opencv/highgui.h"
+#include "highgui.h"
 
 #include "frame.h"
 
