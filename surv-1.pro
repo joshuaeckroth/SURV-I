@@ -1,6 +1,6 @@
 
 CONFIG += qt debug
-QT += xml opengl
+QT += xml opengl network
 
 TARGET = build/runsurv
 
@@ -11,11 +11,8 @@ MOC_DIR = build
 
 RESOURCES += src/gui/surv-1.qrc
 
-unix {
-  LIBS += -L"/home/josh/bin/installations/opencv/lib"
-  INCLUDEPATH += "/home/josh/bin/installations/opencv/include/opencv"
-}
-LIBS += -lcv -lcxcore -lhighgui -lcvaux
+INCLUDEPATH += "C:\Program Files\OpenCV1.2\include\opencv"
+LIBS += -L"C:\Program Files\OpenCV1.2\lib" -lcv120 -lcxcore120 -lhighgui120 -lcvaux120
 
 HEADERS += \
   src/gui/abducerthread.h \

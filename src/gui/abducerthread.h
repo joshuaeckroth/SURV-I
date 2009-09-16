@@ -4,11 +4,11 @@
 #include <QThread>
 #include <QWaitCondition>
 #include <QMutex>
-#include <QProcess>
 
 class TracksReader;
 class QXmlSimpleReader;
 class QXmlInputSource;
+class QTcpSocket;
 class Entities;
 
 class AbducerThread : public QThread
@@ -23,11 +23,6 @@ public:
 signals:
   void newTracks(Entities*);
 
-private slots:
-  void readyTracks();
-  void abducerStarted();
-  void abducerError(QProcess::ProcessError);
-
 private:
   int frameNum;
   QWaitCondition detectionsBuffer;
@@ -35,9 +30,8 @@ private:
   QString detections;
   QXmlSimpleReader* reader;
   TracksReader* handler;
-  QProcess* abducer;
-  bool notParsing;
-  QXmlInputSource *abducerSource;
+  QXmlInputSource *responseXml;
+  QTcpSocket *socket;
 };
 
 #endif

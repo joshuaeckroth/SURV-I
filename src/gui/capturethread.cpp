@@ -68,8 +68,7 @@ void CaptureThread::run()
 	  frame = new Frame(frameNum, frameTime);
 	  frame->setImage(image);
 
-	  //detections = decoder->decodeFrame(frame);
-	  sleep(1);
+      detections = decoder->decodeFrame(frame);
 	  emit newDetections(detections, camera, frame);
 	}
       updateFPS(time.elapsed());

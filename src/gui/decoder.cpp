@@ -146,11 +146,6 @@ QString Decoder::findBlobs()
 	      cy = rect.y + rect.height / 2;
 	
 	      QPair<double,double> p = CameraModel::warpToGround(camera,  QPair<int,int>(cx, cy));
-
-	      //stream << "<Detection camera=\"" << camera << "\" "
-	      //     << "area=\"" << area << "\" "
-	      //     << "cx=\"" << p.first << "\" "
-	      //     << "cy=\"" << p.second << "\" />";
 		
 	      // Insert centroids into list
 	      blobs_temp.push_back(coordinate(p.first, p.second, rect.width, rect.height));
@@ -165,10 +160,12 @@ QString Decoder::findBlobs()
  for(std::vector<coordinate>::iterator it = bigblobs.begin();
      it != bigblobs.end(); ++it)
    {
-     stream << "<Detection camera=\"" << camera << "\" "
+     stream << "\t<Detection camera=\"" << camera << "\" "
 	    << "area=\"" << it->area() << "\" "
+        << "lat=\"0\" "
+        << "lon=\"0\" "
 	    << "cx=\"" << it->x << "\" "
-	    << "cy=\"" << it->y << "\" />";
+        << "cy=\"" << it->y << "\" />\n";
    }
 
  return result;
