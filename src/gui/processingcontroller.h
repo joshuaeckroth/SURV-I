@@ -5,6 +5,8 @@
 
 #include <QMap>
 #include <QPair>
+#include <QMutex>
+#include <QTimer>
 
 class RenderArea;
 class Decoder;
@@ -18,10 +20,7 @@ class ProcessingController : public QObject
   
 public:
   ProcessingController(RenderArea* r, int n);
-  bool isProcessing();
-  double getCalculatedFPS() const;
-  int getFrameNumber() const;
-  double getFrameTime() const;
+  QString getCameraTimes() const;
   void numCamerasChanged(int n);
 
 public slots:
@@ -29,21 +28,23 @@ public slots:
   void stopProcessing();
 
 private slots:
-  void newDetections(QString, int, Frame*);
-  void newTracks(Entities*);
+  void newDetections(QString, Frame*);
+  void newEntities(Entities*);
+  void sendDetections();
 
 private:
-  Frame* curFrame;
-  int curFrameNumber;
   int numCameras;
-  // types: frame number, camera, frame instance, string of detections
-  QMap<int, QMap<int, QPair<Frame*, QString> > > detections;
   RenderArea* renderer;
   CaptureThread::FrameSize frameSize;
   CaptureThread* captureThread[10];
   Decoder* decoder[10];
   AbducerThread* abducerThread;
   void init();
+  QMutex mutex;
+  bool isProcessing;
+  QTimer* abducerTimer;
+  Frame** curFrame;
+  QString detections;
 };
 
 #endif

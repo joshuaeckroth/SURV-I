@@ -1,26 +1,28 @@
 #ifndef RENDER_AREA_H
 #define RENDER_AREA_H
 
-#include <QGLWidget>
+#include <QWidget>
 #include <QMap>
 #include <QPair>
 #include <QImage>
 #include <QRegion>
 #include <QPen>
+#include <QMutex>
 
 #include "highgui.h"
 
 class Entities;
 class Frame;
 
-class RenderArea : public QGLWidget
+class RenderArea : public QWidget
 {
   Q_OBJECT;
 
 public:
   RenderArea(QWidget* parent);
   void setNumCameras(int n);
-  void showFrames(QMap<int, QMap<int, QPair<Frame*, QString> > > detections, int number, Entities* e);
+  void showFrame(Frame* frame);
+  void updateEntities(Entities* e);
 
 public slots:
   void onFrameSizeChanged(int width, int height, int camera);
@@ -45,8 +47,9 @@ private:
   int numCameras;
   bool clear;
   Entities* entities;
+  QMutex mutex;
   QPen detectionPen, detectionCenterPen, detectionTextPen,
-    noisePen, trackHeadPen, trackTextPen, trackPathPen,
+    movementPen, trackHeadPen, trackTextPen, trackPathPen,
     trackExpectedPathPen, trackExpectedCirclePen, trackMapPen;
 };
 

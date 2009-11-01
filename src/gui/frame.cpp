@@ -5,8 +5,8 @@
 
 #include "frame.h"
 
-Frame::Frame(int n, double t)
-  : number(n), time(t)
+Frame::Frame(int n, double t, int c)
+  : number(n), time(t), camera(c)
 { }
 
 void Frame::setImage(IplImage* img)
@@ -22,6 +22,11 @@ int Frame::getNumber() const
 double Frame::getTime() const
 {
   return time;
+}
+
+int Frame::getCamera() const
+{
+    return camera;
 }
 
 IplImage *Frame::getImage() const

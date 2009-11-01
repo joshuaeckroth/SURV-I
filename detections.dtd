@@ -1,10 +1,12 @@
-<!ELEMENT Frames (Frame*)>
-<!ELEMENT Frame (Detection*)>
-<!ATTLIST Frame number CDATA #REQUIRED
-                time   CDATA #REQUIRED>
-<!ELEMENT Detection EMPTY>
-<!ATTLIST Detection area   CDATA #REQUIRED
-	            cx     CDATA #REQUIRED
-                    cy     CDATA #REQUIRED>
+<!ELEMENT CameraDetections (CameraDetection*)>
+
+<!ELEMENT CameraDetection  EMPTY>
+<!ATTLIST CameraDetection  camera    CDATA #REQUIRED
+                           lat       CDATA #REQUIRED
+                           lon       CDATA #REQUIRED
+                           area      CDATA #REQUIRED
+                           startTime CDATA #REQUIRED
+                           endTime   CDATA #REQUIRED>
+
 
 

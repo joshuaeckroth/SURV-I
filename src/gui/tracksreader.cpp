@@ -20,7 +20,7 @@ bool TracksReader::startElement(const QString&, const QString&,
       int frameNumber = attributes.value("number").toInt();
       double frameTime = attributes.value("time").toDouble();
 
-      curEntities = new Entities(frameNumber, frameTime);
+      //curEntities = new Entities(frameNumber, frameTime);
     }
   else if(qName == "Detection")
     {
@@ -30,17 +30,7 @@ bool TracksReader::startElement(const QString&, const QString&,
       int cx = attributes.value("cx").toDouble();
       int cy = attributes.value("cy").toDouble();
 
-      curEntities->addDetection(new Detection(id, camera, area, cx, cy));
-    }
-  else if(qName == "Noise")
-    {
-      int id = attributes.value("id").toInt();
-      int camera = attributes.value("camera").toInt();
-      double area = attributes.value("area").toDouble();
-      int cx = attributes.value("cx").toDouble();
-      int cy = attributes.value("cy").toDouble();
-
-      curEntities->addNoise(new Noise(id, camera, area, cx, cy));
+      //curEntities->addDetection(new Detection(id, camera, area, cx, cy));
     }
   else if(qName == "Track")
     {

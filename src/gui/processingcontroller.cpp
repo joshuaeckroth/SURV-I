@@ -14,22 +14,28 @@
 #include "entities.h"
 
 ProcessingController::ProcessingController(RenderArea* r, int n)
-        : curFrame(NULL), curFrameNumber(1), numCameras(n), renderer(r)
+        : numCameras(n), renderer(r)
 {
     renderer->setNumCameras(numCameras);
     CameraModel::setNumCameras(numCameras);
+    curFrame = new Frame*[numCameras];
     init();
 }
 
 void ProcessingController::init()
 {
+    mutex.lock();
+    isProcessing = false;
+    mutex.unlock();
+
     abducerThread = new AbducerThread();
-    connect(abducerThread, SIGNAL(newTracks(Entities*)), this, SLOT(newTracks(Entities*)));
+    connect(abducerThread, SIGNAL(newEntities(Entities*)), this, SLOT(newEntities(Entities*)));
     abducerThread->start();
 
     for(int i = 0; i < numCameras; i++)
     {
-        decoder[i] = new Decoder(i);
+        curFrame[i] = NULL;
+        decoder[i] = new Decoder;
         captureThread[i] = new CaptureThread(decoder[i], i);
         if(captureThread[i]->hasError())
         {
@@ -37,14 +43,18 @@ void ProcessingController::init()
         }
         else
         {
-            connect(captureThread[i], SIGNAL(newDetections(QString, int, Frame*)),
-                    this, SLOT(newDetections(QString, int, Frame*)));
+            connect(captureThread[i], SIGNAL(newDetections(QString, Frame*)),
+                    this, SLOT(newDetections(QString, Frame*)));
         }
     }
+
+    abducerTimer = new QTimer;
+    connect(abducerTimer, SIGNAL(timeout()), this, SLOT(sendDetections()));
 }
 
 void ProcessingController::startProcessing()
 {
+    mutex.lock();
     for(int i = 0; i < numCameras; i++)
     {
         if(!captureThread[i]->hasError())
@@ -53,50 +63,46 @@ void ProcessingController::startProcessing()
             captureThread[i]->start(QThread::IdlePriority);
         }
     }
-}
 
-bool ProcessingController::isProcessing()
-{
-    bool retval = true;
-    for(int i = 0; i < numCameras; i++)
-    {
-        retval &= captureThread[i]->isCapturing();
-    }
-    return retval;
+    abducerTimer->start(2000);
+    isProcessing = true;
+    mutex.unlock();
 }
 
 void ProcessingController::stopProcessing()
 {
+    mutex.lock();
     for(int i = 0; i < numCameras; i++)
     {
         captureThread[i]->stopCapture();
     }
+
+    abducerTimer->stop();
+    isProcessing = false;
+    mutex.unlock();
 }
 
-double ProcessingController::getCalculatedFPS() const
+QString ProcessingController::getCameraTimes() const
 {
-    double fps = 0.0;
+    QString times;
     for(int i = 0; i < numCameras; i++)
     {
-        fps += captureThread[i]->getCalculatedFPS();
+        if(curFrame[i] == NULL)
+        {
+            times.append(QString("Camera %1 not active")
+                         .arg(i));
+        }
+        else
+        {
+            times.append(QString("Camera %1: Frame %2 / %3s (%4 FPS)")
+                         .arg(i)
+                         .arg(curFrame[i]->getNumber())
+                         .arg(curFrame[i]->getTime(), 0, 'f', 1)
+                         .arg(captureThread[i]->getCalculatedFPS(), 0, 'f', 1));
+        }
+        if(i != (numCameras - 1)) times.append(", ");
     }
-    return (fps / (double)numCameras);
-}
-
-int ProcessingController::getFrameNumber() const
-{
-    if(curFrame != NULL)
-        return curFrame->getNumber();
-    else
-        return -1;
-}
-
-double ProcessingController::getFrameTime() const
-{
-    if(curFrame != NULL)
-        return curFrame->getTime();
-    else
-        return -1.0;
+    return times;
 }
 
 void ProcessingController::numCamerasChanged(int n)
@@ -105,100 +111,62 @@ void ProcessingController::numCamerasChanged(int n)
     {
         captureThread[i]->stopCapture();
         captureThread[i]->exit();
+        delete curFrame[i];
         //delete captureThread[i];
         //delete decoder[i];
     }
+    delete curFrame;
 
     numCameras = n;
+    curFrame = new Frame*[numCameras];
 
     renderer->setNumCameras(n);
 
     init();
 }
 
-void ProcessingController::newDetections(QString ds, int camera, Frame* f)
+void ProcessingController::newDetections(QString ds, Frame* frame)
 {
-    // if already some detections for this frame
-    if(detections.contains(f->getNumber()))
-    {
-        // add this camera's detections for this frame
-        QPair<Frame*, QString> pair(f, ds);
-        QMap<int, QPair<Frame*, QString> > t = detections.value(f->getNumber());
-        t.insert(camera, pair);
-        detections.insert(f->getNumber(), t);
-    }
-    else
-    {
-        // create new map for detections for this frame
-        QMap<int, QPair<Frame*, QString> > m;
-        QPair<Frame*, QString> pair(f, ds);
-        m.insert(camera, pair);
-        detections.insert(f->getNumber(), m);
-    }
+    mutex.lock();
+    detections.append(ds);
 
-    bool allDetected = true;
-    for(int i = 0; i < numCameras; i++)
+    curFrame[frame->getCamera()] = frame;
+    renderer->showFrame(frame);
+
+    if(isProcessing)
     {
-        // determine if the detections map contains a camera detection for
-        // the current frame and this camera
-        if(!detections.value(curFrameNumber).contains(i))
-            allDetected = false;
-    }
-
-    // if all cameras have produced detections,
-    // then give these detections to the abducer thread
-    if(allDetected)
-    {
-        // update current frame with frame from camera 0
-        curFrame = detections.value(curFrameNumber).value(0).first;
-
-        // wait for the next frame
-        // build collected detections string
-        // get frame info from a single frame (they should all have same info)
-        QString allDetections;
-        QTextStream stream(&allDetections);
-        stream << "<?xml version=\"1.0\" ?>\n";
-        stream << "<Detections startTime=\"" << getFrameTime() << "\" "
-                << "endTime=\"" << getFrameTime() << "\">\n";
-
+        // stop processing the faster cameras if they are out of sync
+        double oldestTime = frame->getTime();
         for(int i = 0; i < numCameras; i++)
         {
-            // grab string of detections for current frame and this camera
-            stream << detections.value(curFrameNumber).value(i).second;
+            if(curFrame[i] != NULL)
+            {
+                if(curFrame[i]->getTime() < (oldestTime + 0.01))
+                {
+                    oldestTime = curFrame[i]->getTime();
+                    captureThread[i]->startCapture();
+                }
+                else
+                {
+                    captureThread[i]->stopCapture();
+                }
+            }
         }
-
-        stream << "</Detections>";
-
-        qDebug() << "Sending to abducer" << allDetections;
-        std::cout << allDetections.toStdString() << std::endl;
-
-        abducerThread->newDetections(allDetections);
-
-        // wait for the next frame
-        curFrameNumber++;
-
-        // stop grabbing frames until the abducer returns
-        //for(int i = 0; i < numCameras; i++)
-        //captureThread[i]->stopCapture();
     }
+    mutex.unlock();
 }
 
-void ProcessingController::newTracks(Entities* e)
+void ProcessingController::sendDetections()
 {
-    renderer->showFrames(detections, curFrameNumber, e);
-
-    for(int i = 0; i < numCameras; i++)
-    {
-        //delete frames[i];
-        //frames[i] = NULL;
-
-        // start capturing again
-        //if(!captureThread[i]->hasError())
-        //{
-        //  captureThread[i]->startCapture();
-        //  captureThread[i]->start(QThread::IdlePriority);
-        //}
-        //else
-        //qDebug() << "capture thread for camera " << QString::number(i) << " has an error";
-    }
+    mutex.lock();
+    abducerThread->newDetections(detections);
+    detections.clear();
+    mutex.unlock();
 }
+
+void ProcessingController::newEntities(Entities* e)
+{
+    //qDebug() << QString("Log: %1\n").arg(e->getLog());
+    renderer->updateEntities(e);
+}
+

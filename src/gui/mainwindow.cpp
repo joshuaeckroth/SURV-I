@@ -10,15 +10,15 @@
 
 MainWindow::MainWindow() : QMainWindow(0)
 {
-  ui.setupUi(this);
+    ui.setupUi(this);
 
-  renderArea = new RenderArea(this);
-  ui.verticalLayout->insertWidget(0, renderArea);
+    renderArea = new RenderArea(this);
+    ui.verticalLayout->insertWidget(0, renderArea);
 
-  processingController = new ProcessingController(renderArea, 2 /* num of cameras */);
+    processingController = new ProcessingController(renderArea, 2 /* num of cameras */);
 
-  // settings dock widget
-  /*
+    // settings dock widget
+    /*
   settingsDock = new QDockWidget("Settings", this);
   settingsDock->setAllowedAreas(Qt::RightDockWidgetArea);
   settingsWidget = new SettingsWidget(this);
@@ -27,21 +27,13 @@ MainWindow::MainWindow() : QMainWindow(0)
   addDockWidget(Qt::RightDockWidgetArea, settingsDock);
   */
 
-  updateTimer = new QTimer(this);
-  connect(updateTimer, SIGNAL(timeout()), this, SLOT(updateStats()));
-  updateTimer->start(100);
+    updateTimer = new QTimer(this);
+    connect(updateTimer, SIGNAL(timeout()), this, SLOT(updateStats()));
+    updateTimer->start(100);
 
-  connect(ui.actionStart, SIGNAL(clicked()), this, SLOT(startProcessing()));
-  connect(ui.actionStop, SIGNAL(clicked()), this, SLOT(stopProcessing()));
-  connect(ui.actionRecord, SIGNAL(clicked()), this, SLOT(startRecording()));
-}
-
-void MainWindow::closeEvent(QCloseEvent*)
-{
-  if(processingController->isProcessing())
-    {
-      processingController->stopProcessing();
-    }
+    connect(ui.actionStart, SIGNAL(clicked()), this, SLOT(startProcessing()));
+    connect(ui.actionStop, SIGNAL(clicked()), this, SLOT(stopProcessing()));
+    connect(ui.actionRecord, SIGNAL(clicked()), this, SLOT(startRecording()));
 }
 
 void MainWindow::startRecording()
@@ -50,35 +42,34 @@ void MainWindow::startRecording()
 
 void MainWindow::startProcessing()
 {
-  processingController->startProcessing();
-  ui.actionStart->setEnabled(false);
-  ui.actionStop->setEnabled(true);
+    processingController->startProcessing();
+    ui.actionStart->setEnabled(false);
+    ui.actionStop->setEnabled(true);
 }
 
 void MainWindow::stopProcessing()
 {
-  processingController->stopProcessing();
-  ui.actionStart->setEnabled(true);
-  ui.actionStop->setEnabled(false);
+    processingController->stopProcessing();
+    ui.actionStart->setEnabled(true);
+    ui.actionStop->setEnabled(false);
 }
 
 void MainWindow::updateStats()
 {
-  statusBar()->showMessage(QString("Frame ") + 
-			   QString::number(processingController->getFrameNumber()) +
-			   QString(" (") +
-			   QString::number(processingController->getFrameTime(), 'f', 2) +
-			   QString("s) - ") +
-			   QString("Processing FPS: ") +
-			   QString::number(processingController->getCalculatedFPS(), 'f', 1));
+    statusBar()->showMessage(processingController->getCameraTimes());
 }
 
 void MainWindow::numCamerasChanged(int n)
 {
-  processingController->stopProcessing();
-  ui.actionStart->setEnabled(true);
-  ui.actionStop->setEnabled(false);
-  processingController->numCamerasChanged(n);
+    processingController->stopProcessing();
+    ui.actionStart->setEnabled(true);
+    ui.actionStop->setEnabled(false);
+    processingController->numCamerasChanged(n);
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    processingController->stopProcessing();
 }
 
 

@@ -12,107 +12,103 @@
 #include "frame.h"
 
 CaptureThread::CaptureThread(Decoder* d, int c)
-  : QThread(), decoder(d), captureActive(false),
-    calculatedFps(0.0), fps(0.0), frameNum(0), camera(c),
-    error(false)
+        : QThread(), decoder(d), captureActive(false),
+        calculatedFps(0.0), fps(0.0), frameNum(0), camera(c),
+        error(false)
 {
-  char filename[20];
-  sprintf(filename, "camera-%d.avi", camera);
-  QFile file(filename);
-  if(!file.exists() || !(capture = cvCaptureFromFile(filename)))
+    char filename[20];
+    sprintf(filename, "camera-%d.avi", camera);
+    QFile file(filename);
+    if(!file.exists() || !(capture = cvCaptureFromFile(filename)))
     {
 
-      error = true;
+        error = true;
     }
 
-  fps = cvGetCaptureProperty(capture, CV_CAP_PROP_FPS);
-
-  // synchronize the cameras
-  if(camera == 1)
-    {
-      cvQueryFrame(capture);
-      cvQueryFrame(capture);
-      cvQueryFrame(capture);
-      cvQueryFrame(capture);
-    }
+    fps = cvGetCaptureProperty(capture, CV_CAP_PROP_FPS);
 }
 
 void CaptureThread::run()
 {
-  QTime time;
-  time.start();
-  IplImage *image;
-  Frame *frame;
-  double frameTime;
-  QString detections;
-  while(true)
+    QTime time;
+    time.start();
+    IplImage *image;
+    Frame *frame;
+    double frameTime;
+    QString detections;
+    while(true)
     {
-      if(!captureActive)
-	{
-	  captureLock.lock();
-	  calculatedFps = 0;
-	  frameTimes.clear();
-	  captureWait.wait(&captureLock);
-	  time.restart();
-	  updateFPS(time.elapsed());
-	  captureLock.unlock();
-	}
-      image = cvQueryFrame(capture);
-      if(image)
-	{
-	  frameNum++;
+        if(!captureActive)
+        {
+            captureLock.lock();
+            calculatedFps = 0;
+            frameTimes.clear();
+            captureWait.wait(&captureLock);
+            time.restart();
+            updateFPS(time.elapsed());
+            captureLock.unlock();
+        }
+        image = cvQueryFrame(capture);
+        if(image)
+        {
+            frameNum++;
 
-	  if(frameNum == 453) break;
+            if(frameNum == 453) break;
 
-	  frameTime = frameNum / fps;
-	  frame = new Frame(frameNum, frameTime);
-	  frame->setImage(image);
+            frameTime = frameNum / fps;
+            frame = new Frame(frameNum, frameTime, camera);
+            frame->setImage(image);
 
-      detections = decoder->decodeFrame(frame);
-	  emit newDetections(detections, camera, frame);
-	}
-      updateFPS(time.elapsed());
+            detections = decoder->decodeFrame(frame);
+            emit newDetections(detections, frame);
+        }
+        updateFPS(time.elapsed());
     }
 }
 
 void CaptureThread::updateFPS(int time)
 {
-  frameLock.lock();
+    frameLock.lock();
 
-  frameTimes.enqueue(time);
-  if(frameTimes.size() > 15)
+    frameTimes.enqueue(time);
+    if(frameTimes.size() > 15)
     {
-      frameTimes.dequeue();
+        frameTimes.dequeue();
     }
-  if(frameTimes.size() > 2)
+    if(frameTimes.size() > 2)
     {
-      calculatedFps = frameTimes.size() / ((double)time - frameTimes.head()) * 1000.0;
+        calculatedFps = frameTimes.size() / ((double)time - frameTimes.head()) * 1000.0;
     }
-  else
+    else
     {
-      calculatedFps = 0;
+        calculatedFps = 0;
     }
-  frameLock.unlock();
+    frameLock.unlock();
 }
 
 bool CaptureThread::startCapture()
 {
-  if(!captureActive)
+    mutex.lock();
+    if(!captureActive)
     {
-      if(!capture)
-	{
-	  qDebug() << "Error: capture not initialized";
-	  return false;
-	}
-      captureActive = true;
-      captureWait.wakeAll();
-      return true;
+        if(!capture)
+        {
+            qDebug() << "Error: capture not initialized";
+            return false;
+        }
+        captureActive = true;
+        captureWait.wakeAll();
+        mutex.unlock();
+        return true;
     }
-  return false;
+    mutex.unlock();
+    return false;
 }
 
 void CaptureThread::stopCapture()
 {
-  captureActive = false;
+    mutex.lock();
+    captureActive = false;
+    mutex.unlock();
 }
 

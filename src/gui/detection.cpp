@@ -2,8 +2,8 @@
 #include "detection.h"
 #include "entities.h"
 
-Detection::Detection(int i, int c, double a, double x, double y)
-  : id(i), camera(c), area(a), cx(x), cy(y)
+Detection::Detection(QString _id, double _lat, double _lon, int _startTime, int _endTime)
+  : id(_id), lat(_lat), lon(_lon), startTime(_startTime), endTime(_endTime)
 { }
 
 void Detection::setEntities(Entities *e)
@@ -11,28 +11,28 @@ void Detection::setEntities(Entities *e)
   entities = e;
 }
 
-int Detection::getId() const
+QString Detection::getId() const
 {
   return id;
 }
 
-int Detection::getCamera() const
+double Detection::getLat() const
 {
-  return camera;
+    return lat;
 }
 
-double Detection::getArea() const
+double Detection::getLon() const
 {
-  return area;
+    return lon;
 }
 
-double Detection::getCx() const
+int Detection::getStartTime() const
 {
-  return cx;
+    return startTime;
 }
 
-double Detection::getCy() const
+int Detection::getEndTime() const
 {
-  return cy;
+    return endTime;
 }
 

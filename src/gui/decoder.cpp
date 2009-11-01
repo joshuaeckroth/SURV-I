@@ -13,8 +13,8 @@
 #include "frame.h"
 #include "cameramodel.h"
 
-Decoder::Decoder(int c)
- : camera(c), bg_model(0)
+Decoder::Decoder()
+ : bg_model(0)
 { }
 
 QString Decoder::decodeFrame(Frame *frame)
@@ -30,7 +30,7 @@ QString Decoder::decodeFrame(Frame *frame)
  else
    {
      cvUpdateBGStatModel(image, bg_model);
-     result = findBlobs();
+     result = findBlobs(frame->getTime(), frame->getTime(), frame->getCamera());
    }
 
  return result;
@@ -110,7 +110,7 @@ claster_num, CvSeq** cnt_list)
  claster_num = cvSeqPartition(*cnt_list, storage, clasters, compareContour, NULL);
 }
 
-QString Decoder::findBlobs()
+QString Decoder::findBlobs(double startTime, double endTime, int camera)
 {
  CvSeq* clasters = NULL;
  CvSeq* cnt_list = NULL;
@@ -160,12 +160,12 @@ QString Decoder::findBlobs()
  for(std::vector<coordinate>::iterator it = bigblobs.begin();
      it != bigblobs.end(); ++it)
    {
-     stream << "\t<Detection camera=\"" << camera << "\" "
+     stream << "\t<CameraDetection camera=\"" << camera << "\" "
 	    << "area=\"" << it->area() << "\" "
-        << "lat=\"0\" "
-        << "lon=\"0\" "
-	    << "cx=\"" << it->x << "\" "
-        << "cy=\"" << it->y << "\" />\n";
+        << "lat=\"" << it->x << "\" "
+        << "lon=\"" << it->y << "\" "
+        << "startTime=\"" << startTime << "\" "
+        << "endTime=\"" << endTime << "\" />\n";
    }
 
  return result;

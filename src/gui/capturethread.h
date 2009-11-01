@@ -27,12 +27,13 @@ public:
   bool hasError() { return error; }
 
 signals:
-  void newDetections(QString, int, Frame*);
+  void newDetections(QString, Frame*);
 
 private:
   void updateFPS(int time);
   QMutex captureLock;
   QMutex frameLock;
+  QMutex mutex;
   QWaitCondition captureWait;
   Decoder* decoder;
   bool captureActive;

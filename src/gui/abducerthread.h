@@ -4,11 +4,12 @@
 #include <QThread>
 #include <QWaitCondition>
 #include <QMutex>
+#include <QQueue>
+#include <QTcpSocket>
 
-class TracksReader;
+class ResultsReader;
 class QXmlSimpleReader;
 class QXmlInputSource;
-class QTcpSocket;
 class Entities;
 
 class AbducerThread : public QThread
@@ -21,16 +22,16 @@ public:
   void newDetections(QString d);
 
 signals:
-  void newTracks(Entities*);
+  void newEntities(Entities*);
 
 private:
   int frameNum;
   QWaitCondition detectionsBuffer;
   QMutex mutex;
-  QString detections;
+  QQueue<QString> detections;
   QXmlSimpleReader* reader;
-  TracksReader* handler;
-  QXmlInputSource *responseXml;
+  ResultsReader* handler;
+  QXmlInputSource *xmlInput;
   QTcpSocket *socket;
 };
 

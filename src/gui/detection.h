@@ -1,26 +1,28 @@
 #ifndef DETECTION_H
 #define DETECTION_H
 
+#include <QString>
+
 class Entities;
 
 class Detection
 {
 public:
-  Detection(int i, int c, double a, double x, double y);
+  Detection(QString _id, double _lat, double _lon, int _startTime, int _endTime);
   void setEntities(Entities *e);
 
-  int getId() const;
-  int getCamera() const;
-  double getArea() const;
-  double getCx() const;
-  double getCy() const;
+  QString getId() const;
+  double getLat() const;
+  double getLon() const;
+  int getStartTime() const;
+  int getEndTime() const;
 
 private:
-  int id;
-  int camera;
-  double area;
-  double cx;
-  double cy;
+  QString id;
+  double lat;
+  double lon;
+  int startTime;
+  int endTime;
   Entities *entities;
 };
 

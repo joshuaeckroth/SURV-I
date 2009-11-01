@@ -1,19 +1,114 @@
+{-# LANGUAGE ExistentialQuantification, ScopedTypeVariables #-}
+
 module World where
 import Types
-import Reasoner.Core
-import Reasoner.Types
-import Reasoner.Constrainers
+import qualified Reasoner.Core as R
+import Reasoner.Types (HypothesisID(..), HypothesisMap(..), HypothesisIDs, ExplainsID(..))
+import qualified Reasoner.Constrainers
 import Vocabulary
-import WrappedInts.Types (HasInt(..), wrappedInts)
-import WrappedInts.IDMap (empty, toList, keysSet, getItemFromMap)
+import WrappedInts.Types (HasInt(..))
 import qualified WrappedInts.IDSet as IDSet
 import qualified WrappedInts.IDMap as IDMap
-import qualified Text.XML.HaXml.Types as HaXml
-import Text.XML.HaXml.Combinators
-import qualified Text.XML.HaXml.Pretty as HaXml
+import Text.XML.HaXml.XmlContent (showXml)
+import Text.XML.HaXml.XmlContent.Parser (List1(..))
 import qualified Data.Sequence as Seq
-import Data.List ((\\))
+import Data.Maybe
+import Data.Dynamic
+import Data.List (sortBy)
 
+data World = World { mind      :: R.Mind Level Level Level
+                   , entityMap :: HypothesisMap Entity
+                   }
+
+mkWorld :: World
+mkWorld = World { mind      = (R.setTrace True $ R.newMind confidenceBoost suggestStatus R.NoTransitive)
+                , entityMap = IDMap.empty
+                }
+
+allHypotheses :: World -> HypothesisIDs
+allHypotheses world = (R.acceptedHypotheses (mind world))
+                      `IDSet.union` (R.consideringHypotheses (mind world))
+                      `IDSet.union` (R.refutedHypotheses (mind world))
+
+cleanWorld :: World -> World
+cleanWorld world = 
+    let removableDetections = oldDetections (entityMap world) (allHypotheses world)
+        removableMovements  = invalidMovements removableDetections
+                              (entityMap world) (allHypotheses world)
+        removable           = removableDetections ++ removableMovements
+    in foldl (\w h -> w { mind = R.removeHypothesis h (mind w) }) world removable
+
+oldDetections :: HypothesisMap Entity
+              -> HypothesisIDs
+              -> [HypothesisID]
+oldDetections entityMap allHypotheses =
+    take 1000 $ map (\det -> detectionId det) $
+    reverse $ sortBy detAscOrdering $
+    (gatherEntities entityMap allHypotheses :: [Detection])
+
+invalidMovements :: [HypothesisID]
+                 -> HypothesisMap Entity
+                 -> HypothesisIDs
+                 -> [HypothesisID]
+invalidMovements detHypIds entityMap allHypotheses =
+    map (\(Movement (Movement_Attrs hypId) _) -> hypId) $
+    filter (\(Movement _ (NonEmpty (det1:det2:[]))) ->
+                (elem (detectionId det1) detHypIds) || (elem (detectionId det2) detHypIds))
+    (gatherEntities entityMap allHypotheses :: [Movement])
+
+hypothesize :: (Typeable a) => [Hypothesis a] -> World -> World
+hypothesize hs world =
+    let world'  = foldl (\w h -> addHypothesis (entity h) (hypId h) (aPriori h) w) world hs
+        world'' = foldl (\w (Hyp _ subject _ explains _ _) ->
+                             foldl (\w' (Hyp _ object _ _ _ _) ->
+                                    addExplains subject object w') w explains) world' hs
+    in world''
+
+addHypothesis :: (Typeable a) => a -> HypothesisID -> (Level -> Level) -> World -> World
+addHypothesis entity hypId scoreFunc world =
+    let entityMap' = IDMap.insert hypId (toDyn entity) (entityMap world)
+    in
+    world { mind      = R.addHypothesis hypId category scoreFunc (mind world)
+          , entityMap = entityMap'
+          }
+
+addExplains :: HypothesisID -> HypothesisID -> World -> World
+addExplains subject object world =
+    world { mind = R.addExplains (mkExplainsId subject object)
+                   subject object (mind world)
+          }
+
+reason :: World -> World
+reason world = world { mind = R.reason (R.ReasonerSettings False) Medium (mind world) }
+
+buildResults :: World -> Results
+buildResults world =
+    let accepted = R.acceptedHypotheses (mind world) in
+    Results (gatherEntities (entityMap world) accepted)
+            (gatherEntities (entityMap world) accepted)
+            (gatherEntities (entityMap world) accepted)
+
+gatherEntities :: forall a.
+                  (Typeable a) =>
+                  HypothesisMap Entity
+               -> HypothesisIDs
+               -> [a]
+gatherEntities entityMap hypIds =
+    map (\(Just entity) -> entity) $
+    map (\dyn -> fromDynamic dyn) $
+    filter (\dyn -> case (fromDynamic dyn :: Maybe a) of
+                      Just entity -> True
+                      Nothing     -> False) $
+    IDMap.elems $
+    IDMap.filterWithKey (\hypId _ -> IDSet.member hypId hypIds) entityMap
+
+outputLog :: World -> String
+outputLog world = showXml False $ buildResults world
+--                  "<Log>" ++ (unlines $ R.showMind (mind world)) ++ "</Log>\n"
+
+
+
+{--
 data WorldState = WorldState { mind             :: Mind Level Level Level, -- ^ The Mark-II Mind
                                hypIDs           :: [HypothesisID],         -- ^ Current set of hypothesis IDs
                                currentDetIDs    :: [DetectionID],          -- ^ Most recent detections
@@ -186,13 +281,11 @@ extractAttr s c = error ("extractAttr: first element of XML content does not hav
                          "attribute: " ++ s)
 
 -- | XML header for output
-xmlHeader :: WorldState -> String
-xmlHeader ws =
-    do
-      (show (HaXml.prolog xmlProlog)) ++ "<WorldEvents>"
+xmlHeader :: String
+xmlHeader = (show (HaXml.prolog xmlProlog)) ++ "<Results>\n"
 
-xmlFooter :: WorldState -> String
-xmlFooter ws = "</WorldEvents>"
+xmlFooter :: String
+xmlFooter = "</Results>\n"
 
 -- | Return human log
 outputHuman :: World WorldState -> String
@@ -279,3 +372,5 @@ nextExplainer ws = 1 + (foldr max 0 $ IDMap.keys (explainers $ mind ws))
 
 -- | Get next adjuster ID
 nextAdjuster ws = 1 + (foldr max 0 $ (\(a, _, _) -> a) $ unzip3 $ getAdjusters (mind ws))
+
+--}

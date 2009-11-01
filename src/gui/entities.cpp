@@ -5,11 +5,10 @@
 
 #include "entities.h"
 #include "detection.h"
-#include "noise.h"
+#include "movement.h"
 #include "track.h"
 
-Entities::Entities(int n, double t)
-  : number(n), time(t)
+Entities::Entities()
 { }
 
 void Entities::addDetection(Detection *d)
@@ -18,26 +17,16 @@ void Entities::addDetection(Detection *d)
   detections.push_back(d);
 }
 
-void Entities::addNoise(Noise *n)
+void Entities::addMovement(Movement *m)
 {
-  n->setEntities(this);
-  noise.push_back(n);
+  m->setEntities(this);
+  movements.push_back(m);
 }
 
 void Entities::addTrack(Track *t)
 {
   t->setEntities(this);
   tracks.push_back(t);
-}
-
-int Entities::getNumber() const
-{
-  return number;
-}
-
-double Entities::getTime() const
-{
-  return time;
 }
 
 void Entities::detections_begin()
@@ -55,19 +44,19 @@ Detection *Entities::detections_next()
   return *(detections_iter++);
 }
 
-void Entities::noise_begin()
+void Entities::movements_begin()
 {
-  noise_iter = noise.begin();
+  movements_iter = movements.begin();
 }
 
-bool Entities::noise_end() const
+bool Entities::movements_end() const
 {
-  return noise_iter == noise.end();
+  return movements_iter == movements.end();
 }
 
-Noise *Entities::noise_next()
+Movement *Entities::movements_next()
 {
-  return *(noise_iter++);
+  return *(movements_iter++);
 }
 
 void Entities::tracks_begin()
@@ -83,4 +72,14 @@ bool Entities::tracks_end() const
 Track *Entities::tracks_next()
 {
   return *(tracks_iter++);
+}
+
+void Entities::appendLog(const QString l)
+{
+    log.append(l);
+}
+
+QString Entities::getLog() const
+{
+    return log;
 }
