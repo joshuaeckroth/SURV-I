@@ -9,6 +9,7 @@ import WrappedInts.Types
 import Reasoner.Types (CategoryID(..), HypothesisID(..), ExplainsID(..))
 import Data.Dynamic
 import Data.HashTable (hashString)
+import Data.Maybe
 
 type Entity = Dynamic
 
@@ -39,7 +40,7 @@ mkMovHypId :: [Detection] -> HypothesisID
 mkMovHypId dets =
     fromIntegral $ hashString $
                      (foldl1 (++) $
-                             map (\(Detection id lat lon startTime endTime) ->
+                             map (\(Detection id lat lon startTime endTime _) ->
                                   (show id) ++ (show lat) ++ (show lon)
                                                 ++ (show startTime) ++ (show endTime)) dets)
 
@@ -157,6 +158,7 @@ data Detection = Detection
     , detectionLon :: Longitude
     , detectionStartTime :: Time
     , detectionEndTime :: Time
+    , detectionCamera :: Maybe CameraDetection
     } deriving (Eq,Show,Typeable)
 data Movement = Movement Movement_Attrs (List1 Detection)
               deriving (Eq,Show,Typeable)
@@ -201,6 +203,7 @@ instance XmlAttributes Detection where
           , detectionLon = read $ definiteA fromAttrToStr "Detection" "lon" as
           , detectionStartTime = read $ definiteA fromAttrToStr "Detection" "startTime" as
           , detectionEndTime = read $ definiteA fromAttrToStr "Detection" "endTime" as
+          , detectionCamera = Nothing
           }
     toAttrs v = catMaybes 
         [ toAttrFrStr "id" (show $ detectionId v)

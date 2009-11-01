@@ -13,7 +13,7 @@ mkMovements hDets =
                          let dist  = detDist det1 det2,
                          let delta = detDelta det1 det2,
                          det1 /= det2,
-                         dist < 300.0, delta < 5.0, detBefore det1 det2]
+                         dist < 150.0, delta < 2.0, detBefore det1 det2]
     in map (mkMovement closeDetPairs) closeDetPairs
 
 mkMovement :: [(Hypothesis Detection, Hypothesis Detection, Double, Time)]
@@ -34,7 +34,13 @@ mkMovementScore :: [(Hypothesis Detection, Hypothesis Detection, Double, Time)]
                 -> (Level -> Level)
 mkMovementScore hdets (hdet1@(Hyp { entity = det1 }),
                        hdet2@(Hyp { entity = det2 }), dist, delta)
-    | dist < 100.0 && delta < 0.5 = (\s -> corroboration High)
-    | dist < 150.0 && delta < 1.0 = (\s -> corroboration Medium)
+    | dist < 50.0 && delta < 1.0  = (\s -> corroboration High)
+    | dist < 100.0 && delta < 1.5 = (\s -> corroboration Medium)
     | otherwise                   = (\s -> corroboration Low)
-    where corroboration = id {- FIXME -}
+    -- corroboration depends on two camera detections appearing similar (so far, just area)
+    where corroboration =
+              let (Just cdet1) = detectionCamera det1
+                  (Just cdet2) = detectionCamera det2
+                  areaDiff = abs $ (cameraDetectionArea cdet1) -
+                             (cameraDetectionArea cdet2)
+              in if areaDiff < 100 then increaseLevel else decreaseLevel

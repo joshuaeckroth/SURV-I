@@ -2,6 +2,7 @@
 module Detection where
 import Types
 import Vocabulary
+import Data.Maybe
 
 mkDetections :: CameraDetections -> [Hypothesis Detection]
 mkDetections (CameraDetections cdets) = map (mkDetection cdets) cdets
@@ -17,6 +18,7 @@ mkDetection cdets cdet =
                     , detectionLon       = cameraDetectionLon cdet
                     , detectionStartTime = cameraDetectionStartTime cdet
                     , detectionEndTime   = cameraDetectionEndTime cdet
+                    , detectionCamera    = Just cdet
                     }
         aPriori   = mkDetectionScore cdets cdet
         explains  = [] :: [Hypothesis Detection] {- these type signatures are arbitrary but needed -}
