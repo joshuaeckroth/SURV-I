@@ -8,3 +8,6 @@ libs/*
 videos/*
 build/*
 api/*
+src/abducer/Reasoner/*
+src/abducer/Reasoner.hs
+src/abducer/WrappedInts/*
