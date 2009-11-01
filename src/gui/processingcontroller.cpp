@@ -136,20 +136,27 @@ void ProcessingController::newDetections(QString ds, Frame* frame)
     if(isProcessing)
     {
         // stop processing the faster cameras if they are out of sync
-        double oldestTime = frame->getTime();
+
+        // get oldest time
+        double oldestTime = frame->getTime(); // initial reasonable value
         for(int i = 0; i < numCameras; i++)
         {
-            if(curFrame[i] != NULL)
+            if(curFrame[i] != NULL && curFrame[i]->getTime() < oldestTime)
             {
-                if(curFrame[i]->getTime() < (oldestTime + 0.01))
-                {
-                    oldestTime = curFrame[i]->getTime();
-                    captureThread[i]->startCapture();
-                }
-                else
-                {
-                    captureThread[i]->stopCapture();
-                }
+                oldestTime = curFrame[i]->getTime();
+            }
+        }
+        // stop cameras later than oldestTime + 0.2,
+        // start/resume all others
+        for(int i = 0; i < numCameras; i++)
+        {
+            if(curFrame[i] != NULL && curFrame[i]->getTime() > (oldestTime + 0.2))
+            {
+                captureThread[i]->stopCapture();
+            }
+            else
+            {
+                captureThread[i]->startCapture();
             }
         }
     }
