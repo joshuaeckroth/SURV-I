@@ -4,4 +4,7 @@
 *.orig
 *.exe
 *.avi
-
+libs/*
+videos/*
+build/*
+api/*
