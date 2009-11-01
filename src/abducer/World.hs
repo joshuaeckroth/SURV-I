@@ -4,7 +4,7 @@ module World where
 import Types
 import qualified Reasoner.Core as R
 import Reasoner.Types (HypothesisID(..), HypothesisMap(..), HypothesisIDs, ExplainsID(..))
-import qualified Reasoner.Constrainers
+import qualified Reasoner.Constrainers as RC
 import Vocabulary
 import WrappedInts.Types (HasInt(..))
 import qualified WrappedInts.IDSet as IDSet
@@ -58,11 +58,17 @@ invalidMovements detHypIds entityMap allHypotheses =
 
 hypothesize :: (Typeable a) => [Hypothesis a] -> World -> World
 hypothesize hs world =
-    let world'  = foldl (\w h -> addHypothesis (entity h) (hypId h) (aPriori h) w) world hs
-        world'' = foldl (\w (Hyp _ subject _ explains _ _) ->
-                             foldl (\w' (Hyp _ object _ _ _ _) ->
-                                    addExplains subject object w') w explains) world' hs
-    in world''
+    let world1 = foldl (\w h -> addHypothesis (entity h) (hypId h) (aPriori h) w) world hs
+        world2 = foldl (\w (Hyp _ subject _ explains _ _) ->
+                            foldl (\w' (Hyp _ object _ _ _ _) ->
+                                   addExplains subject object w') w explains) world1 hs
+        world3 = foldl (\w (Hyp _ subject _ explains _ _) ->
+                            foldl (\w' (Hyp _ object _ _ _ _) ->
+                                   addImplies subject object w') w explains) world2 hs
+        world4 = foldl (\w (Hyp _ subject _ explains _ _) ->
+                            foldl (\w' (Hyp _ object _ _ _ _) ->
+                                   addRefutes subject object w') w explains) world3 hs
+    in world4
 
 addHypothesis :: (Typeable a) => a -> HypothesisID -> (Level -> Level) -> World -> World
 addHypothesis entity hypId scoreFunc world =
@@ -74,9 +80,23 @@ addHypothesis entity hypId scoreFunc world =
 
 addExplains :: HypothesisID -> HypothesisID -> World -> World
 addExplains subject object world =
-    world { mind = R.addExplains (mkExplainsId subject object)
+    world { mind = R.addExplains (mkHypPairId subject object)
                    subject object (mind world)
           }
+
+addImplies :: HypothesisID -> HypothesisID -> World -> World
+addImplies subject object world =
+    world { mind = R.addConstrainer (mkHypPairId subject object)
+                   (IDSet.fromList [subject]) RC.implies object (mind world)
+          }
+
+addRefutes :: HypothesisID -> HypothesisID -> World -> World
+addRefutes subject object world =
+    world { mind = R.addAdjuster (mkHypPairId object subject)
+                   object refuteLower subject (mind world)
+          }
+
+refuteLower = Left (Nothing, Just $ decreaseLevelBy 2)
 
 reason :: World -> World
 reason world = world { mind = R.reason (R.ReasonerSettings False) Medium (mind world) }

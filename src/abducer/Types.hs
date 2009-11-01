@@ -43,8 +43,8 @@ mkMovHypId dets =
                                   (show id) ++ (show lat) ++ (show lon)
                                                 ++ (show startTime) ++ (show endTime)) dets)
 
-mkExplainsId :: HypothesisID -> HypothesisID -> ExplainsID
-mkExplainsId subject object = fromIntegral $ hashString $ (show subject) ++ (show object)
+mkHypPairId :: (Num a) => HypothesisID -> HypothesisID -> a
+mkHypPairId subject object = fromIntegral $ hashString $ (show subject) ++ (show object)
 
 -- | Calculate Euclidean distance between two camera detections
 cameraDetDist :: CameraDetection -> CameraDetection -> Double
