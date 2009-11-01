@@ -1,25 +1,63 @@
-module Abducer where
+module Main
+where
+
+import IO
+import Network.Socket
+import System.Win32.Process (sleep)
+import Text.XML.HaXml.Parse
+import Text.XML.HaXml.XmlContent
+import Comm
 import Types
 import World
-import Frame
 import Detection
-import Noise
-import Track
-import Vocabulary
-import Reasoner.Types
-import Reasoner.Core
-import WrappedInts.Types (HasInt(..))
-import WrappedInts.IDSet (toList)
-import qualified WrappedInts.IDMap as IDMap
-import Data.List ((\\))
+import Movement
+
+main = do
+  s <- initSocket
+  loop s
+    where loop s = do
+            s' <- listenForDetector s
+            let world = mkWorld
+            waitForCommands s' world
+            putStrLn "Shutting down socket."
+            sClose s'
+            loop s
+
+waitForCommands :: Socket -> World -> IO ()
+waitForCommands s world = do
+  cmd <- getCommand s
+  case cmd of
+    CmdNewDetections -> do
+             cameraDetections <- getCameraDetections s
+             case cameraDetections of
+               Left str    -> do { putStrLn str ; return () }
+               Right cdets -> do
+                            let world' = runAbducer cdets world
+                            respondWithResults s world'
+                            waitForCommands s world'
+    CmdQuit          -> do { return () }
+    _                -> do { sleep 500 ; waitForCommands s world }
+
+getCameraDetections :: Socket -> IO (Either String CameraDetections)
+getCameraDetections s = do
+  xml <- getResults s
+  return (fromXml $ xmlParse "stream" xml)
+
+respondWithResults :: Socket -> World -> IO ()
+respondWithResults s world = sendResults s $ outputLog world
 
 -- | Execute the abduction
-runAbducer :: Frame            -- ^ Frame of detections
-           -> WorldState       -- ^ Existing world
-           -> World WorldState -- ^ Resulting world
-runAbducer frame ws = world
-    where
-      catID = HasInt 0 :: CategoryID
+runAbducer :: CameraDetections
+           -> World
+           -> World
+runAbducer cameraDetections world =
+    let cleanedWorld = cleanWorld world
+        dets         = mkDetections cameraDetections
+        movs         = mkMovements dets
+    in
+      reason $ hypothesize movs $ hypothesize dets cleanedWorld
+
+{--
       world = ((return $ cleanWorld frame ws) >>=
                updateDetections >>=
                recordFrame >>=
@@ -47,3 +85,5 @@ runAbducer frame ws = world
                   
                updateTracks >>=
                recordTracks)
+
+--}
