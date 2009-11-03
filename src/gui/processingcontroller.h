@@ -10,7 +10,8 @@
 
 class RenderArea;
 class Decoder;
-class AbducerThread;
+class AbducerWriter;
+class AbducerReader;
 class Frame;
 class Entities;
 
@@ -38,7 +39,8 @@ private:
   CaptureThread::FrameSize frameSize;
   CaptureThread* captureThread[10];
   Decoder* decoder[10];
-  AbducerThread* abducerThread;
+  AbducerWriter* abducerWriter;
+  AbducerReader* abducerReader;
   void init();
   QMutex mutex;
   bool isProcessing;

@@ -11,12 +11,12 @@ data Command = CmdNewDetections | CmdQuit | CmdUnknown
 mkPortNum :: (Integral a) => a -> PortNumber 
 mkPortNum p = fromIntegral p
 
-initSocket :: IO Socket
-initSocket = withSocketsDo $ do
-               proto <- getProtocolNumber "tcp"
-               s <- socket AF_INET Stream proto
-               bindSocket s (SockAddrInet (mkPortNum 10000) 16777343)
-               return s
+initSocket :: (Integral a) => a -> IO Socket
+initSocket port = withSocketsDo $ do
+                    proto <- getProtocolNumber "tcp"
+                    s <- socket AF_INET Stream proto
+                    bindSocket s (SockAddrInet (mkPortNum port) 16777343)
+                    return s
 
 listenForDetector :: Socket -> IO Socket
 listenForDetector s = do
@@ -51,9 +51,9 @@ getResults s = do
 
 sendResults :: Socket -> String -> IO ()
 sendResults s msg = do
+  putStrLn msg
   send s ("NEW RESULTS\n"
           ++ ((show $ 1 + (length msg)) ++ "\n") {- 1+ because of newline after msg is sent -}
           ++ msg
           ++ "\n")
   return ()
-

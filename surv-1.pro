@@ -1,4 +1,3 @@
-
 QT += xml \
     network
 TARGET = build/runsurv
@@ -13,8 +12,7 @@ LIBS += -L"C:\Program Files\OpenCV1.2\lib" \
     -lcxcore120 \
     -lhighgui120 \
     -lcvaux120
-HEADERS += src/gui/abducerthread.h \
-    src/gui/cameramodel.h \
+HEADERS += src/gui/cameramodel.h \
     src/gui/capturethread.h \
     src/gui/decoder.h \
     src/gui/detection.h \
@@ -28,11 +26,12 @@ HEADERS += src/gui/abducerthread.h \
     src/gui/settings.h \
     src/gui/track.h \
     src/gui/tracksreader.h \
-    src/gui/movement.h
+    src/gui/movement.h \
+    src/gui/abducerwriter.h \
+    src/gui/abducerreader.h
 FORMS += src/gui/mainwindow.ui \
     src/gui/settings.ui
-SOURCES += src/gui/abducerthread.cpp \
-    src/gui/cameramodel.cpp \
+SOURCES += src/gui/cameramodel.cpp \
     src/gui/capturethread.cpp \
     src/gui/decoder.cpp \
     src/gui/detection.cpp \
@@ -47,4 +46,6 @@ SOURCES += src/gui/abducerthread.cpp \
     src/gui/settings.cpp \
     src/gui/track.cpp \
     src/gui/tracksreader.cpp \
-    src/gui/movement.cpp
+    src/gui/movement.cpp \
+    src/gui/abducerwriter.cpp \
+    src/gui/abducerreader.cpp

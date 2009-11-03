@@ -44,6 +44,11 @@ mkMovHypId dets =
                                   (show id) ++ (show lat) ++ (show lon)
                                                 ++ (show startTime) ++ (show endTime)) dets)
 
+{- hashes the hashes of constituent movements of a path -}
+mkPathHypId :: [Movement] -> HypothesisID
+mkPathHypId movs = fromIntegral $ hashString $
+                   foldl1 (++) $ map (\(Movement _ (NonEmpty dets)) -> show $ mkMovHypId dets) movs
+
 mkHypPairId :: (Num a) => HypothesisID -> HypothesisID -> a
 mkHypPairId subject object = fromIntegral $ hashString $ (show subject) ++ (show object)
 

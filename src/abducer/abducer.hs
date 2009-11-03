@@ -11,24 +11,28 @@ import Types
 import World
 import Detection
 import Movement
+import Path
 
 main = do
-  s <- initSocket
-  loop s
-    where loop s = do
-            s' <- listenForDetector s
+  outSocket <- initSocket 10000
+  inSocket <- initSocket 10001
+  loop (outSocket, inSocket)
+    where loop (outSocket, inSocket) = do
+            outSocket' <- listenForDetector outSocket
+            inSocket'  <- listenForDetector inSocket
             let world = mkWorld
-            waitForCommands s' world
-            putStrLn "Shutting down socket."
-            sClose s'
-            loop s
+            waitForCommands (outSocket', inSocket') world
+            putStrLn "Shutting down sockets."
+            sClose outSocket'
+            sClose inSocket'
+            loop (outSocket, inSocket)
 
-waitForCommands :: Socket -> World -> IO ()
-waitForCommands s world = do
-  cmd <- getCommand s
+waitForCommands :: (Socket, Socket) -> World -> IO ()
+waitForCommands (outSocket, inSocket) world = do
+  cmd <- getCommand inSocket
   case cmd of
     CmdNewDetections -> do
-             cameraDetections <- getCameraDetections s
+             cameraDetections <- getCameraDetections inSocket
              case cameraDetections of
                Left str    -> do { putStrLn str ; return () }
                Right cdets -> do
@@ -36,11 +40,11 @@ waitForCommands s world = do
                             let world' = runAbducer cdets world
                             logStatistics world world'
                             putStrLn "Responding with results."
-                            respondWithResults s world'
+                            respondWithResults outSocket world'
                             putStrLn "Waiting for command."
-                            waitForCommands s world'
+                            waitForCommands (outSocket, inSocket) world'
     CmdQuit          -> do { return () }
-    _                -> do { sleep 500 ; waitForCommands s world }
+    _                -> do { sleep 500 ; waitForCommands (outSocket, inSocket) world }
 
 getCameraDetections :: Socket -> IO (Either String CameraDetections)
 getCameraDetections s = do
@@ -80,8 +84,9 @@ runAbducer cameraDetections world =
     let cleanedWorld = cleanWorld world
         dets         = mkDetections cameraDetections
         movs         = mkMovements dets
+        paths        = mkPaths movs
     in
-      reason $ hypothesize movs $ hypothesize dets cleanedWorld
+      reason $ hypothesize paths $ hypothesize movs $ hypothesize dets cleanedWorld
 
 {--
       world = ((return $ cleanWorld frame ws) >>=

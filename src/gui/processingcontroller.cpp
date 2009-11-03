@@ -8,7 +8,8 @@
 #include "processingcontroller.h"
 #include "renderarea.h"
 #include "decoder.h"
-#include "abducerthread.h"
+#include "abducerreader.h"
+#include "abducerwriter.h"
 #include "frame.h"
 #include "cameramodel.h"
 #include "entities.h"
@@ -28,9 +29,12 @@ void ProcessingController::init()
     isProcessing = false;
     mutex.unlock();
 
-    abducerThread = new AbducerThread();
-    connect(abducerThread, SIGNAL(newEntities(Entities*)), this, SLOT(newEntities(Entities*)));
-    abducerThread->start();
+    abducerReader = new AbducerReader();
+    connect(abducerReader, SIGNAL(newEntities(Entities*)), this, SLOT(newEntities(Entities*)));
+    abducerReader->start();
+
+    abducerWriter = new AbducerWriter();
+    abducerWriter->start();
 
     for(int i = 0; i < numCameras; i++)
     {
@@ -64,7 +68,7 @@ void ProcessingController::startProcessing()
         }
     }
 
-    abducerTimer->start(2000);
+    abducerTimer->start(3000);
     isProcessing = true;
     mutex.unlock();
 }
@@ -166,7 +170,7 @@ void ProcessingController::newDetections(QString ds, Frame* frame)
 void ProcessingController::sendDetections()
 {
     mutex.lock();
-    abducerThread->newDetections(detections);
+    abducerWriter->newDetections(detections);
     detections.clear();
     mutex.unlock();
 }

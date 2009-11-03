@@ -84,7 +84,9 @@ void RenderArea::onFrameSizeChanged(int width, int height, int camera)
 
 void RenderArea::updateEntities(Entities* e)
 {
+    qDebug() << "Acquiring lock to update entities.";
     mutex.lock();
+    qDebug() << "Updating entities.";
     entities = e;
     mutex.unlock();
     update();
