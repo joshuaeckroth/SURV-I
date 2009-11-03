@@ -153,7 +153,7 @@ QString Decoder::findBlobs(double startTime, double endTime, int camera)
 	}
    }
 
- double threshold = 40.0; // in feet
+ double threshold = 200.0; // in feet
  std::vector<coordinate> bigblobs;
  group_blobs(blobs_temp, threshold, bigblobs);
 

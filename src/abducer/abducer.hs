@@ -12,6 +12,7 @@ import World
 import Detection
 import Movement
 import Path
+import Debug.Trace
 
 main = do
   outSocket <- initSocket 10000

@@ -28,14 +28,14 @@ mkDetection cdets cdet =
 
 mkDetectionScore :: [CameraDetection] -> CameraDetection -> (Level -> Level)
 mkDetectionScore cdets cdet
-    | area < 50.0  = (\s -> corroboration Low)
-    | area > 150.0 = (\s -> corroboration High)
-    | otherwise    = (\s -> corroboration Medium)
+    | area <  300.0 = (\s -> corroboration Low)
+    | area >= 600.0 = (\s -> corroboration High)
+    | otherwise     = (\s -> corroboration Medium)
     where area = cameraDetectionArea cdet
           -- is this detection (maybe) seen in more than one camera?
           corroboration = if (1 < (length $ filter (nearby cdet) cdets)) then
                               increaseLevel
                           else id
-          nearby cdet cdet' = 15.0 > (cameraDetDist cdet cdet')
+          nearby cdet cdet' = 30.0 > (cameraDetDist cdet cdet')
 
 {- ADD TIME FACTOR AND COMPARE ACROSS ALL EXISTING DETECTIONS NOT JUST NEW ONES -}
