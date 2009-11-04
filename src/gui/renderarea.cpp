@@ -7,6 +7,8 @@
 #include <QPair>
 #include <QImage>
 #include <QWidget>
+#include <QMouseEvent>
+#include <QMessageBox>
 
 #include <cmath>
 
@@ -27,6 +29,7 @@ RenderArea::RenderArea(QWidget* parent)
         imageWidth[i] = 0;
         imageHeight[i] = 0;
         scaleFactor[i] = 1.0;
+        cameraRegion[i] = QRegion();
     }
     setAttribute(Qt::WA_OpaquePaintEvent, true);
     setAttribute(Qt::WA_PaintOnScreen, true);
@@ -84,9 +87,7 @@ void RenderArea::onFrameSizeChanged(int width, int height, int camera)
 
 void RenderArea::updateEntities(Entities* e)
 {
-    qDebug() << "Acquiring lock to update entities.";
     mutex.lock();
-    qDebug() << "Updating entities.";
     entities = e;
     mutex.unlock();
     update();
@@ -216,8 +217,14 @@ void RenderArea::paintEvent(QPaintEvent*)
                     radius = 5.0 * scaleFactor[i];
                     painter.drawEllipse(QPoint(i * eachWidth + scaledX, scaledY), radius, radius);
 
-                    // draw id
-                    //painter.drawText(i * eachWidth + scaledX + 7, scaledY - 7, d->getId());
+                    // draw on map
+                    painter.setClipRegion(mapRegion);
+
+                    QPair<int,int> c = CameraModel::warpToMap(QPair<double,double>(d->getLat(), d->getLon()));
+                    painter.drawLine(c.first - mapTopLeftX, maxHeight + c.second - mapTopLeftY,
+                                     c.first - mapTopLeftX, maxHeight + c.second - mapTopLeftY);
+                    radius = 3.0;
+                    painter.drawEllipse(QPoint(c.first - mapTopLeftX, maxHeight + c.second - mapTopLeftY), radius, radius);
                 }
             }
 
@@ -253,6 +260,8 @@ void RenderArea::paintEvent(QPaintEvent*)
                 {
                     painter.setClipRegion(cameraRegion[i]);
                     painter.drawLine(points[0][i], points[1][i]);
+                    // draw an "arrow head"
+                    painter.drawEllipse(points[1][i], (int)(5.0 * scaleFactor[i]), (int)(5.0 * scaleFactor[i]));
                 }
             }
 
@@ -388,6 +397,86 @@ void RenderArea::paintEvent(QPaintEvent*)
         painter.drawRect(rect());
     }
     painter.end();
+}
+
+void RenderArea::mousePressEvent(QMouseEvent *e)
+{
+    if(entities == NULL)
+        return;
+
+    int camera = -1;
+    // find the camera that the user clicked on
+    for(int i = 0; i < numCameras; i++)
+    {
+        if(cameraRegion[i].contains(e->pos()))
+        {
+            camera = i;
+            break;
+        }
+    }
+    if(camera == -1) // map clicked
+        return;
+
+    QString msg; // we will build a message to show to the user
+
+    mutex.lock();
+    int eachWidth = width() / numCameras;
+    int scaledX, scaledY;
+    int entityX, entityY;
+
+    // check for detections under the mouse
+    entities->detections_begin();
+    while(!entities->detections_end())
+    {
+        Detection* d = entities->detections_next();
+        QPair<int,int> p = CameraModel::warpToImage(camera, QPair<double,double>(d->getLat(), d->getLon()));
+        scaledX = p.first * scaleFactor[camera];
+        scaledY = p.second * scaleFactor[camera];
+        entityX = camera * eachWidth + scaledX;
+        entityY = scaledY;
+
+        if(2.0 >= sqrt(pow(e->x() - entityX, 2) + pow(e->y() - entityY, 2)))
+        {
+            msg += QString("Detection %1 (%2 lat, %3 lon); area = %4, time = (%5/%6)\n")
+                   .arg(d->getId()).arg(d->getLat()).arg(d->getLon()).arg(d->getArea(), 0, 'f', 0)
+                   .arg(d->getStartTime(), 0, 'f', 1).arg(d->getEndTime(), 0, 'f', 1);
+        }
+    }
+
+    // check for movements under the mouse
+    entities->movements_begin();
+    while(!entities->movements_end())
+    {
+        Movement* m = entities->movements_next();
+        QPoint points[2];
+        int j = 0;
+        m->detections_begin();
+        while(!m->detections_end())
+        {
+            Detection* d = m->detections_next();
+            QPair<int,int> p = CameraModel::warpToImage(camera, QPair<double,double>(d->getLat(), d->getLon()));
+            scaledX = p.first * scaleFactor[camera];
+            scaledY = p.second * scaleFactor[camera];
+            points[j] = QPoint(camera * eachWidth + scaledX, scaledY);
+            j++;
+        }
+        // from Grumdrig's post (Oct 1) on http://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment
+        double dist = 100.0;
+
+        // ensure we are close to the line segment
+        if(2.0 >= dist)
+        {
+            msg += QString("Movement %1\n").arg(m->getId());
+        }
+    }
+    mutex.unlock();
+
+    if(!msg.isNull())
+    {
+        QMessageBox msgBox;
+        msgBox.setText(msg);
+        msgBox.exec();
+    }
 }
 
 

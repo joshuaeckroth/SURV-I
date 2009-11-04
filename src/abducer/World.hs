@@ -14,7 +14,8 @@ import Text.XML.HaXml.XmlContent.Parser (List1(..))
 import qualified Data.Sequence as Seq
 import Data.Maybe
 import Data.Dynamic
-import Data.List (sortBy)
+import Data.List (sortBy, (\\))
+import Debug.Trace
 
 data World = World { mind      :: R.Mind Level Level Level
                    , entityMap :: HypothesisMap Entity
@@ -32,17 +33,18 @@ allHypotheses world = (R.acceptedHypotheses (mind world))
 
 cleanWorld :: World -> World
 cleanWorld world = 
-    let removableDetections = oldDetections (entityMap world) (allHypotheses world)
-        removableMovements  = invalidMovements removableDetections
-                              (entityMap world) (allHypotheses world)
-        removable           = removableDetections ++ removableMovements
-    in foldl (\w h -> w { mind = R.removeHypothesis h (mind w) }) world removable
+    let allDetHypIds     = map detectionId $ gatherEntities (entityMap world) (allHypotheses world)
+        newerDetHypIds   = newerDetections (entityMap world) (allHypotheses world)
+        oldDetHypIds     = allDetHypIds \\ newerDetHypIds
+        invalidMovHypIds = invalidMovements oldDetHypIds (entityMap world) (allHypotheses world)
+        removable        = oldDetHypIds ++ invalidMovHypIds
+    in foldr removeHypothesis world removable
 
-oldDetections :: HypothesisMap Entity
-              -> HypothesisIDs
-              -> [HypothesisID]
-oldDetections entityMap allHypotheses =
-    take 1000 $ map (\det -> detectionId det) $
+newerDetections :: HypothesisMap Entity
+                -> HypothesisIDs
+                -> [HypothesisID]
+newerDetections entityMap allHypotheses =
+    take 20 $ map detectionId $
     reverse $ sortBy detAscOrdering $
     (gatherEntities entityMap allHypotheses :: [Detection])
 
@@ -78,6 +80,12 @@ addHypothesis entity hypId scoreFunc world =
           , entityMap = entityMap'
           }
 
+removeHypothesis :: HypothesisID -> World -> World
+removeHypothesis hypId world =
+    world { mind      = R.removeHypothesis hypId (mind world)
+          , entityMap = IDMap.delete hypId (entityMap world)
+          }
+
 addExplains :: HypothesisID -> HypothesisID -> World -> World
 addExplains subject object world =
     world { mind = R.addExplains (mkHypPairId subject object)
@@ -99,7 +107,7 @@ addRefutes subject object world =
 refuteLower = Left (Nothing, Just $ decreaseLevelBy 2)
 
 reason :: World -> World
-reason world = world { mind = R.reason (R.ReasonerSettings False) Medium (mind world) }
+reason world = world { mind = R.reason (R.ReasonerSettings True) Medium (mind world) }
 
 buildResults :: World -> Results
 buildResults world =
@@ -107,6 +115,23 @@ buildResults world =
     Results (gatherEntities (entityMap world) accepted)
             (gatherEntities (entityMap world) accepted)
             (gatherEntities (entityMap world) accepted)
+
+-- | Get a list of unexplained detection hypotheses.
+--
+-- We do this by filtering out from the list of all detections those that have
+-- movements that explain them.
+--
+-- FIXME: We are presently forced to recreate the Hypothesis container object;
+-- the details of the Hyp don't matter, except the entity and hypId
+unexplainedDets :: World -> [Hypothesis Detection]
+unexplainedDets world = 
+    let hypotheses  = allHypotheses world
+        explained   = detsExplained (gatherEntities (entityMap world) hypotheses)
+        unexplained = (gatherEntities (entityMap world) hypotheses) \\ explained
+    in map (\det -> Hyp det (detectionId det) id
+                    ([] :: [Hypothesis Detection])
+                    ([] :: [Hypothesis Detection])
+                    ([] :: [Hypothesis Detection])) unexplained
 
 gatherEntities :: forall a.
                   (Typeable a) =>

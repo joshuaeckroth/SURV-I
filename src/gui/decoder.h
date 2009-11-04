@@ -12,7 +12,7 @@ public:
   QString decodeFrame(Frame *frame);
 
 private:
-  QString findBlobs(double, double, int);
+  QString findBlobs(Frame *frame, bool drawContours);
   void findBlobsByCCClasters(CvSeq** clasters, int& claster_num, CvSeq** cnt_list);
   CvBGStatModel* bg_model;
 };

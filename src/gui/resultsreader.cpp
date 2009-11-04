@@ -35,10 +35,11 @@ bool ResultsReader::startElement(const QString&, const QString&,
         QString id = attributes.value("id");
         double lat = attributes.value("lat").toDouble();
         double lon = attributes.value("lon").toDouble();
-        int startTime = attributes.value("startTime").toInt();
-        int endTime = attributes.value("endTime").toInt();
+        double startTime = attributes.value("startTime").toDouble();
+        double endTime = attributes.value("endTime").toDouble();
+        double area = attributes.value("area").toDouble();
 
-        curEntities->addDetection(new Detection(id, lat, lon, startTime, endTime));
+        curEntities->addDetection(new Detection(id, lat, lon, startTime, endTime, area));
     }
     // <Detection> inside <Movement>
     else if(qName == "Detection" && !movementId.isEmpty())
@@ -46,10 +47,11 @@ bool ResultsReader::startElement(const QString&, const QString&,
         QString id = attributes.value("id");
         double lat = attributes.value("lat").toDouble();
         double lon = attributes.value("lon").toDouble();
-        int startTime = attributes.value("startTime").toInt();
-        int endTime = attributes.value("endTime").toInt();
+        double startTime = attributes.value("startTime").toDouble();
+        double endTime = attributes.value("endTime").toDouble();
+        double area = attributes.value("area").toDouble();
 
-        detections.push_back(new Detection(id, lat, lon, startTime, endTime));
+        detections.push_back(new Detection(id, lat, lon, startTime, endTime, area));
     }
     else if(qName == "Movement")
     {

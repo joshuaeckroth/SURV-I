@@ -8,21 +8,23 @@ class Entities;
 class Detection
 {
 public:
-  Detection(QString _id, double _lat, double _lon, int _startTime, int _endTime);
+  Detection(QString _id, double _lat, double _lon, double _startTime, double _endTime, double _area);
   void setEntities(Entities *e);
 
   QString getId() const;
   double getLat() const;
   double getLon() const;
-  int getStartTime() const;
-  int getEndTime() const;
+  double getStartTime() const;
+  double getEndTime() const;
+  double getArea() const;
 
 private:
   QString id;
   double lat;
   double lon;
-  int startTime;
-  int endTime;
+  double startTime;
+  double endTime;
+  double area;
   Entities *entities;
 };
 

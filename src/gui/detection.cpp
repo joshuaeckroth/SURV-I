@@ -2,8 +2,8 @@
 #include "detection.h"
 #include "entities.h"
 
-Detection::Detection(QString _id, double _lat, double _lon, int _startTime, int _endTime)
-  : id(_id), lat(_lat), lon(_lon), startTime(_startTime), endTime(_endTime)
+Detection::Detection(QString _id, double _lat, double _lon, double _startTime, double _endTime, double _area)
+  : id(_id), lat(_lat), lon(_lon), startTime(_startTime), endTime(_endTime), area(_area)
 { }
 
 void Detection::setEntities(Entities *e)
@@ -26,13 +26,17 @@ double Detection::getLon() const
     return lon;
 }
 
-int Detection::getStartTime() const
+double Detection::getStartTime() const
 {
     return startTime;
 }
 
-int Detection::getEndTime() const
+double Detection::getEndTime() const
 {
     return endTime;
 }
 
+double Detection::getArea() const
+{
+    return area;
+}

@@ -84,7 +84,7 @@ runAbducer :: CameraDetections
 runAbducer cameraDetections world =
     let cleanedWorld = cleanWorld world
         dets         = mkDetections cameraDetections
-        movs         = mkMovements dets
+        movs         = mkMovements ((unexplainedDets cleanedWorld) ++ dets)
         paths        = mkPaths movs
     in
       reason $ hypothesize paths $ hypothesize movs $ hypothesize dets cleanedWorld

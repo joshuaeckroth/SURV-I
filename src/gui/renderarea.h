@@ -32,6 +32,7 @@ signals:
 
 protected:
   void paintEvent(QPaintEvent*);
+  void mousePressEvent(QMouseEvent*);
 
 private:
   void updatePixmap(const IplImage* frame, int camera);

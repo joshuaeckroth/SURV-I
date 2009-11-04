@@ -40,9 +40,9 @@ mkMovHypId :: [Detection] -> HypothesisID
 mkMovHypId dets =
     fromIntegral $ hashString $
                      (foldl1 (++) $
-                             map (\(Detection id lat lon startTime endTime _) ->
+                             map (\(Detection id lat lon startTime endTime area _) ->
                                   (show id) ++ (show lat) ++ (show lon)
-                                                ++ (show startTime) ++ (show endTime)) dets)
+                                                ++ (show startTime) ++ (show endTime) ++ (show area)) dets)
 
 {- hashes the hashes of constituent movements of a path -}
 mkPathHypId :: [Movement] -> HypothesisID
@@ -70,7 +70,7 @@ detDelta (Detection { detectionStartTime = start1
                     , detectionEndTime   = end1 })
          (Detection { detectionStartTime = start2
                     , detectionEndTime   = end2 }) =
-             max (start2 - end1) (start1 - end2)
+         start2 - end1
 
 detAscOrdering :: Detection -> Detection -> Ordering
 detAscOrdering det1 det2
@@ -88,6 +88,11 @@ detBefore (Detection { detectionStartTime = start1
           (Detection { detectionStartTime = start2
                      , detectionEndTime   = end2 }) =
           ((start1 + end1) / 2.0) < ((start2 + end2) / 2.0)
+
+-- | Gather a list of detections that have movements explaining them
+detsExplained :: [Movement] -> [Detection]
+detsExplained [] = []
+detsExplained ((Movement _ (NonEmpty dets)):movs) = dets ++ (detsExplained movs)
 
 {-- Camera Detections Types --}
 
@@ -163,6 +168,7 @@ data Detection = Detection
     , detectionLon :: Longitude
     , detectionStartTime :: Time
     , detectionEndTime :: Time
+    , detectionArea :: Double
     , detectionCamera :: Maybe CameraDetection
     } deriving (Eq,Show,Typeable)
 data Movement = Movement Movement_Attrs (List1 Detection)
@@ -208,6 +214,7 @@ instance XmlAttributes Detection where
           , detectionLon = read $ definiteA fromAttrToStr "Detection" "lon" as
           , detectionStartTime = read $ definiteA fromAttrToStr "Detection" "startTime" as
           , detectionEndTime = read $ definiteA fromAttrToStr "Detection" "endTime" as
+          , detectionArea = read $ definiteA fromAttrToStr "Detection" "area" as
           , detectionCamera = Nothing
           }
     toAttrs v = catMaybes 
@@ -216,6 +223,7 @@ instance XmlAttributes Detection where
         , toAttrFrStr "lon" (show $ detectionLon v)
         , toAttrFrStr "startTime" (show $ detectionStartTime v)
         , toAttrFrStr "endTime" (show $ detectionEndTime v)
+        , toAttrFrStr "area" (show $ detectionArea v)
         ]
 
 instance HTypeable Movement where
