@@ -24,11 +24,10 @@ HEADERS += src/gui/cameramodel.h \
     src/gui/renderarea.h \
     src/gui/resultsreader.h \
     src/gui/settings.h \
-    src/gui/track.h \
-    src/gui/tracksreader.h \
     src/gui/movement.h \
     src/gui/abducerwriter.h \
-    src/gui/abducerreader.h
+    src/gui/abducerreader.h \
+    src/gui/path.h
 FORMS += src/gui/mainwindow.ui \
     src/gui/settings.ui
 SOURCES += src/gui/cameramodel.cpp \
@@ -44,8 +43,7 @@ SOURCES += src/gui/cameramodel.cpp \
     src/gui/renderarea.cpp \
     src/gui/resultsreader.cpp \
     src/gui/settings.cpp \
-    src/gui/track.cpp \
-    src/gui/tracksreader.cpp \
     src/gui/movement.cpp \
     src/gui/abducerwriter.cpp \
-    src/gui/abducerreader.cpp
+    src/gui/abducerreader.cpp \
+    src/gui/path.cpp

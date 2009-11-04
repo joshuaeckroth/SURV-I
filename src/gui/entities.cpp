@@ -6,7 +6,7 @@
 #include "entities.h"
 #include "detection.h"
 #include "movement.h"
-#include "track.h"
+#include "path.h"
 
 Entities::Entities()
 { }
@@ -23,10 +23,10 @@ void Entities::addMovement(Movement *m)
   movements.push_back(m);
 }
 
-void Entities::addTrack(Track *t)
+void Entities::addPath(Path *p)
 {
-  t->setEntities(this);
-  tracks.push_back(t);
+  p->setEntities(this);
+  paths.push_back(p);
 }
 
 void Entities::detections_begin()
@@ -59,19 +59,19 @@ Movement *Entities::movements_next()
   return *(movements_iter++);
 }
 
-void Entities::tracks_begin()
+void Entities::paths_begin()
 {
-  tracks_iter = tracks.begin();
+  paths_iter = paths.begin();
 }
 
-bool Entities::tracks_end() const
+bool Entities::paths_end() const
 {
-  return tracks_iter == tracks.end();
+  return paths_iter == paths.end();
 }
 
-Track *Entities::tracks_next()
+Path *Entities::paths_next()
 {
-  return *(tracks_iter++);
+  return *(paths_iter++);
 }
 
 void Entities::appendLog(const QString l)

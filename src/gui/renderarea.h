@@ -49,9 +49,7 @@ private:
   bool clear;
   Entities* entities;
   QMutex mutex;
-  QPen detectionPen, detectionCenterPen, detectionTextPen,
-    movementPen, trackHeadPen, trackTextPen, trackPathPen,
-    trackExpectedPathPen, trackExpectedCirclePen, trackMapPen;
+  QPen detectionPen, detectionCenterPen, movementPen, pathPen;
 };
 
 #endif

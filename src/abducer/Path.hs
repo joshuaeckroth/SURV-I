@@ -9,7 +9,7 @@ import Debug.Trace
 mkPaths :: [Hypothesis Movement] -> [Hypothesis Path]
 mkPaths hMovs =
     let movChains = genMovChains $ map extractMov hMovs
-    in map (mkPath movChains) (traceShow movChains movChains)
+    in map (mkPath movChains) movChains
 
 mkPath :: [[Movement]] -> [Movement] -> Hypothesis Path
 mkPath movChains movs =
@@ -23,13 +23,14 @@ mkPath movChains movs =
 
 genMovChains :: [Movement] -> [[Movement]]
 genMovChains [] = []
-genMovChains (mov:movs) = [rest | rest <- genMovChains (filter (movsConnected mov) movs)]
+genMovChains (mov:[])   = [[mov]]
+genMovChains (mov:movs) = [mov:rest | rest <- genMovChains (filter (movsConnected mov) movs)]
                           ++ (genMovChains movs)
 
 movsConnected :: Movement -> Movement -> Bool
 movsConnected (Movement _ (NonEmpty [_, detEnd])) (Movement _ (NonEmpty [detStart, _])) =
-    (detDist detEnd detStart < 150.0) && (detDelta detEnd detStart < 2.0)
-                                          && (detBefore detEnd detStart)
+    (detDist detEnd detStart < 50.0) && (detDelta detEnd detStart < 2.0)
+                                         && (detBefore detEnd detStart)
 
 extractMov :: Hypothesis Movement -> Movement
 extractMov (Hyp mov _ _ _ _ _) = mov

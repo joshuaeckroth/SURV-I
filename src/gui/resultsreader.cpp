@@ -5,6 +5,7 @@
 #include "resultsreader.h"
 #include "detection.h"
 #include "movement.h"
+#include "path.h"
 #include "entities.h"
 
 ResultsReader::ResultsReader()
@@ -21,13 +22,6 @@ bool ResultsReader::startElement(const QString&, const QString&,
     else if(qName == "Log")
     {
 
-    }
-    else if(qName == "Frame")
-    {
-        int frameNumber = attributes.value("number").toInt();
-        double frameTime = attributes.value("time").toDouble();
-
-        //curEntities = new Entities(frameNumber, frameTime);
     }
     // <Detection> NOT inside <Movement>
     else if(qName == "Detection" && movementId.isEmpty())
@@ -57,32 +51,35 @@ bool ResultsReader::startElement(const QString&, const QString&,
     {
         movementId = attributes.value("id");
     }
-    else if(qName == "Track")
+    else if(qName == "Path")
     {
-        int id = attributes.value("id").toInt();
-        double cx = attributes.value("cx").toDouble();
-        double cy = attributes.value("cy").toDouble();
-        double ocx = attributes.value("ocx").toDouble();
-        double ocy = attributes.value("ocy").toDouble();
-        int prevId = attributes.value("prevID").toInt();
-        int nextId = attributes.value("nextID").toInt();
-        double ecx = attributes.value("ecx").toDouble();
-        double ecy = attributes.value("ecy").toDouble();
-        double radius = attributes.value("radius").toDouble();
-        bool thisFrame = (attributes.value("thisFrame") == QString("True") ? true : false);
-
-        //curEntities->addTrack(new Track(id, cx, cy, ocx, ocy, prevId, nextId, ecx, ecy, radius, thisFrame));
+        pathId = attributes.value("id");
     }
+
     return true;
 }
 
 bool ResultsReader::endElement(const QString&, const QString&, const QString& qName)
 {
-    if(qName == "Movement")
+    // <Movement> NOT inside <Path>
+    if(qName == "Movement" && pathId.isEmpty())
     {
         curEntities->addMovement(new Movement(movementId, detections));
         movementId.clear();
         detections.clear();
+    }
+    // <Movement> inside <Path>
+    if(qName == "Movement" && !pathId.isEmpty())
+    {
+        movements.push_back(new Movement(movementId, detections));
+        movementId.clear();
+        detections.clear();
+    }
+    else if(qName == "Path")
+    {
+        curEntities->addPath(new Path(pathId, movements));
+        pathId.clear();
+        movements.clear();
     }
     return true;
 }

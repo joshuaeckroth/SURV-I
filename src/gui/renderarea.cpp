@@ -16,7 +16,7 @@
 #include "entities.h"
 #include "detection.h"
 #include "movement.h"
-#include "track.h"
+#include "path.h"
 #include "frame.h"
 #include "cameramodel.h"
 
@@ -46,29 +46,11 @@ RenderArea::RenderArea(QWidget* parent)
     detectionCenterPen.setColor(Qt::blue);
     detectionCenterPen.setWidth(3);
 
-    detectionTextPen.setColor(Qt::blue);
-
     movementPen.setColor(Qt::green);
     movementPen.setWidth(2);
 
-    trackHeadPen.setColor(Qt::black);
-    trackHeadPen.setWidth(3);
-
-    trackTextPen.setColor(Qt::black);
-
-    trackPathPen.setColor(Qt::black);
-    trackPathPen.setWidth(3);
-
-    trackExpectedPathPen.setColor(Qt::red);
-    trackExpectedPathPen.setWidth(1);
-    trackExpectedPathPen.setStyle(Qt::DotLine);
-
-    trackExpectedCirclePen.setColor(Qt::red);
-    trackExpectedCirclePen.setWidth(1);
-    trackExpectedCirclePen.setStyle(Qt::DotLine);
-
-    trackMapPen.setColor(Qt::black);
-    trackMapPen.setWidth(3);
+    pathPen.setColor(Qt::black);
+    pathPen.setWidth(3);
 }
 
 void RenderArea::setNumCameras(int n)
@@ -265,126 +247,47 @@ void RenderArea::paintEvent(QPaintEvent*)
                 }
             }
 
+            painter.setPen(pathPen);
 
-            entities->tracks_begin();
-            while(!entities->tracks_end())
+            entities->paths_begin();
+            while(!entities->paths_end())
             {
-                Track* t = entities->tracks_next();
+                std::vector<QPoint> points;
+                std::vector<QPoint>::const_iterator points_iter;
 
-                if(t->getCy() > 1100) continue;
-
-                if(t->getPrevId() != 0 || t->getNextId() != 0) // skip tracks that have only one point
+                Path *p = entities->paths_next();
+                p->movements_begin();
+                while(!p->movements_end())
                 {
-                    // draw the track on all cameras (if within camera view)
-                    for(int i = 0; i < numCameras; i++)
+                    Movement *m = p->movements_next();
+                    m->detections_begin();
+                    while(!m->detections_end())
                     {
-                        painter.setClipRegion(cameraRegion[i]);
-
-                        QPair<int,int> c = CameraModel::warpToImage(i, QPair<double,double>(t->getCx(), t->getCy()));
-                        if(c.first >= 0 && c.first <= imageWidth[i]
-                           && c.second >= 0 && c.second <= imageHeight[i])
+                        Detection *d = m->detections_next();
+                        for(int i = 0; i < numCameras; i++)
                         {
-                            scaledX = c.first * scaleFactor[i];
-                            scaledY = c.second * scaleFactor[i];
+                            QPair<int,int> point = CameraModel::warpToImage(i, QPair<double,double>(d->getLat(), d->getLon()));
 
-                            if(t->getThisFrame())
-                            {
-                                // draw an X
-                                painter.setPen(trackHeadPen);
+                            scaledX = point.first * scaleFactor[i];
+                            scaledY = point.second * scaleFactor[i];
 
-                                painter.drawLine((i * eachWidth + scaledX) - 5, scaledY - 5,
-                                                 (i * eachWidth + scaledX) + 5, scaledY + 5);
-                                painter.drawLine((i * eachWidth + scaledX) - 5, scaledY + 5,
-                                                 (i * eachWidth + scaledX) + 5, scaledY - 5);
-                            }
+                            points.push_back(QPoint(i * eachWidth + scaledX, scaledY));
                         }
-
-                        // draw line to previous track point (on the camera view)
-                        QPair<int,int> o = CameraModel::warpToImage(i, QPair<double,double>(t->getOcx(), t->getOcy()));
-
-                        // and expected point
-                        QPair<int,int> e = CameraModel::warpToImage(i, QPair<double,double>(t->getEcx(), t->getEcy()));
-
-                        // either the center point or old point need to be in-view
-                        if((c.first >= 0 && c.first <= imageWidth[i]
-                            && c.second >= 0 && c.second <= imageHeight[i])
-                            || (o.first >= 0 && o.first <= imageWidth[i]
-                                && o.second >= 0 && o.second <= imageHeight[i]))
-                            {
-                            // scale the points
-                            int scaledCx = c.first * scaleFactor[i];
-                            int scaledCy = c.second * scaleFactor[i];
-                            int scaledOx = o.first * scaleFactor[i];
-                            int scaledOy = o.second * scaleFactor[i];
-                            int scaledEx = e.first * scaleFactor[i];
-                            int scaledEy = e.second * scaleFactor[i];
-
-                            // draw the line
-                            painter.setPen(trackPathPen);
-
-                            painter.drawLine(i * eachWidth + scaledCx, scaledCy,
-                                             i * eachWidth + scaledOx, scaledOy);
-
-                            if(t->getThisFrame())
-                            {
-                                // draw expected line
-                                painter.setPen(trackExpectedPathPen);
-
-                                painter.drawLine(i * eachWidth + scaledCx, scaledCy,
-                                                 i * eachWidth + scaledEx, scaledEy);
-
-                                // draw expected circle
-                                painter.setPen(trackExpectedCirclePen);
-
-                                //painter.drawEllipse(QPoint(i * eachWidth + scaledEx, scaledEy),
-                                //		  static_cast<int>(t->getRadius() * scaleFactor[i]),
-                                //		  static_cast<int>(t->getRadius() * scaleFactor[i]));
-                            }
-
-                            // draw track id
-                            if(t->getThisFrame())
-                            {
-                                painter.setPen(trackTextPen);
-
-                                painter.drawText(i * eachWidth + scaledCx + 3, scaledCy - 3, QString::number(t->getId()));
-                            }
-                        }
-
                     }
+                }
 
-                    // draw on map
-                    painter.setPen(trackMapPen);
-                    painter.setClipRegion(mapRegion);
-
-                    QPair<int,int> c = CameraModel::warpToMap(QPair<double,double>(t->getCx(), t->getCy()));
-                    if(c.first >= mapTopLeftX && c.first <= mapBottomRightX
-                       && c.second >= mapTopLeftY && c.second <= mapBottomRightY)
+                QPoint point1, point2;
+                for(int i = 0; i < numCameras; i++)
+                {
+                    painter.setClipRegion(cameraRegion[i]);
+                    for(points_iter = points.begin(); points_iter != points.end(); points_iter++)
                     {
-                        // draw single pixel "line"
-                        painter.drawLine(c.first - mapTopLeftX, maxHeight + c.second - mapTopLeftY,
-                                         c.first - mapTopLeftX, maxHeight + c.second - mapTopLeftY);
-                    }
-
-                    // draw line to previous track point (on the map)
-                    QPair<int,int> o = CameraModel::warpToMap(QPair<double,double>(t->getOcx(), t->getOcy()));
-
-                    // either the center point or old point need to be in-view
-                    if((c.first >= mapTopLeftX && c.first <= mapBottomRightX
-                        && c.second >= mapTopLeftY && c.second <= mapBottomRightY)
-                        || (o.first >= mapTopLeftX && o.first <= mapBottomRightX
-                            && o.second >= mapTopLeftY && o.second <= mapBottomRightY))
-                        {
-                        // draw the line
-                        painter.drawLine(c.first - mapTopLeftX, maxHeight + c.second - mapTopLeftY,
-                                         o.first - mapTopLeftX, maxHeight + o.second - mapTopLeftY);
-
-                        // draw track id
-                        if(t->getThisFrame())
-                        {
-                            painter.setPen(trackTextPen);
-
-                            painter.drawText(o.first - mapTopLeftX + 7, maxHeight + o.second - mapTopLeftY + 8, QString::number(t->getId()));
-                        }
+                        point1 = *points_iter;
+                        if((points_iter + 1) != points.end())
+                            point2 = *(points_iter + 1);
+                        else
+                            point2 = point2;
+                        painter.drawLine(point1, point2);
                     }
                 }
             }

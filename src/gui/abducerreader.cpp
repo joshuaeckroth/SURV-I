@@ -41,10 +41,8 @@ void AbducerReader::run()
         }
 
         QByteArray response = inSocket->read(12);
-        qDebug() << QString("First 12 bytes: %1").arg(QString(response));
         if(QString(response) == "NEW RESULTS\n")
         {
-            qDebug() << "New results.";
             char sizeString[100];
             char partialXml[chunkSize + 1];
             inSocket->readLine(sizeString, 100);

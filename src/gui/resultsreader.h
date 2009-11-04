@@ -6,6 +6,7 @@
 #include <QXmlDefaultHandler>
 
 class Detection;
+class Movement;
 class Entities;
 
 class ResultsReader : public QXmlDefaultHandler
@@ -26,7 +27,9 @@ private:
   QString currentText;
   QString errorStr;
   QString movementId;
+  QString pathId;
   std::vector<Detection*> detections;
+  std::vector<Movement*> movements;
 };
 
 #endif
