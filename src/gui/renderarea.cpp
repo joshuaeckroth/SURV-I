@@ -252,8 +252,8 @@ void RenderArea::paintEvent(QPaintEvent*)
             entities->paths_begin();
             while(!entities->paths_end())
             {
-                std::vector<QPoint> points;
-                std::vector<QPoint>::const_iterator points_iter;
+                std::vector<QPair<double,double> > points;
+                std::vector<QPair<double,double> >::const_iterator points_iter;
 
                 Path *p = entities->paths_next();
                 p->movements_begin();
@@ -266,17 +266,14 @@ void RenderArea::paintEvent(QPaintEvent*)
                         Detection *d = m->detections_next();
                         for(int i = 0; i < numCameras; i++)
                         {
-                            QPair<int,int> point = CameraModel::warpToImage(i, QPair<double,double>(d->getLat(), d->getLon()));
-
-                            scaledX = point.first * scaleFactor[i];
-                            scaledY = point.second * scaleFactor[i];
-
-                            points.push_back(QPoint(i * eachWidth + scaledX, scaledY));
+                            points.push_back(QPair<double,double>(d->getLat(), d->getLon()));
                         }
                     }
                 }
 
-                QPoint point1, point2;
+                QPair<double,double> point1, point2;
+                QPair<int,int> scaledPoint1, scaledPoint2;
+                int scaledX1, scaledY1, scaledX2, scaledY2;
                 for(int i = 0; i < numCameras; i++)
                 {
                     painter.setClipRegion(cameraRegion[i]);
@@ -287,7 +284,15 @@ void RenderArea::paintEvent(QPaintEvent*)
                             point2 = *(points_iter + 1);
                         else
                             point2 = point2;
-                        painter.drawLine(point1, point2);
+
+                        scaledPoint1 = CameraModel::warpToImage(i, point1);
+                        scaledPoint2 = CameraModel::warpToImage(i, point2);
+                        scaledX1 = scaledPoint1.first * scaleFactor[i];
+                        scaledY1 = scaledPoint1.second * scaleFactor[i];
+                        scaledX2 = scaledPoint2.first * scaleFactor[i];
+                        scaledY2 = scaledPoint2.second * scaleFactor[i];
+                        painter.drawLine(QPoint(i * eachWidth + scaledX1, scaledY1),
+                                         QPoint(i * eachWidth + scaledX2, scaledY2));
                     }
                 }
             }

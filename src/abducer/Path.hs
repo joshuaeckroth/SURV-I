@@ -8,29 +8,29 @@ import Debug.Trace
 
 mkPaths :: [Hypothesis Movement] -> [Hypothesis Path]
 mkPaths hMovs =
-    let movChains = genMovChains $ map extractMov hMovs
-    in map (mkPath movChains) movChains
+    let hMovChains = genMovChains hMovs
+    in map (mkPath hMovChains) hMovChains
 
-mkPath :: [[Movement]] -> [Movement] -> Hypothesis Path
-mkPath movChains movs =
-    let hypId     = mkPathHypId movs
+mkPath :: [[Hypothesis Movement]] -> [Hypothesis Movement] -> Hypothesis Path
+mkPath hMovChains hMovs =
+    let movs      = map (\(Hyp {entity = mov}) -> mov) hMovs
+        hypId     = mkPathHypId movs
         path      = Path (Path_Attrs hypId) (NonEmpty movs)
-        aPriori   = (\_ -> High)
-        explains  = [] :: [Hypothesis Movement]
-        depends   = [] :: [Hypothesis Movement]
-        conflicts = [] :: [Hypothesis Path]
+        aPriori   = (\_ -> High) {-- FIXME --}
+        explains  = hMovs
+        depends   = hMovs
+        conflicts = [] :: [Hypothesis Path] {-- FIXME --}
     in Hyp path hypId aPriori explains depends conflicts
 
-genMovChains :: [Movement] -> [[Movement]]
+genMovChains :: [Hypothesis Movement] -> [[Hypothesis Movement]]
 genMovChains [] = []
-genMovChains (mov:[])   = [[mov]]
-genMovChains (mov:movs) = [mov:rest | rest <- genMovChains (filter (movsConnected mov) movs)]
-                          ++ (genMovChains movs)
+genMovChains (hMov:[])    = [[hMov]]
+genMovChains (hMov:hMovs) = [hMov:rest | rest <- genMovChains (filter (movsConnected hMov) hMovs)]
+                            ++ (genMovChains hMovs)
 
-movsConnected :: Movement -> Movement -> Bool
-movsConnected (Movement _ (NonEmpty [_, detEnd])) (Movement _ (NonEmpty [detStart, _])) =
-    (detDist detEnd detStart < 50.0) && (detDelta detEnd detStart < 2.0)
-                                         && (detBefore detEnd detStart)
+movsConnected :: Hypothesis Movement -> Hypothesis Movement -> Bool
+movsConnected (Hyp {entity = (Movement _ (NonEmpty [_, detEnd]))})
+                  (Hyp {entity = (Movement _ (NonEmpty [detStart, _]))}) =
+                      (detDist detEnd detStart < 50.0) && (detDelta detEnd detStart < 2.0)
+                                                           && (detBefore detEnd detStart)
 
-extractMov :: Hypothesis Movement -> Movement
-extractMov (Hyp mov _ _ _ _ _) = mov

@@ -15,7 +15,7 @@ mkMovements hDets =
                          let delta = detDelta det1 det2,
                          {-- FIXME: why not real equality check? relates to FIXME in World.hs --}
                          (detectionId det1) /= (detectionId det2),
-                         dist < 200.0, delta < 6.0, detBefore det1 det2]
+                         dist < 150.0, delta < 6.0, detBefore det1 det2]
     in map (mkMovement closeDetPairs) closeDetPairs
 
 mkMovement :: [(Hypothesis Detection, Hypothesis Detection, Double, Time)]
@@ -36,8 +36,8 @@ mkMovementScore :: [(Hypothesis Detection, Hypothesis Detection, Double, Time)]
                 -> (Level -> Level)
 mkMovementScore hdets (hdet1@(Hyp { entity = det1 }),
                        hdet2@(Hyp { entity = det2 }), dist, delta)
-    | dist < 100.0 && delta < 2.0 = (\s -> corroboration High)
-    | dist < 150.0 && delta < 4.0 = (\s -> corroboration Medium)
+    | dist < 50.0 && delta < 2.0  = (\s -> corroboration High)
+    | dist < 100.0 && delta < 4.0 = (\s -> corroboration Medium)
     | otherwise                   = (\s -> corroboration Low)
     -- corroboration depends on two camera detections appearing similar (so far, just area)
     where corroboration =
