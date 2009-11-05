@@ -83,7 +83,7 @@ QPair<int,int> CameraModel::warpToImage(int camera, QPair<double,double> p)
   cvMatMul(unwarp, pmat, rmat);
 
   double z = cvGetReal1D(rmat, 2);
-  return QPair<int,int>(cvGetReal1D(rmat, 0) / z, cvGetReal1D(rmat, 1) / z);
+  return QPair<int,int>((int)(cvGetReal1D(rmat, 0) / z), (int)(cvGetReal1D(rmat, 1) / z));
 }
 
 QPair<int,int> CameraModel::warpToMap(QPair<double,double> p)
@@ -102,5 +102,5 @@ QPair<int,int> CameraModel::warpToMap(QPair<double,double> p)
   cvMatMul(unwarp, pmat, rmat);
 
   double z = cvGetReal1D(rmat, 2);
-  return QPair<int,int>(cvGetReal1D(rmat, 0) / z, cvGetReal1D(rmat, 1) / z);
+  return QPair<int,int>((int)(cvGetReal1D(rmat, 0) / z), (int)(cvGetReal1D(rmat, 1) / z));
 }

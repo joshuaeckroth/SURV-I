@@ -33,11 +33,6 @@ MainWindow::MainWindow() : QMainWindow(0)
 
     connect(ui.actionStart, SIGNAL(clicked()), this, SLOT(startProcessing()));
     connect(ui.actionStop, SIGNAL(clicked()), this, SLOT(stopProcessing()));
-    connect(ui.actionRecord, SIGNAL(clicked()), this, SLOT(startRecording()));
-}
-
-void MainWindow::startRecording()
-{
 }
 
 void MainWindow::startProcessing()

@@ -20,7 +20,6 @@ public:
 public slots:
   void startProcessing();
   void stopProcessing();
-  void startRecording();
   void updateStats();
   void numCamerasChanged(int);
 

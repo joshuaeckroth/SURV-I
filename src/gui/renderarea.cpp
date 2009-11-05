@@ -36,7 +36,7 @@ RenderArea::RenderArea(QWidget* parent)
     setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding));
     time = framesShown = 0;
 
-    map = QImage("videos/ARL1-with-lines.jpg");
+    map = QImage("ARL1-with-lines.jpg");
     if(map.isNull())
         qDebug() << "Unable to load map image.";
 
@@ -171,8 +171,6 @@ void RenderArea::paintEvent(QPaintEvent*)
         int cropWidth = width();
         int mapTopLeftX = mapcenter.x() - (cropWidth / 2);
         int mapTopLeftY = mapcenter.y() - (cropHeight / 2);
-        int mapBottomRightX = mapTopLeftX + cropWidth; // used to determine if warpToMap coordinates are in view
-        int mapBottomRightY = mapTopLeftY + cropHeight;
         painter.drawImage(0, maxHeight, map, mapTopLeftX, mapTopLeftY, cropWidth, cropHeight);
         mapRegion = QRegion(0, maxHeight, cropWidth, cropHeight);
 
@@ -194,8 +192,8 @@ void RenderArea::paintEvent(QPaintEvent*)
                     // draw on camera image
                     QPair<int,int> p = CameraModel::warpToImage(i, QPair<double,double>(d->getLat(), d->getLon()));
 
-                    scaledX = p.first * scaleFactor[i];
-                    scaledY = p.second * scaleFactor[i];
+                    scaledX = (int)(p.first * scaleFactor[i]);
+                    scaledY = (int)(p.second * scaleFactor[i]);
 
                     // draw pixel at center
                     if(d->isAccepted())
@@ -206,7 +204,7 @@ void RenderArea::paintEvent(QPaintEvent*)
                     painter.drawLine(i * eachWidth + scaledX, scaledY,
                                      i * eachWidth + scaledX, scaledY);
 
-                    radius = 5.0 * scaleFactor[i];
+                    radius = (int)(5.0 * scaleFactor[i]);
                     painter.drawEllipse(QPoint(i * eachWidth + scaledX, scaledY), radius, radius);
 
                     // draw on map
@@ -216,9 +214,9 @@ void RenderArea::paintEvent(QPaintEvent*)
                     painter.drawLine(c.first - mapTopLeftX, maxHeight + c.second - mapTopLeftY,
                                      c.first - mapTopLeftX, maxHeight + c.second - mapTopLeftY);
                     if(d->isAccepted())
-                        radius = 3.0;
+                        radius = 3;
                     else
-                        radius = 5.0;
+                        radius = 5;
                     painter.drawEllipse(QPoint(c.first - mapTopLeftX, maxHeight + c.second - mapTopLeftY), radius, radius);
                 }
             }
@@ -245,8 +243,8 @@ void RenderArea::paintEvent(QPaintEvent*)
                     {
                         QPair<int,int> p = CameraModel::warpToImage(i, QPair<double,double>(d->getLat(), d->getLon()));
 
-                        scaledX = p.first * scaleFactor[i];
-                        scaledY = p.second * scaleFactor[i];
+                        scaledX = (int)(p.first * scaleFactor[i]);
+                        scaledY = (int)(p.second * scaleFactor[i]);
 
                         points[j][i] = QPoint(i * eachWidth + scaledX, scaledY);
                     }
@@ -302,10 +300,10 @@ void RenderArea::paintEvent(QPaintEvent*)
 
                         scaledPoint1 = CameraModel::warpToImage(i, point1);
                         scaledPoint2 = CameraModel::warpToImage(i, point2);
-                        scaledX1 = scaledPoint1.first * scaleFactor[i];
-                        scaledY1 = scaledPoint1.second * scaleFactor[i];
-                        scaledX2 = scaledPoint2.first * scaleFactor[i];
-                        scaledY2 = scaledPoint2.second * scaleFactor[i];
+                        scaledX1 = (int)(scaledPoint1.first * scaleFactor[i]);
+                        scaledY1 = (int)(scaledPoint1.second * scaleFactor[i]);
+                        scaledX2 = (int)(scaledPoint2.first * scaleFactor[i]);
+                        scaledY2 = (int)(scaledPoint2.second * scaleFactor[i]);
                         painter.drawLine(QPoint(i * eachWidth + scaledX1, scaledY1),
                                          QPoint(i * eachWidth + scaledX2, scaledY2));
                     }
@@ -353,8 +351,8 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
     {
         Detection* d = entities->detections_next();
         QPair<int,int> p = CameraModel::warpToImage(camera, QPair<double,double>(d->getLat(), d->getLon()));
-        scaledX = p.first * scaleFactor[camera];
-        scaledY = p.second * scaleFactor[camera];
+        scaledX = (int)(p.first * scaleFactor[camera]);
+        scaledY = (int)(p.second * scaleFactor[camera]);
         entityX = camera * eachWidth + scaledX;
         entityY = scaledY;
 
@@ -378,8 +376,8 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
         {
             Detection* d = m->detections_next();
             QPair<int,int> p = CameraModel::warpToImage(camera, QPair<double,double>(d->getLat(), d->getLon()));
-            scaledX = p.first * scaleFactor[camera];
-            scaledY = p.second * scaleFactor[camera];
+            scaledX = (int)(p.first * scaleFactor[camera]);
+            scaledY = (int)(p.second * scaleFactor[camera]);
             points[j] = QPoint(camera * eachWidth + scaledX, scaledY);
             j++;
         }
