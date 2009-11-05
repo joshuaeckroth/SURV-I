@@ -22,9 +22,9 @@ mkDetection cdets cdet =
                     , detectionCamera    = Just cdet
                     }
         aPriori   = mkDetectionScore cdets cdet
-        explains  = [] :: [Hypothesis Detection] {- these type signatures are arbitrary but needed -}
-        implies   = [] :: [Hypothesis Detection]
-        conflicts = [] :: [Hypothesis Detection]
+        explains  = []
+        implies   = []
+        conflicts = []
     in Hyp det hypId aPriori explains implies conflicts
 
 mkDetectionScore :: [CameraDetection] -> CameraDetection -> (Level -> Level)

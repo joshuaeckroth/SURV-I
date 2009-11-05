@@ -6,12 +6,14 @@ import Network.Socket
 import System.Win32.Process (sleep)
 import Text.XML.HaXml.Parse
 import Text.XML.HaXml.XmlContent
+import Data.List (nub)
 import Comm
 import Types
 import World
 import Detection
 import Movement
 import Path
+import qualified WrappedInts.IDMap as IDMap
 import Debug.Trace
 
 main = do
@@ -97,12 +99,20 @@ runAbducer :: CameraDetections
            -> World
            -> World
 runAbducer cameraDetections world =
-    let cleanedWorld = cleanWorld world
-        dets         = mkDetections cameraDetections
-        movs         = mkMovements dets -- ((unexplainedDets cleanedWorld) ++ dets)
-        paths        = mkPaths movs
+    let cleanedWorld  = cleanWorld world
+        emap          = entityMap cleanedWorld
+        allHyps       = allHypotheses cleanedWorld
+        existingDets  = gatherEntities emap allHyps :: [Detection]
+        existingMovs  = gatherEntities emap allHyps :: [Movement]
+        dets          = mkDetections cameraDetections
+        movs          = mkMovements $ nub (existingDets ++ (extractEntities dets))
+        -- filter out movement hyps that have already been posed
+        -- (note that a hyp's ID hash uniquely identifies the hyp by hashing its components)
+        newMovs       = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) movs
+        paths         = mkPaths $ nub (existingMovs ++ (extractEntities movs))
+        newPaths      = [] :: [Hypothesis Path] -- filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) paths
     in
-      reason $ hypothesize paths $ hypothesize movs $ hypothesize dets cleanedWorld
+      reason $ hypothesize newPaths $ hypothesize newMovs $ hypothesize dets cleanedWorld
 
 {--
       world = ((return $ cleanWorld frame ws) >>=

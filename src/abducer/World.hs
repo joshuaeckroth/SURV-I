@@ -73,10 +73,10 @@ hypothesize :: (Typeable a) => [Hypothesis a] -> World -> World
 hypothesize hs world =
     let world1 = foldl (\w h -> addHypothesis (entity h) (hypId h) (aPriori h) w) world hs
         world2 = foldl (\w (Hyp _ subject _ explains _ _) ->
-                            foldl (\w' (Hyp _ object _ _ _ _) ->
+                            foldl (\w' object ->
                                    addExplains subject object w') w explains) world1 hs
         world3 = foldl (\w (Hyp _ subject _ _ implies _) ->
-                            foldl (\w' (Hyp _ object _ _ _ _) ->
+                            foldl (\w' object ->
                                    addImplies subject object w') w implies) world2 hs
     in world3
 
@@ -130,27 +130,6 @@ buildResults world =
                   (Rejected (gatherEntities (entityMap world) rejected)
                                 (gatherEntities (entityMap world) rejected)
                                 (gatherEntities (entityMap world) rejected))
-
--- | Get a list of unexplained detection hypotheses.
---
--- We do this by filtering out from the list of all detections those that have
--- movements that explain them.
---
--- FIXME: We are presently forced to recreate the Hypothesis container object;
--- the details of the Hyp don't matter, except the entity and hypId
-unexplainedDets :: World -> [Hypothesis Detection]
-unexplainedDets world =
-    let hypotheses  = allHypotheses world
-        explained   = detsExplained (gatherEntities (entityMap world) hypotheses)
-        unexplained = filter (\(Detection {detectionId = detId}) ->
-                                  length (filter (\(Detection {detectionId = detId'}) ->
-                                                      detId == detId')
-                                          explained) == 0) $
-                      gatherEntities (entityMap world) hypotheses
-    in map (\det -> Hyp det (detectionId det) id
-                    ([] :: [Hypothesis Detection])
-                    ([] :: [Hypothesis Detection])
-                    ([] :: [Hypothesis Detection])) unexplained
 
 gatherEntities :: forall a.
                   (Typeable a) =>

@@ -50,6 +50,11 @@ void AbducerReader::run()
             qint64 pos = 0;
             while(pos < size)
             {
+                if(!inSocket->waitForReadyRead(60000))
+                {
+                    qDebug() << "Timed out waiting for response from abducer.";
+                    return;
+                }
                 qint64 next = ((size - pos) >= chunkSize ? chunkSize : size - pos);
                 qint64 count = inSocket->read(partialXml, next);
                 if(count == -1)

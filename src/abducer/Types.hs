@@ -15,14 +15,14 @@ type Entity = Dynamic
 
 category = HasInt 0 :: CategoryID
 
-data Hypothesis a = forall b c d.
+data Hypothesis a =
     Hyp
     { entity    :: a
     , hypId     :: HypothesisID
     , aPriori   :: Level -> Level
-    , explains  :: [Hypothesis b]
-    , implies   :: [Hypothesis c]
-    , conflicts :: [Hypothesis d]
+    , explains  :: [HypothesisID]
+    , implies   :: [HypothesisID]
+    , conflicts :: [HypothesisID]
     }
 
 type Time = Double
@@ -97,6 +97,12 @@ detBefore (Detection { detectionStartTime = start1
 detsExplained :: [Movement] -> [Detection]
 detsExplained [] = []
 detsExplained ((Movement _ (NonEmpty dets)):movs) = dets ++ (detsExplained movs)
+
+extractEntity :: Hypothesis a -> a
+extractEntity (Hyp {entity = e}) = e
+
+extractEntities :: [Hypothesis a] -> [a]
+extractEntities = map extractEntity
 
 {-- Camera Detections Types --}
 

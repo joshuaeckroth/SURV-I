@@ -52,7 +52,7 @@ RenderArea::RenderArea(QWidget* parent)
     movementPen.setColor(Qt::green);
     movementPen.setWidth(2);
 
-    movementUnacceptedPen.setColor(Qt::gray);
+    movementUnacceptedPen.setColor(Qt::darkGreen);
     movementUnacceptedPen.setWidth(1);
 
     pathPen.setColor(Qt::black);

@@ -51,8 +51,15 @@ getResults s = do
 
 sendResults :: Socket -> String -> IO ()
 sendResults s msg = do
-  send s ("NEW RESULTS\n"
-          ++ ((show $ 1 + (length msg)) ++ "\n") {- 1+ because of newline after msg is sent -}
-          ++ msg
-          ++ "\n")
+  send s ("NEW RESULTS\n" ++ ((show $ 1 + (length msg)) ++ "\n")){- 1+ because of newline after msg is sent -}
+  sendResultChunk s msg
+  send s "\n"
   return ()
+
+sendResultChunk :: Socket -> String -> IO ()
+sendResultChunk _ []  = return ()
+sendResultChunk s msg = do
+  let chunk = take 4000 msg
+      rest  = drop 4000 msg
+  send s chunk
+  sendResultChunk s rest
