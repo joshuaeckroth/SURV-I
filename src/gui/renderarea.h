@@ -8,6 +8,7 @@
 #include <QRegion>
 #include <QPen>
 #include <QMutex>
+#include <QPoint>
 
 #include "highgui.h"
 
@@ -49,7 +50,11 @@ private:
   bool clear;
   Entities* entities;
   QMutex mutex;
-  QPen detectionPen, detectionCenterPen, movementPen, pathPen;
+  QPen detectionPen, detectionCenterPen, detectionUnacceptedPen,
+    movementPen, movementUnacceptedPen,
+    pathPen, pathUnacceptedPen;
+  double clickDistance(QPoint p1, QPoint p2, QPoint click);
+  double pointDistance(QPoint p1, QPoint p2);
 };
 
 #endif

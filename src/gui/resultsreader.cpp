@@ -15,13 +15,17 @@ ResultsReader::ResultsReader()
 bool ResultsReader::startElement(const QString&, const QString&,
                                  const QString& qName, const QXmlAttributes& attributes)
 {
-    if(qName == "Results")
+    if(qName == "Accepted")
+    {
+        accepted = true;
+    }
+    else if(qName == "Rejected")
+    {
+        accepted = false;
+    }
+    else if(qName == "Results")
     {
         curEntities = new Entities;
-    }
-    else if(qName == "Log")
-    {
-
     }
     // <Detection> NOT inside <Movement>
     else if(qName == "Detection" && movementId.isEmpty())
@@ -32,8 +36,8 @@ bool ResultsReader::startElement(const QString&, const QString&,
         double startTime = attributes.value("startTime").toDouble();
         double endTime = attributes.value("endTime").toDouble();
         double area = attributes.value("area").toDouble();
-
-        curEntities->addDetection(new Detection(id, lat, lon, startTime, endTime, area));
+        
+        curEntities->addDetection(new Detection(id, lat, lon, startTime, endTime, area, accepted));
     }
     // <Detection> inside <Movement>
     else if(qName == "Detection" && !movementId.isEmpty())
@@ -45,7 +49,7 @@ bool ResultsReader::startElement(const QString&, const QString&,
         double endTime = attributes.value("endTime").toDouble();
         double area = attributes.value("area").toDouble();
 
-        detections.push_back(new Detection(id, lat, lon, startTime, endTime, area));
+        detections.push_back(new Detection(id, lat, lon, startTime, endTime, area, accepted));
     }
     else if(qName == "Movement")
     {
@@ -64,20 +68,20 @@ bool ResultsReader::endElement(const QString&, const QString&, const QString& qN
     // <Movement> NOT inside <Path>
     if(qName == "Movement" && pathId.isEmpty())
     {
-        curEntities->addMovement(new Movement(movementId, detections));
+        curEntities->addMovement(new Movement(movementId, accepted, detections));
         movementId.clear();
         detections.clear();
     }
     // <Movement> inside <Path>
     if(qName == "Movement" && !pathId.isEmpty())
     {
-        movements.push_back(new Movement(movementId, detections));
+        movements.push_back(new Movement(movementId, accepted, detections));
         movementId.clear();
         detections.clear();
     }
     else if(qName == "Path")
     {
-        curEntities->addPath(new Path(pathId, movements));
+        curEntities->addPath(new Path(pathId, accepted, movements));
         pathId.clear();
         movements.clear();
     }

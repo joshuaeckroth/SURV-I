@@ -24,6 +24,7 @@ public:
 
 private:
   Entities *curEntities;
+  bool accepted;
   QString currentText;
   QString errorStr;
   QString movementId;

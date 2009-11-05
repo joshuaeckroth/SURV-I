@@ -18,9 +18,9 @@ mkPath hMovChains hMovs =
         path      = Path (Path_Attrs hypId) (NonEmpty movs)
         aPriori   = (\_ -> High) {-- FIXME --}
         explains  = hMovs
-        depends   = hMovs
+        implies   = hMovs
         conflicts = [] :: [Hypothesis Path] {-- FIXME --}
-    in Hyp path hypId aPriori explains depends conflicts
+    in Hyp path hypId aPriori explains implies conflicts
 
 genMovChains :: [Hypothesis Movement] -> [[Hypothesis Movement]]
 genMovChains [] = []
@@ -31,6 +31,6 @@ genMovChains (hMov:hMovs) = [hMov:rest | rest <- genMovChains (filter (movsConne
 movsConnected :: Hypothesis Movement -> Hypothesis Movement -> Bool
 movsConnected (Hyp {entity = (Movement _ (NonEmpty [_, detEnd]))})
                   (Hyp {entity = (Movement _ (NonEmpty [detStart, _]))}) =
-                      (detDist detEnd detStart < 50.0) && (detDelta detEnd detStart < 2.0)
+                      (detDist detEnd detStart < 10.0) && (detDelta detEnd detStart < 2.0)
                                                            && (detBefore detEnd detStart)
 

@@ -3,8 +3,8 @@
 #include "detection.h"
 #include "entities.h"
 
-Movement::Movement(QString _id, std::vector<Detection*> _detections)
-  : id(_id), entities(NULL), detections(_detections)
+Movement::Movement(QString _id, bool _accepted, std::vector<Detection*> _detections)
+  : id(_id), accepted(_accepted), entities(NULL), detections(_detections)
 { }
 
 void Movement::setEntities(Entities *e)
@@ -30,4 +30,9 @@ bool Movement::detections_end() const
 Detection *Movement::detections_next()
 {
     return *(detections_iter++);
+}
+
+bool Movement::isAccepted() const
+{
+    return accepted;
 }

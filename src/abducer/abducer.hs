@@ -54,25 +54,40 @@ getCameraDetections s = do
 
 logStatistics :: World -> World -> IO ()
 logStatistics world world' =
-    let (Results dets movs paths)    = buildResults world
-        (Results dets' movs' paths') = buildResults world'
-        detsDiff  = (length dets') - (length dets)
-        movsDiff  = (length movs') - (length movs)
-        pathsDiff = (length paths') - (length paths)
+    let (Results (Accepted dets movs paths) (Rejected rdets rmovs rpaths)) = buildResults world
+        (Results (Accepted dets' movs' paths') (Rejected rdets' rmovs' rpaths')) = buildResults world'
+        detsDiff   = (length dets') - (length dets)
+        rdetsDiff  = (length rdets') - (length rdets)
+        movsDiff   = (length movs') - (length movs)
+        rmovsDiff  = (length rmovs') - (length rmovs)
+        pathsDiff  = (length paths') - (length paths)
+        rpathsDiff = (length rpaths') - (length rpaths)
     in do
       putStr "Hypotheses: "
       putStr (show $ length dets')
-      putStr " ("
+      putStr "("
       putStr (if (detsDiff > 0) then ("+" ++ (show detsDiff)) else (show detsDiff))
-      putStr ") detections, "
+      putStr ") detections - "
+      putStr (show $ length rdets')
+      putStr "("
+      putStr (if (rdetsDiff > 0) then ("+" ++ (show rdetsDiff)) else (show rdetsDiff))
+      putStr ") rejected; "
       putStr (show $ length movs')
       putStr " ("
       putStr (if (movsDiff > 0) then ("+" ++ (show movsDiff)) else (show movsDiff))
-      putStr ") movements, "
+      putStr ") movements - "
+      putStr (show $ length rmovs')
+      putStr "("
+      putStr (if (rmovsDiff > 0) then ("+" ++ (show rmovsDiff)) else (show rmovsDiff))
+      putStr ") rejected; "
       putStr (show $ length paths')
-      putStr " ("
+      putStr "("
       putStr (if (pathsDiff > 0) then ("+" ++ (show pathsDiff)) else (show pathsDiff))
-      putStrLn ") paths"
+      putStr ") paths - "
+      putStr (show $ length rpaths')
+      putStr "("
+      putStr (if (rpathsDiff > 0) then ("+" ++ (show rpathsDiff)) else (show rpathsDiff))
+      putStrLn ") rejected"
 
 respondWithResults :: Socket -> World -> IO ()
 respondWithResults s world = sendResults s $ outputLog world
@@ -84,7 +99,7 @@ runAbducer :: CameraDetections
 runAbducer cameraDetections world =
     let cleanedWorld = cleanWorld world
         dets         = mkDetections cameraDetections
-        movs         = mkMovements ((unexplainedDets cleanedWorld) ++ dets)
+        movs         = mkMovements dets -- ((unexplainedDets cleanedWorld) ++ dets)
         paths        = mkPaths movs
     in
       reason $ hypothesize paths $ hypothesize movs $ hypothesize dets cleanedWorld

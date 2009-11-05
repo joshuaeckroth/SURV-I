@@ -27,17 +27,18 @@ mkWorld = World { mind      = (R.setTrace True $ R.newMind confidenceBoost sugge
                 }
 
 allHypotheses :: World -> HypothesisIDs
-allHypotheses world = (R.acceptedHypotheses (mind world))
+allHypotheses world = R.acceptedHypotheses (mind world)
                       `IDSet.union` (R.consideringHypotheses (mind world))
                       `IDSet.union` (R.refutedHypotheses (mind world))
 
 cleanWorld :: World -> World
 cleanWorld world = 
-    let allDetHypIds     = map detectionId $ gatherEntities (entityMap world) (allHypotheses world)
-        newerDetHypIds   = newerDetections (entityMap world) (allHypotheses world)
-        oldDetHypIds     = allDetHypIds \\ newerDetHypIds
-        invalidMovHypIds = invalidMovements oldDetHypIds (entityMap world) (allHypotheses world)
-        removable        = oldDetHypIds ++ invalidMovHypIds
+    let allDetHypIds      = map detectionId $ gatherEntities (entityMap world) (allHypotheses world)
+        newerDetHypIds    = newerDetections (entityMap world) (allHypotheses world)
+        oldDetHypIds      = allDetHypIds \\ newerDetHypIds
+        invalidMovHypIds  = invalidMovements oldDetHypIds (entityMap world) (allHypotheses world)
+        invalidPathHypIds = invalidPaths invalidMovHypIds (entityMap world) (allHypotheses world)
+        removable         = oldDetHypIds ++ invalidMovHypIds ++ invalidPathHypIds
     in foldr removeHypothesis world removable
 
 newerDetections :: HypothesisMap Entity
@@ -58,19 +59,26 @@ invalidMovements detHypIds entityMap allHypotheses =
                 (elem (detectionId det1) detHypIds) || (elem (detectionId det2) detHypIds))
     (gatherEntities entityMap allHypotheses :: [Movement])
 
+invalidPaths :: [HypothesisID]
+             -> HypothesisMap Entity
+             -> HypothesisIDs
+             -> [HypothesisID]
+invalidPaths movHypIds entityMap allHypotheses =
+    map (\(Path (Path_Attrs hypId) _) -> hypId) $
+    filter (\(Path _ (NonEmpty movs)) ->
+        (null $ (\\) (map (\(Movement (Movement_Attrs movId) _) -> movId) movs) movHypIds))
+    (gatherEntities entityMap allHypotheses :: [Path])
+
 hypothesize :: (Typeable a) => [Hypothesis a] -> World -> World
 hypothesize hs world =
     let world1 = foldl (\w h -> addHypothesis (entity h) (hypId h) (aPriori h) w) world hs
         world2 = foldl (\w (Hyp _ subject _ explains _ _) ->
                             foldl (\w' (Hyp _ object _ _ _ _) ->
                                    addExplains subject object w') w explains) world1 hs
-        world3 = foldl (\w (Hyp _ subject _ explains _ _) ->
+        world3 = foldl (\w (Hyp _ subject _ _ implies _) ->
                             foldl (\w' (Hyp _ object _ _ _ _) ->
-                                   addImplies subject object w') w explains) world2 hs
-        world4 = foldl (\w (Hyp _ subject _ explains _ _) ->
-                            foldl (\w' (Hyp _ object _ _ _ _) ->
-                                   addRefutes subject object w') w explains) world3 hs
-    in world4
+                                   addImplies subject object w') w implies) world2 hs
+    in world3
 
 addHypothesis :: (Typeable a) => a -> HypothesisID -> (Level -> Level) -> World -> World
 addHypothesis entity hypId scoreFunc world =
@@ -94,8 +102,8 @@ addExplains subject object world =
 
 addImplies :: HypothesisID -> HypothesisID -> World -> World
 addImplies subject object world =
-    world { mind = R.addConstrainer (mkHypPairId subject object)
-                   (IDSet.fromList [subject]) RC.implies object (mind world)
+    world { mind = R.addAdjuster (mkHypPairId subject object)
+                   subject boostOnAcceptance object (mind world)
           }
 
 addRefutes :: HypothesisID -> HypothesisID -> World -> World
@@ -104,6 +112,8 @@ addRefutes subject object world =
                    object refuteLower subject (mind world)
           }
 
+boostOnAcceptance = Left (Just $ increaseLevelBy 2, Nothing)
+
 refuteLower = Left (Nothing, Just $ decreaseLevelBy 2)
 
 reason :: World -> World
@@ -111,10 +121,15 @@ reason world = world { mind = R.reason (R.ReasonerSettings True) Medium (mind wo
 
 buildResults :: World -> Results
 buildResults world =
-    let accepted = R.acceptedHypotheses (mind world) in
-    Results (gatherEntities (entityMap world) accepted)
-            (gatherEntities (entityMap world) accepted)
-            (gatherEntities (entityMap world) accepted)
+    let accepted = R.acceptedHypotheses (mind world)
+        rejected = R.refutedHypotheses (mind world)
+    in
+      Results (Accepted (gatherEntities (entityMap world) accepted)
+                            (gatherEntities (entityMap world) accepted)
+                            (gatherEntities (entityMap world) accepted))
+                  (Rejected (gatherEntities (entityMap world) rejected)
+                                (gatherEntities (entityMap world) rejected)
+                                (gatherEntities (entityMap world) rejected))
 
 -- | Get a list of unexplained detection hypotheses.
 --
@@ -124,10 +139,14 @@ buildResults world =
 -- FIXME: We are presently forced to recreate the Hypothesis container object;
 -- the details of the Hyp don't matter, except the entity and hypId
 unexplainedDets :: World -> [Hypothesis Detection]
-unexplainedDets world = 
+unexplainedDets world =
     let hypotheses  = allHypotheses world
         explained   = detsExplained (gatherEntities (entityMap world) hypotheses)
-        unexplained = (gatherEntities (entityMap world) hypotheses) \\ explained
+        unexplained = filter (\(Detection {detectionId = detId}) ->
+                                  length (filter (\(Detection {detectionId = detId'}) ->
+                                                      detId == detId')
+                                          explained) == 0) $
+                      gatherEntities (entityMap world) hypotheses
     in map (\det -> Hyp det (detectionId det) id
                     ([] :: [Hypothesis Detection])
                     ([] :: [Hypothesis Detection])

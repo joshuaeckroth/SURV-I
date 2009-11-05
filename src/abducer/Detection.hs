@@ -23,15 +23,15 @@ mkDetection cdets cdet =
                     }
         aPriori   = mkDetectionScore cdets cdet
         explains  = [] :: [Hypothesis Detection] {- these type signatures are arbitrary but needed -}
-        depends   = [] :: [Hypothesis Detection]
+        implies   = [] :: [Hypothesis Detection]
         conflicts = [] :: [Hypothesis Detection]
-    in Hyp det hypId aPriori explains depends conflicts
+    in Hyp det hypId aPriori explains implies conflicts
 
 mkDetectionScore :: [CameraDetection] -> CameraDetection -> (Level -> Level)
 mkDetectionScore cdets cdet
-    | area <  300.0 = (\s -> corroboration Low)
-    | area >= 600.0 = (\s -> corroboration High)
-    | otherwise     = (\s -> corroboration Medium)
+    | area <  800.0  = (\s -> corroboration SlightlyLow)
+    | area >= 1000.0 = (\s -> corroboration Low)
+    | otherwise      = (\s -> corroboration VeryLow)
     where area = cameraDetectionArea cdet
           -- is this detection (maybe) seen in more than one camera?
           -- this is judged to be true if there is at least one detection very close by

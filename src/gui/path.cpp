@@ -2,8 +2,8 @@
 #include "movement.h"
 #include "entities.h"
 
-Path::Path(QString _id, std::vector<Movement*> _movements)
-        : id(_id), entities(NULL), movements(_movements)
+Path::Path(QString _id, bool _accepted, std::vector<Movement*> _movements)
+        : id(_id), accepted(_accepted), entities(NULL), movements(_movements)
 { }
 
 void Path::setEntities(Entities *e)
@@ -29,4 +29,9 @@ bool Path::movements_end() const
 Movement *Path::movements_next()
 {
     return *(movements_iter++);
+}
+
+bool Path::isAccepted() const
+{
+    return accepted;
 }

@@ -13,9 +13,8 @@ mkMovements hDets =
                          hdet2@(Hyp { entity = det2 }) <- hDets,
                          let dist  = detDist det1 det2,
                          let delta = detDelta det1 det2,
-                         {-- FIXME: why not real equality check? relates to FIXME in World.hs --}
-                         (detectionId det1) /= (detectionId det2),
-                         dist < 150.0, delta < 6.0, detBefore det1 det2]
+                         det1 /= det2,
+                         dist < 70.0, delta < 6.0, detBefore det1 det2]
     in map (mkMovement closeDetPairs) closeDetPairs
 
 mkMovement :: [(Hypothesis Detection, Hypothesis Detection, Double, Time)]
@@ -27,18 +26,18 @@ mkMovement hdets (hdet1@(Hyp { entity = det1 }),
         mov       = Movement (Movement_Attrs hypId) (NonEmpty [det1, det2])
         aPriori   = mkMovementScore hdets (hdet1, hdet2, dist, delta)
         explains  = [hdet1, hdet2]
-        depends   = [hdet1, hdet2]
+        implies   = [hdet1, hdet2]
         conflicts = [] :: [Hypothesis Detection] {- arbitrary type signature -}
-    in Hyp mov hypId aPriori explains depends conflicts
+    in Hyp mov hypId aPriori explains implies conflicts
 
 mkMovementScore :: [(Hypothesis Detection, Hypothesis Detection, Double, Time)]
                 -> (Hypothesis Detection, Hypothesis Detection, Double, Time)
                 -> (Level -> Level)
 mkMovementScore hdets (hdet1@(Hyp { entity = det1 }),
                        hdet2@(Hyp { entity = det2 }), dist, delta)
-    | dist < 50.0 && delta < 2.0  = (\s -> corroboration High)
-    | dist < 100.0 && delta < 4.0 = (\s -> corroboration Medium)
-    | otherwise                   = (\s -> corroboration Low)
+    | dist < 30.0 && delta < 2.5 = (\s -> corroboration Low)
+    | dist < 50.0 && delta < 4.5 = (\s -> corroboration SlightlyLow)
+    | otherwise                  = (\s -> corroboration VeryLow)
     -- corroboration depends on two camera detections appearing similar (so far, just area)
     where corroboration =
               let (Just cdet1) = detectionCamera det1

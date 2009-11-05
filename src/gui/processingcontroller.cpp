@@ -68,7 +68,7 @@ void ProcessingController::startProcessing()
         }
     }
 
-    abducerTimer->start(3000);
+    abducerTimer->start(1000);
     isProcessing = true;
     mutex.unlock();
 }

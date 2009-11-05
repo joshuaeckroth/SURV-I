@@ -21,7 +21,7 @@ data Hypothesis a = forall b c d.
     , hypId     :: HypothesisID
     , aPriori   :: Level -> Level
     , explains  :: [Hypothesis b]
-    , depends   :: [Hypothesis c]
+    , implies   :: [Hypothesis c]
     , conflicts :: [Hypothesis d]
     }
 
@@ -82,12 +82,16 @@ detAscOrdering det1 det2
 
 -- | A detection is "before" another detection if its most likely occurrence time
 --   (mean of start and end times) is before the other's most likely occurrence time
+--
+-- Note that we are requiring that the two detections be at least 0.5 seconds apart,
+-- to discount two detections in the same camera view that must be two different objects
+-- because they were detected at the same moment.
 detBefore :: Detection -> Detection -> Bool
 detBefore (Detection { detectionStartTime = start1
                      , detectionEndTime   = end1 })
           (Detection { detectionStartTime = start2
                      , detectionEndTime   = end2 }) =
-          ((start1 + end1) / 2.0) < ((start2 + end2) / 2.0)
+          ((start1 + end1) / 2.0) < (0.5 + (start2 + end2) / 2.0)
 
 -- | Gather a list of detections that have movements explaining them
 detsExplained :: [Movement] -> [Detection]
@@ -160,8 +164,12 @@ instance XmlAttributes CameraDetection where
 
 {-Type decls-}
 
-data Results = Results [Detection] [Movement] [Path]
-             deriving (Eq,Show)
+data Results = Results Accepted Rejected
+               deriving (Eq,Show)
+data Accepted = Accepted [Detection] [Movement] [Path]
+                deriving (Eq,Show)
+data Rejected = Rejected [Detection] [Movement] [Path]
+                deriving (Eq,Show)
 data Detection = Detection
     { detectionId :: HypothesisID
     , detectionLat :: Latitude
@@ -185,17 +193,41 @@ data Path_Attrs = Path_Attrs
 
 {-Instance decls-}
 
+
 instance HTypeable Results where
     toHType x = Defined "Results" [] []
 instance XmlContent Results where
-    toContents (Results a b c) =
-        [CElem (Elem "Results" [] (concatMap toContents a ++
-                                   concatMap toContents b ++ concatMap toContents c)) ()]
+    toContents (Results a b) =
+        [CElem (Elem "Results" [] (toContents a ++ toContents b)) ()]
     parseContents = do
         { e@(Elem _ [] _) <- element ["Results"]
-        ; interior e $ return (Results) `apply` many parseContents
-                       `apply` many parseContents `apply` many parseContents
+        ; interior e $ return (Results) `apply` parseContents
+                       `apply` parseContents
         } `adjustErr` ("in <Results>, "++)
+
+instance HTypeable Accepted where
+    toHType x = Defined "Accepted" [] []
+instance XmlContent Accepted where
+    toContents (Accepted a b c) =
+        [CElem (Elem "Accepted" [] (concatMap toContents a ++
+                                    concatMap toContents b ++ concatMap toContents c)) ()]
+    parseContents = do
+        { e@(Elem _ [] _) <- element ["Accepted"]
+        ; interior e $ return (Accepted) `apply` many parseContents
+                       `apply` many parseContents `apply` many parseContents
+        } `adjustErr` ("in <Accepted>, "++)
+
+instance HTypeable Rejected where
+    toHType x = Defined "Rejected" [] []
+instance XmlContent Rejected where
+    toContents (Rejected a b c) =
+        [CElem (Elem "Rejected" [] (concatMap toContents a ++
+                                    concatMap toContents b ++ concatMap toContents c)) ()]
+    parseContents = do
+        { e@(Elem _ [] _) <- element ["Rejected"]
+        ; interior e $ return (Rejected) `apply` many parseContents
+                       `apply` many parseContents `apply` many parseContents
+        } `adjustErr` ("in <Rejected>, "++)
 
 instance HTypeable Detection where
     toHType x = Defined "Detection" [] []

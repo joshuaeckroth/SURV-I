@@ -43,14 +43,23 @@ RenderArea::RenderArea(QWidget* parent)
     detectionPen.setColor(Qt::blue);
     detectionPen.setWidth(1);
 
+    detectionUnacceptedPen.setColor(Qt::yellow);
+    detectionUnacceptedPen.setWidth(1);
+
     detectionCenterPen.setColor(Qt::blue);
-    detectionCenterPen.setWidth(3);
+    detectionCenterPen.setWidth(1);
 
     movementPen.setColor(Qt::green);
     movementPen.setWidth(2);
 
+    movementUnacceptedPen.setColor(Qt::gray);
+    movementUnacceptedPen.setWidth(1);
+
     pathPen.setColor(Qt::black);
-    pathPen.setWidth(3);
+    pathPen.setWidth(2);
+
+    pathUnacceptedPen.setColor(Qt::white);
+    pathUnacceptedPen.setWidth(1);
 }
 
 void RenderArea::setNumCameras(int n)
@@ -189,12 +198,13 @@ void RenderArea::paintEvent(QPaintEvent*)
                     scaledY = p.second * scaleFactor[i];
 
                     // draw pixel at center
-                    painter.setPen(detectionCenterPen);
+                    if(d->isAccepted())
+                        painter.setPen(detectionPen);
+                    else
+                        painter.setPen(detectionUnacceptedPen);
 
                     painter.drawLine(i * eachWidth + scaledX, scaledY,
                                      i * eachWidth + scaledX, scaledY);
-
-                    painter.setPen(detectionPen);
 
                     radius = 5.0 * scaleFactor[i];
                     painter.drawEllipse(QPoint(i * eachWidth + scaledX, scaledY), radius, radius);
@@ -205,18 +215,23 @@ void RenderArea::paintEvent(QPaintEvent*)
                     QPair<int,int> c = CameraModel::warpToMap(QPair<double,double>(d->getLat(), d->getLon()));
                     painter.drawLine(c.first - mapTopLeftX, maxHeight + c.second - mapTopLeftY,
                                      c.first - mapTopLeftX, maxHeight + c.second - mapTopLeftY);
-                    radius = 3.0;
+                    if(d->isAccepted())
+                        radius = 3.0;
+                    else
+                        radius = 5.0;
                     painter.drawEllipse(QPoint(c.first - mapTopLeftX, maxHeight + c.second - mapTopLeftY), radius, radius);
                 }
             }
-
-
-            painter.setPen(movementPen);
 
             entities->movements_begin();
             while(!entities->movements_end())
             {
                 Movement* m = entities->movements_next();
+
+                if(m->isAccepted())
+                    painter.setPen(movementPen);
+                else
+                    painter.setPen(movementUnacceptedPen);
 
                 // should only be two detections
                 QPoint points[2][numCameras];
@@ -242,12 +257,8 @@ void RenderArea::paintEvent(QPaintEvent*)
                 {
                     painter.setClipRegion(cameraRegion[i]);
                     painter.drawLine(points[0][i], points[1][i]);
-                    // draw an "arrow head"
-                    painter.drawEllipse(points[1][i], (int)(5.0 * scaleFactor[i]), (int)(5.0 * scaleFactor[i]));
                 }
             }
-
-            painter.setPen(pathPen);
 
             entities->paths_begin();
             while(!entities->paths_end())
@@ -256,6 +267,10 @@ void RenderArea::paintEvent(QPaintEvent*)
                 std::vector<QPair<double,double> >::const_iterator points_iter;
 
                 Path *p = entities->paths_next();
+                if(p->isAccepted())
+                    painter.setPen(pathPen);
+                else
+                    painter.setPen(pathUnacceptedPen);
                 p->movements_begin();
                 while(!p->movements_end())
                 {
@@ -368,11 +383,10 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
             points[j] = QPoint(camera * eachWidth + scaledX, scaledY);
             j++;
         }
-        // from Grumdrig's post (Oct 1) on http://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment
-        double dist = 100.0;
 
+        qDebug() << QString("Dist from movement %1: %2").arg(m->getId()).arg(clickDistance(points[0], points[1], e->pos()));
         // ensure we are close to the line segment
-        if(2.0 >= dist)
+        if(2.0 >= clickDistance(points[0], points[1], e->pos()))
         {
             msg += QString("Movement %1\n").arg(m->getId());
         }
@@ -387,4 +401,32 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
     }
 }
 
+// from Grumdrig's post (Oct 1) on
+// http://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment
+double RenderArea::clickDistance(QPoint p1, QPoint p2, QPoint click)
+{
+    double pointDist = pointDistance(p1, p2);
 
+    // if p1 == p2
+    if(pointDist < 0.1) return pointDistance(click, p1);
+
+    QPoint p1ClickDiff = p1 - click;
+    QPoint p2ClickDiff = p2 - click;
+    double projection = ((double)p1ClickDiff.x() * (double)p2ClickDiff.x()
+                         + (double)p1ClickDiff.y() * (double)p2ClickDiff.y())
+                        / pow(pointDist, 2.0);
+    qDebug() << QString("projection: %1").arg(projection);
+    // projection of click on segment is beyond p1
+    if(projection < 0.0) return pointDistance(click, p1);
+    // projection of click on segment is beyond p2
+    else if(projection > 1.0) return pointDistance(click, p2);
+    // projection is between p1 and p2
+    QPoint projPoint = p1 + projection * (p2 - click);
+    return pointDistance(click, projPoint);
+}
+
+double RenderArea::pointDistance(QPoint p1, QPoint p2)
+{
+    return sqrt(pow((double)p1.x() - (double)p2.x(), 2.0) +
+                pow((double)p1.y() - (double)p2.y(), 2.0));
+}
