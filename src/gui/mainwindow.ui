@@ -53,20 +53,6 @@
         </widget>
        </item>
        <item>
-        <widget class="QToolButton" name="actionRecord">
-         <property name="text">
-          <string>Record</string>
-         </property>
-         <property name="icon">
-          <iconset resource="surv-1.qrc">
-           <normaloff>:/images/images/media-record.png</normaloff>:/images/images/media-record.png</iconset>
-         </property>
-         <property name="toolButtonStyle">
-          <enum>Qt::ToolButtonTextBesideIcon</enum>
-         </property>
-        </widget>
-       </item>
-       <item>
         <spacer name="horizontalSpacer">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>

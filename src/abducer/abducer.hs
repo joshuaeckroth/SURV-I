@@ -110,37 +110,6 @@ runAbducer cameraDetections world =
         -- (note that a hyp's ID hash uniquely identifies the hyp by hashing its components)
         newMovs       = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) movs
         paths         = mkPaths $ nub (existingMovs ++ (extractEntities movs))
-        newPaths      = [] :: [Hypothesis Path] -- filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) paths
+        newPaths      = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) paths
     in
       reason $ hypothesize newPaths $ hypothesize newMovs $ hypothesize dets cleanedWorld
-
-{--
-      world = ((return $ cleanWorld frame ws) >>=
-               updateDetections >>=
-               recordFrame >>=
-
-               hypothesizeDetections catID >>=
-               hypothesizeTracks catID >>=
-               hypothesizeSplitTracks catID >>=
-               -- constrainDetectionExplainers >>=
-
-               (\ws -> (recordWorldEvent (["Before reasoning:"] ++
-                                          ["Mind:"] ++ (showMind $ mind ws)
-                                          ++ ["Constrainers:"] ++ (showConstrainers ws)
-                                          ++ ["Tracks:"] ++ (showTracks (IDMap.keys (trackMap ws)) (trackMap ws) (detMap ws) (curFrame ws))
-                                         , emptyElem)
-                        >> return ws)) >>=
-                  
-               (\ws -> return ws { mind = (reason (ReasonerSettings False) High (mind ws)) }) >>=
-
-               (\ws -> (recordWorldEvent (["After reasoning:"] ++
-                                          ["Mind:"] ++ (showMind $ mind ws)
-                                          ++ ["Constrainers:"] ++ (map show $ getConstrainers $ mind ws)
-                                          ++ ["Adjusters:"] ++ (map show $ getAdjusters $ mind ws)
-                                         , emptyElem)
-                        >> return ws)) >>=
-                  
-               updateTracks >>=
-               recordTracks)
-
---}

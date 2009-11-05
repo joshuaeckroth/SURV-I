@@ -38,7 +38,6 @@ SOURCES += src/gui/cameramodel.cpp \
     src/gui/frame.cpp \
     src/gui/main.cpp \
     src/gui/mainwindow.cpp \
-    src/gui/noise.cpp \
     src/gui/processingcontroller.cpp \
     src/gui/renderarea.cpp \
     src/gui/resultsreader.cpp \
