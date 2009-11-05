@@ -1,0 +1,18 @@
+<!ELEMENT Results (Accepted,Rejected)>
+
+<!ELEMENT Accepted (Detection*,Movement*,Path*)>
+<!ELEMENT Rejected (Detection*,Movement*,Path*)>
+
+<!ELEMENT Detection EMPTY>
+<!ATTLIST Detection id        CDATA #REQUIRED
+                    lat       CDATA #REQUIRED
+	            lon       CDATA #REQUIRED
+                    startTime CDATA #REQUIRED
+                    endTime   CDATA #REQUIRED>
+
+<!ELEMENT Movement  (Detection+)>
+<!ATTLIST Movement  id        CDATA #REQUIRED>
+
+<!ELEMENT Path      (Movement+)>
+<!ATTLIST Path      id        CDATA #REQUIRED>
+
