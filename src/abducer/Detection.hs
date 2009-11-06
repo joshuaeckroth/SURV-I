@@ -38,7 +38,7 @@ mkDetectionScore cdets cdet
           corroboration = if (1 < (length $ filter (nearby cdet) cdets)) then
                               increaseLevel
                           else id
-          nearby cdet cdet' = 30.0 > (cameraDetDist cdet cdet')
+          nearby cdet cdet' = 20.0 > (cameraDetDist cdet cdet')
 
 {- ADD TIME FACTOR AND COMPARE ACROSS ALL EXISTING DETECTIONS NOT JUST NEW ONES -}
 
@@ -51,4 +51,4 @@ mergeMultCameraDets (hdet:hdets) = [hdet] ++ (mergeMultCameraDets $ filter (not 
 -- ^ Check if two detections are likely the same (possibly across different cameras).
 likelySameHypDet :: Hypothesis Detection -> Hypothesis Detection -> Bool
 likelySameHypDet (Hyp {entity = det1}) (Hyp {entity = det2}) =
-    (detDist det1 det2 < 30.0) && (detDelta det1 det2 < 1.0)
+    (detDist det1 det2 < 50.0) && (detDelta det1 det2 < 3.0)

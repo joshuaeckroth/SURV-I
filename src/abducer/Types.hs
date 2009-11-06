@@ -81,7 +81,7 @@ detAscOrdering det1 det2
       avgDetTime det = ((detectionStartTime det) + (detectionStartTime det)) / 2.0
 
 -- | A detection is "before" another detection if its most likely occurrence time
---   (mean of start and end times) is before the other's most likely occurrence time
+--   (mean of start and end times) is before the other's most likely occurrence time.
 --
 -- Note that we are requiring that the two detections be at least 0.5 seconds apart,
 -- to discount two detections in the same camera view that must be two different objects
@@ -93,7 +93,7 @@ detBefore (Detection { detectionStartTime = start1
                      , detectionEndTime   = end2 }) =
           ((start1 + end1) / 2.0) < (0.5 + (start2 + end2) / 2.0)
 
--- | Gather a list of detections that have movements explaining them
+-- | Gather a list of detections that have movements explaining them.
 detsExplained :: [Movement] -> [Detection]
 detsExplained [] = []
 detsExplained ((Movement _ (NonEmpty dets)):movs) = dets ++ (detsExplained movs)

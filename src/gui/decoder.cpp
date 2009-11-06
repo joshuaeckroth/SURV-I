@@ -166,7 +166,7 @@ QString Decoder::findBlobs(Frame *frame, bool drawContours)
     for(std::vector<coordinate>::iterator it = bigblobs.begin();
     it != bigblobs.end(); ++it)
     {
-        if(it->area() < 200.0) continue; // skip noisy detections
+        if(it->area() < 100.0) continue; // skip noisy detections
 
         stream << "\t<CameraDetection camera=\"" << camera << "\" "
                 << "area=\"" << it->area() << "\" "

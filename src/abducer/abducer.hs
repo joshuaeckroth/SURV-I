@@ -99,17 +99,19 @@ runAbducer :: CameraDetections
            -> World
            -> World
 runAbducer cameraDetections world =
-    let cleanedWorld  = cleanWorld world
-        emap          = entityMap cleanedWorld
-        allHyps       = allHypotheses cleanedWorld
-        existingDets  = gatherEntities emap allHyps :: [Detection]
-        existingMovs  = gatherEntities emap allHyps :: [Movement]
-        dets          = mkDetections cameraDetections
-        movs          = mkMovements $ nub (existingDets ++ (extractEntities dets))
+    let cleanedWorld   = cleanWorld world
+        emap           = entityMap cleanedWorld
+        allHyps        = allHypotheses cleanedWorld
+        existingDets   = gatherEntities emap allHyps :: [Detection]
+        existingMovs   = gatherEntities emap allHyps :: [Movement]
+        dets           = mkDetections cameraDetections
+        movs           = mkMovements $ nub (existingDets ++ (extractEntities dets))
         -- filter out movement hyps that have already been posed
         -- (note that a hyp's ID hash uniquely identifies the hyp by hashing its components)
-        newMovs       = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) movs
-        paths         = mkPaths $ nub (existingMovs ++ (extractEntities movs))
-        newPaths      = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) paths
+        newMovs        = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) movs
+        paths          = mkPaths $ nub (existingMovs ++ (extractEntities movs))
+        -- also filter out duplicate paths
+        newPaths       = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) paths
     in
-      reason $ hypothesize newPaths $ hypothesize newMovs $ hypothesize dets cleanedWorld
+      reason $ updateConflictingPaths $ removeSubPaths $ hypothesize newPaths $
+             hypothesize newMovs $ hypothesize dets cleanedWorld
