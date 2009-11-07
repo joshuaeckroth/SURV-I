@@ -1,85 +1,65 @@
 
+#include <map>
 #include <QDebug>
-
-#include <vector>
 
 #include "entities.h"
 #include "detection.h"
 #include "movement.h"
 #include "path.h"
 
-Entities::Entities()
+Entities::Entities(std::map<int,Detection*> _detections,
+                   std::map<int,Movement*> _movements,
+                   std::map<int,Path*> _paths)
+    : detections(_detections), movements(_movements), paths(_paths)
 { }
-
-void Entities::addDetection(Detection *d)
-{
-  d->setEntities(this);
-  detections.push_back(d);
-}
-
-void Entities::addMovement(Movement *m)
-{
-  m->setEntities(this);
-  movements.push_back(m);
-}
-
-void Entities::addPath(Path *p)
-{
-  p->setEntities(this);
-  paths.push_back(p);
-}
 
 void Entities::detections_begin()
 {
-  detections_iter = detections.begin();
+    detections_iter = detections.begin();
 }
 
 bool Entities::detections_end() const
 {
-  return detections_iter == detections.end();
+    return detections_iter == detections.end();
 }
 
 Detection *Entities::detections_next()
 {
-  return *(detections_iter++);
+    Detection *d = (*detections_iter).second;
+    detections_iter++;
+    return d;
 }
 
 void Entities::movements_begin()
 {
-  movements_iter = movements.begin();
+    movements_iter = movements.begin();
 }
 
 bool Entities::movements_end() const
 {
-  return movements_iter == movements.end();
+    return movements_iter == movements.end();
 }
 
 Movement *Entities::movements_next()
 {
-  return *(movements_iter++);
+    Movement *m = (*movements_iter).second;
+    movements_iter++;
+    return m;
 }
 
 void Entities::paths_begin()
 {
-  paths_iter = paths.begin();
+    paths_iter = paths.begin();
 }
 
 bool Entities::paths_end() const
 {
-  return paths_iter == paths.end();
+    return paths_iter == paths.end();
 }
 
 Path *Entities::paths_next()
 {
-  return *(paths_iter++);
-}
-
-void Entities::appendLog(const QString l)
-{
-    log.append(l);
-}
-
-QString Entities::getLog() const
-{
-    return log;
+    Path *p = (*paths_iter).second;
+    paths_iter++;
+    return p;
 }

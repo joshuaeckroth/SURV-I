@@ -2,11 +2,13 @@
 #define RESULTS_READER_H
 
 #include <vector>
+#include <map>
 
 #include <QXmlDefaultHandler>
 
 class Detection;
 class Movement;
+class Path;
 class Entities;
 
 class ResultsReader : public QXmlDefaultHandler
@@ -23,14 +25,16 @@ public:
   Entities* getEntities() const;
 
 private:
-  Entities *curEntities;
+  Entities *entities;
   bool accepted;
   QString currentText;
   QString errorStr;
-  QString movementId;
-  QString pathId;
-  std::vector<Detection*> detections;
-  std::vector<Movement*> movements;
+  int pathId;
+  bool inPath;
+  std::map<int,Detection*> detections;
+  std::map<int,Movement*> movements;
+  std::map<int,Path*> paths;
+  std::vector<Movement*> pathMovements;
 };
 
 #endif

@@ -13,7 +13,9 @@ mkMovements dets =
                          let dist  = detDist det1 det2,
                          let delta = detDelta det1 det2,
                          det1 /= det2,
-                         dist < 75.0, delta < 1.5, detBefore det1 det2]
+                         dist < 75.0,
+                         delta < 1.5, delta > 0.0,
+                         detBefore det1 det2]
     in map (mkMovement closeDetPairs) closeDetPairs
 
 mkMovement :: [(Detection, Detection, Double, Time)]
@@ -21,10 +23,12 @@ mkMovement :: [(Detection, Detection, Double, Time)]
            -> Hypothesis Movement
 mkMovement dets (det1, det2, dist, delta) =
     let hypId     = mkMovHypId [det1, det2]
-        mov       = Movement (Movement_Attrs hypId) (NonEmpty [det1, det2])
+        detHypId1 = extractDetHypId det1
+        detHypId2 = extractDetHypId det2
+        mov       = Movement hypId detHypId1 detHypId2
         aPriori   = mkMovementScore dets (det1, det2, dist, delta)
-        explains  = [detectionId det1, detectionId det2]
-        implies   = [detectionId det1, detectionId det2]
+        explains  = [detHypId1, detHypId2]
+        implies   = [detHypId1, detHypId2]
         conflicts = []
     in Hyp mov hypId aPriori explains implies conflicts
 

@@ -1,30 +1,23 @@
 #ifndef MOVEMENT_H
 #define MOVEMENT_H
 
-#include <QString>
-#include <vector>
-
-class Entities;
 class Detection;
 
 class Movement
 {
-    public:
-    Movement(QString _id, bool _accepted, std::vector<Detection*> _detections);
-    void setEntities(Entities *e);
+public:
+    Movement(int _id, Detection *_det1, Detection *_det2);
 
-    QString getId() const;
-    void detections_begin();
-    bool detections_end() const;
-    Detection *detections_next();
+    int getId() const;
+    void setAccepted(bool);
     bool isAccepted() const;
+    Detection *getDet1() const;
+    Detection *getDet2() const;
 
-    private:
-    QString id;
+private:
+    int id;
     bool accepted;
-    Entities *entities;
-    std::vector<Detection*> detections;
-    std::vector<Detection*>::const_iterator detections_iter;
+    Detection *det1, *det2;
 };
 
 #endif // MOVEMENT_H

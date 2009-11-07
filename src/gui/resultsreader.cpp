@@ -9,12 +9,31 @@
 #include "entities.h"
 
 ResultsReader::ResultsReader()
-        : curEntities(NULL)
+        : entities(NULL), inPath(false)
 { }
 
 bool ResultsReader::startElement(const QString&, const QString&,
                                  const QString& qName, const QXmlAttributes& attributes)
 {
+    if(qName == "Results")
+    {
+        detections.clear();
+        movements.clear();
+        paths.clear();
+    }
+    else if(qName == "Entities")
+    { }
+    else if(qName == "Detection")
+    {
+        int id = attributes.value("id").toInt();
+        double lat = attributes.value("lat").toDouble();
+        double lon = attributes.value("lon").toDouble();
+        double startTime = attributes.value("startTime").toDouble();
+        double endTime = attributes.value("endTime").toDouble();
+        double area = attributes.value("area").toDouble();
+
+        detections[id] = new Detection(id, lat, lon, startTime, endTime, area);
+    }
     if(qName == "Accepted")
     {
         accepted = true;
@@ -23,41 +42,38 @@ bool ResultsReader::startElement(const QString&, const QString&,
     {
         accepted = false;
     }
-    else if(qName == "Results")
+    else if(qName == "DetectionRef")
     {
-        curEntities = new Entities;
-    }
-    // <Detection> NOT inside <Movement>
-    else if(qName == "Detection" && movementId.isEmpty())
-    {
-        QString id = attributes.value("id");
-        double lat = attributes.value("lat").toDouble();
-        double lon = attributes.value("lon").toDouble();
-        double startTime = attributes.value("startTime").toDouble();
-        double endTime = attributes.value("endTime").toDouble();
-        double area = attributes.value("area").toDouble();
-        
-        curEntities->addDetection(new Detection(id, lat, lon, startTime, endTime, area, accepted));
-    }
-    // <Detection> inside <Movement>
-    else if(qName == "Detection" && !movementId.isEmpty())
-    {
-        QString id = attributes.value("id");
-        double lat = attributes.value("lat").toDouble();
-        double lon = attributes.value("lon").toDouble();
-        double startTime = attributes.value("startTime").toDouble();
-        double endTime = attributes.value("endTime").toDouble();
-        double area = attributes.value("area").toDouble();
-
-        detections.push_back(new Detection(id, lat, lon, startTime, endTime, area, accepted));
+        int id = attributes.value("detId").toInt();
+        detections[id]->setAccepted(accepted);
     }
     else if(qName == "Movement")
     {
-        movementId = attributes.value("id");
+        int id = attributes.value("id").toInt();
+        int detId1 = attributes.value("detId1").toInt();
+        int detId2 = attributes.value("detId2").toInt();
+        movements[id] = new Movement(id, detections[detId1], detections[detId2]);
     }
     else if(qName == "Path")
     {
-        pathId = attributes.value("id");
+        pathId = attributes.value("id").toInt();
+        inPath = true;
+        pathMovements.clear();
+    }
+    else if(qName == "MovementRef" && inPath)
+    {
+        int movId = attributes.value("movId").toInt();
+        pathMovements.push_back(movements[movId]);
+    }
+    else if(qName == "MovementRef" && !inPath)
+    {
+        int id = attributes.value("movId").toInt();
+        movements[id]->setAccepted(accepted);
+    }
+    else if(qName == "PathRef")
+    {
+        int id = attributes.value("pathId").toInt();
+        paths[id]->setAccepted(accepted);
     }
 
     return true;
@@ -65,32 +81,20 @@ bool ResultsReader::startElement(const QString&, const QString&,
 
 bool ResultsReader::endElement(const QString&, const QString&, const QString& qName)
 {
-    // <Movement> NOT inside <Path>
-    if(qName == "Movement" && pathId.isEmpty())
+    if(qName == "Results")
     {
-        curEntities->addMovement(new Movement(movementId, accepted, detections));
-        movementId.clear();
-        detections.clear();
-    }
-    // <Movement> inside <Path>
-    if(qName == "Movement" && !pathId.isEmpty())
-    {
-        movements.push_back(new Movement(movementId, accepted, detections));
-        movementId.clear();
-        detections.clear();
+        entities = new Entities(detections, movements, paths);
     }
     else if(qName == "Path")
     {
-        curEntities->addPath(new Path(pathId, accepted, movements));
-        pathId.clear();
-        movements.clear();
+        paths[pathId] = new Path(pathId, pathMovements);
+        inPath = false;
     }
     return true;
 }
 
 bool ResultsReader::characters(const QString& str)
 {
-    curEntities->appendLog(str);
     return true;
 }
 
@@ -111,5 +115,5 @@ QString ResultsReader::errorString() const
 
 Entities* ResultsReader::getEntities() const
 {
-    return curEntities;
+    return entities;
 }

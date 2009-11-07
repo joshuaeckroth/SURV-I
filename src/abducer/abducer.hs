@@ -56,8 +56,8 @@ getCameraDetections s = do
 
 logStatistics :: World -> World -> IO ()
 logStatistics world world' =
-    let (Results (Accepted dets movs paths) (Rejected rdets rmovs rpaths)) = buildResults world
-        (Results (Accepted dets' movs' paths') (Rejected rdets' rmovs' rpaths')) = buildResults world'
+    let (Results _ (Accepted dets movs paths) (Rejected rdets rmovs rpaths)) = buildResults world
+        (Results _ (Accepted dets' movs' paths') (Rejected rdets' rmovs' rpaths')) = buildResults world'
         detsDiff   = (length dets') - (length dets)
         rdetsDiff  = (length rdets') - (length rdets)
         movsDiff   = (length movs') - (length movs)
@@ -105,11 +105,15 @@ runAbducer cameraDetections world =
         existingDets   = gatherEntities emap allHyps :: [Detection]
         existingMovs   = gatherEntities emap allHyps :: [Movement]
         dets           = mkDetections cameraDetections
+        emap'          = foldl addToEntityMap emap (map (\(Hyp {entity = det}) ->
+                                                         (extractDetHypId det, det)) dets)
         movs           = mkMovements $ nub (existingDets ++ (extractEntities dets))
         -- filter out movement hyps that have already been posed
         -- (note that a hyp's ID hash uniquely identifies the hyp by hashing its components)
         newMovs        = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) movs
-        paths          = mkPaths $ nub (existingMovs ++ (extractEntities movs))
+        emap''         = foldl addToEntityMap emap' (map (\(Hyp {entity = mov}) ->
+                                                          (extractMovHypId mov, mov)) newMovs)
+        paths          = mkPaths emap'' $ nub (existingMovs ++ (extractEntities movs))
         -- also filter out duplicate paths
         newPaths       = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) paths
     in

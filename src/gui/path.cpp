@@ -1,17 +1,11 @@
 #include "path.h"
 #include "movement.h"
-#include "entities.h"
 
-Path::Path(QString _id, bool _accepted, std::vector<Movement*> _movements)
-        : id(_id), accepted(_accepted), entities(NULL), movements(_movements)
+Path::Path(int _id, std::vector<Movement*> _movements)
+        : id(_id), movements(_movements)
 { }
 
-void Path::setEntities(Entities *e)
-{
-    entities = e;
-}
-
-QString Path::getId() const
+int Path::getId() const
 {
     return id;
 }
@@ -29,6 +23,11 @@ bool Path::movements_end() const
 Movement *Path::movements_next()
 {
     return *(movements_iter++);
+}
+
+void Path::setAccepted(bool _accepted)
+{
+    accepted = _accepted;
 }
 
 bool Path::isAccepted() const

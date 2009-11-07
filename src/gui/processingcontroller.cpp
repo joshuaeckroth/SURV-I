@@ -68,8 +68,8 @@ void ProcessingController::startProcessing()
         }
     }
 
-    // send detections to abducer every 3 seconds
-    abducerTimer->start(3000);
+    // send detections to abducer every 2 seconds
+    abducerTimer->start(2000);
     isProcessing = true;
     mutex.unlock();
 }
@@ -170,15 +170,12 @@ void ProcessingController::newDetections(QString ds, Frame* frame)
 
 void ProcessingController::sendDetections()
 {
-    mutex.lock();
     abducerWriter->newDetections(detections);
     detections.clear();
-    mutex.unlock();
 }
 
 void ProcessingController::newEntities(Entities* e)
 {
-    //qDebug() << QString("Log: %1\n").arg(e->getLog());
     renderer->updateEntities(e);
 }
 

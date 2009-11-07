@@ -1,18 +1,31 @@
-<!ELEMENT Results (Accepted,Rejected)>
+<!ELEMENT Results      (Entities,Accepted,Rejected)>
 
-<!ELEMENT Accepted (Detection*,Movement*,Path*)>
-<!ELEMENT Rejected (Detection*,Movement*,Path*)>
+<!ELEMENT Entities     (Detection*,Movement*,Path*)>
+<!ELEMENT Accepted     (DetectionRef*,MovementRef*,PathRef*)>
+<!ELEMENT Rejected     (DetectionRef*,MovementRef*,PathRef*)>
 
-<!ELEMENT Detection EMPTY>
-<!ATTLIST Detection id        CDATA #REQUIRED
-                    lat       CDATA #REQUIRED
-	            lon       CDATA #REQUIRED
-                    startTime CDATA #REQUIRED
-                    endTime   CDATA #REQUIRED>
+<!ELEMENT Detection    EMPTY>
+<!ATTLIST Detection    id        CDATA #REQUIRED
+                       lat       CDATA #REQUIRED
+	               lon       CDATA #REQUIRED
+                       startTime CDATA #REQUIRED
+                       endTime   CDATA #REQUIRED
+                       area      CDATA #REQUIRED>
 
-<!ELEMENT Movement  (Detection+)>
-<!ATTLIST Movement  id        CDATA #REQUIRED>
+<!ELEMENT DetectionRef EMPTY>
+<!ATTLIST DetectionRef detId     CDATA #REQUIRED>
 
-<!ELEMENT Path      (Movement+)>
-<!ATTLIST Path      id        CDATA #REQUIRED>
+<!ELEMENT Movement     EMPTY>
+<!ATTLIST Movement     id        CDATA #REQUIRED
+	               detId1    CDATA #REQUIRED
+                       detId2    CDATA #REQUIRED>
+
+<!ELEMENT MovementRef  EMPTY>
+<!ATTLIST MovementRef  movId     CDATA #REQUIRED>
+
+<!ELEMENT Path         (MovementRef+)>
+<!ATTLIST Path         id        CDATA #REQUIRED>
+
+<!ELEMENT PathRef      EMPTY>
+<!ATTLIST PathRef      pathId    CDATA #REQUIRED>
 

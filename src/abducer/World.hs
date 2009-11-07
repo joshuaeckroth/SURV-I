@@ -36,19 +36,20 @@ rejectedHypotheses world = R.refutedHypotheses (mind world)
 
 cleanWorld :: World -> World
 cleanWorld world = 
-    let allDetHypIds       = map detectionId $ gatherEntities (entityMap world) (allHypotheses world)
+    let allDetHypIds       = map extractDetHypId $ gatherEntities (entityMap world) (allHypotheses world)
         newerDetHypIds     = newerDetections (entityMap world) (allHypotheses world)
         oldDetHypIds       = allDetHypIds \\ newerDetHypIds
         invalidMovHypIds   = invalidMovements oldDetHypIds (entityMap world) (allHypotheses world)
         invalidPathHypIds  = invalidPaths invalidMovHypIds (entityMap world) (allHypotheses world)
-        removable          = oldDetHypIds ++ invalidMovHypIds ++ invalidPathHypIds
+        rejectedPathHypIds = map extractPathHypId $ gatherEntities (entityMap world) (rejectedHypotheses world)
+        removable          = oldDetHypIds ++ invalidMovHypIds ++ invalidPathHypIds ++ rejectedPathHypIds
     in foldr removeHypothesis world removable
 
 newerDetections :: HypothesisMap Entity
                 -> HypothesisIDs
                 -> [HypothesisID]
 newerDetections entityMap hypIds =
-    take 15 $ map detectionId $
+    take 30 $ map extractDetHypId $
     reverse $ sortBy detAscOrdering $
     (gatherEntities entityMap hypIds :: [Detection])
 
@@ -57,9 +58,8 @@ invalidMovements :: [HypothesisID]
                  -> HypothesisIDs
                  -> [HypothesisID]
 invalidMovements detHypIds entityMap hypIds =
-    map (\(Movement (Movement_Attrs hypId) _) -> hypId) $
-    filter (\(Movement _ (NonEmpty (det1:det2:[]))) ->
-                (elem (detectionId det1) detHypIds) || (elem (detectionId det2) detHypIds))
+    map extractMovHypId $
+    filter (\(Movement _ detId1 detId2) -> (elem detId1 detHypIds) || (elem detId2 detHypIds))
     (gatherEntities entityMap hypIds :: [Movement])
 
 invalidPaths :: [HypothesisID]
@@ -67,9 +67,9 @@ invalidPaths :: [HypothesisID]
              -> HypothesisIDs
              -> [HypothesisID]
 invalidPaths movHypIds entityMap hypIds =
-    map (\(Path (Path_Attrs hypId) _) -> hypId) $
-    filter (\(Path _ (NonEmpty movs)) ->
-        (not $ null $ intersect (map (\(Movement (Movement_Attrs movId) _) -> movId) movs) movHypIds))
+    map extractPathHypId $
+    filter (\(Path _ (NonEmpty movRefs)) ->
+        (not $ null $ intersect (map (\(MovementRef movId) -> movId) movRefs) movHypIds))
     (gatherEntities entityMap hypIds :: [Path])
 
 -- | Remove paths that are entirely contained in other paths.
@@ -79,7 +79,7 @@ invalidPaths movHypIds entityMap hypIds =
 -- in keeping subpaths. Keeping subpaths causes a very significant growth in
 -- the number of path hypotheses the reasoner is forced to reconcile.
 removeSubPaths :: World -> World
-removeSubPaths world = foldr removeHypothesis world (map (\(Path (Path_Attrs hypId) _) -> hypId) subPaths)
+removeSubPaths world = foldr removeHypothesis world (map extractPathHypId subPaths)
     where paths    = gatherEntities (entityMap world) (allHypotheses world)
           subPaths = nub $ foldl (++) [] (map (findSubPaths paths) paths)
 
@@ -87,14 +87,14 @@ removeSubPaths world = foldr removeHypothesis world (map (\(Path (Path_Attrs hyp
           findSubPaths paths path = filter (isSubPath path) paths
 
           isSubPath :: Path -> Path -> Bool
-          isSubPath (Path (Path_Attrs hypId1) (NonEmpty movs1))
-                        (Path (Path_Attrs hypId2) (NonEmpty movs2))
+          isSubPath (Path (Path_Attrs hypId1) (NonEmpty movRefs1))
+                        (Path (Path_Attrs hypId2) (NonEmpty movRefs2))
               -- a path is not a subpath of itself
-              | hypId1 == hypId2      = False
+              | hypId1 == hypId2            = False
               -- a path is a subpath if all of the latter path's movements are
               -- in the former path
-              | null $ movs2 \\ movs1 = True
-              | otherwise             = False
+              | null $ movRefs2 \\ movRefs1 = True
+              | otherwise                   = False
 
 -- | Look at all paths and determine which subsets conflict (are \"rivals\"); add
 --   these conflicts into the path hypotheses.
@@ -120,19 +120,18 @@ updateConflictingPaths world = mergeIntoWorld world $ findConflictingPaths' path
       removePathConflicts :: World -> [HypothesisID] -> World
       removePathConflicts world hypIds =
           foldl (\w (subject, object) ->
-                 w {mind = R.removeAdjuster (mkHypPairId subject object) (mind w)})
+                 w {mind = R.removeAdjuster (mkConflictsId subject object) (mind w)})
                     world [(subject, object) | subject <- hypIds, object <- hypIds]
 
       findConflictingPaths' :: [Path] -> [Path] -> [(HypothesisID, [HypothesisID])]
       findConflictingPaths' [] _ = []
       findConflictingPaths' (path@(Path (Path_Attrs hypId) _):paths) paths' =
-          [(hypId, map (\(Path (Path_Attrs hypId') _) -> hypId') $
-                 filter (pathsConflict path) paths')]
+          [(hypId, map extractPathHypId $ filter (pathsConflict path) paths')]
           ++ (findConflictingPaths' paths paths')
 
       pathsConflict :: Path -> Path -> Bool
-      pathsConflict (Path (Path_Attrs hypId1) (NonEmpty movs1))
-                        (Path (Path_Attrs hypId2) (NonEmpty movs2))
+      pathsConflict (Path (Path_Attrs hypId1) (NonEmpty movRefs1))
+                        (Path (Path_Attrs hypId2) (NonEmpty movRefs2))
           -- a path does not conflict with itself
           | hypId1 == hypId2   = False
           -- a path conflicts with another path if at least one path shares > 80% of
@@ -141,8 +140,10 @@ updateConflictingPaths world = mergeIntoWorld world $ findConflictingPaths' path
           | movsShared21 > 0.8 = True
           -- otherwise there is no conflict
           | otherwise          = False
-          where movsShared12 = (fromIntegral $ length $ movs1 \\ movs2) / (fromIntegral $ length movs1)
-                movsShared21 = (fromIntegral $ length $ movs2 \\ movs1) / (fromIntegral $ length movs2)
+          where movsShared12 = (fromIntegral $ length $ movRefs1 \\ movRefs2) /
+                               (fromIntegral $ length movRefs1)
+                movsShared21 = (fromIntegral $ length $ movRefs2 \\ movRefs1) /
+                               (fromIntegral $ length movRefs2)
 
 hypothesize :: (Typeable a) => [Hypothesis a] -> World -> World
 hypothesize hs world =
@@ -174,19 +175,19 @@ removeHypothesis hypId world =
 
 addExplains :: HypothesisID -> HypothesisID -> World -> World
 addExplains subject object world =
-    world { mind = R.addExplains (mkHypPairId subject object)
+    world { mind = R.addExplains (mkExplainsId subject object)
                    subject object (mind world)
           }
 
 addImplies :: HypothesisID -> HypothesisID -> World -> World
 addImplies subject object world =
-    world { mind = R.addAdjuster (mkHypPairId subject object)
+    world { mind = R.addAdjuster (mkImpliesId subject object)
                    subject boostOnAcceptance object (mind world)
           }
 
 addConflicts :: HypothesisID -> HypothesisID -> World -> World
 addConflicts subject object world =
-    world { mind = R.addAdjuster (mkHypPairId subject object)
+    world { mind = R.addAdjuster (mkConflictsId subject object)
                    subject lowerOnAcceptance object (mind world)
           }
 
@@ -194,19 +195,23 @@ boostOnAcceptance = Left (Just $ increaseLevelBy 2, Nothing)
 lowerOnAcceptance = Left (Just $ decreaseLevelBy 2, Nothing)
 
 reason :: World -> World
-reason world = world { mind = R.reason (R.ReasonerSettings True) Medium (mind world) }
+reason world = world { mind = R.reason (R.ReasonerSettings False) Medium (mind world) }
 
-buildResults :: World -> Results
-buildResults world =
-    let accepted = R.acceptedHypotheses (mind world)
-        rejected = R.refutedHypotheses (mind world)
-    in
-      Results (Accepted (gatherEntities (entityMap world) accepted)
-                            (gatherEntities (entityMap world) accepted)
-                            (gatherEntities (entityMap world) accepted))
-                  (Rejected (gatherEntities (entityMap world) rejected)
-                                (gatherEntities (entityMap world) rejected)
-                                (gatherEntities (entityMap world) rejected))
+addToEntityMap :: forall a.
+                  (Typeable a) =>
+                  HypothesisMap Entity
+               -> (HypothesisID, a)
+               -> HypothesisMap Entity
+addToEntityMap emap (hypId, entity) = if IDMap.member hypId emap then emap
+                                      else IDMap.insert hypId (toDyn entity) emap
+
+getEntity :: forall a.
+             (Typeable a) =>
+             HypothesisMap Entity
+          -> HypothesisID
+          -> a
+getEntity entityMap hypId = let (Just entity) = fromDynamic $ (IDMap.!) entityMap hypId
+                            in entity
 
 gatherEntities :: forall a.
                   (Typeable a) =>
@@ -222,7 +227,21 @@ gatherEntities entityMap hypIds =
     IDMap.elems $
     IDMap.filterWithKey (\hypId _ -> IDSet.member hypId hypIds) entityMap
 
+buildResults :: World -> Results
+buildResults world =
+    let accepted = R.acceptedHypotheses (mind world)
+        rejected = R.refutedHypotheses (mind world)
+    in
+      Results (Entities (gatherEntities (entityMap world) (allHypotheses world))
+                        (gatherEntities (entityMap world) (allHypotheses world))
+                        (gatherEntities (entityMap world) (allHypotheses world)))
+                  (Accepted (map (mkDetectionRef . extractDetHypId) $ gatherEntities (entityMap world) accepted)
+                            (map (mkMovementRef . extractMovHypId) $ gatherEntities (entityMap world) accepted)
+                            (map (mkPathRef . extractPathHypId) $ gatherEntities (entityMap world) accepted))
+                  (Rejected (map (mkDetectionRef . extractDetHypId) $ gatherEntities (entityMap world) rejected)
+                            (map (mkMovementRef . extractMovHypId) $ gatherEntities (entityMap world) rejected)
+                            (map (mkPathRef . extractPathHypId) $ gatherEntities (entityMap world) rejected))
+
 outputLog :: World -> String
 outputLog world = showXml False $ buildResults world
---                  "<Log>" ++ (unlines $ R.showMind (mind world)) ++ "</Log>\n"
 

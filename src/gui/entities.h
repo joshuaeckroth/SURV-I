@@ -1,7 +1,7 @@
 #ifndef ENTITIES_H
 #define ENTITIES_H
 
-#include <vector>
+#include <map>
 #include <QString>
 
 class Detection;
@@ -11,11 +11,9 @@ class Path;
 class Entities
 {
 public:
-  Entities();
-
-  void addDetection(Detection *d);
-  void addMovement(Movement *n);
-  void addPath(Path *p);
+  Entities(std::map<int,Detection*>,
+           std::map<int,Movement*>,
+           std::map<int,Path*>);
 
   void detections_begin();
   bool detections_end() const;
@@ -29,20 +27,15 @@ public:
   bool paths_end() const;
   Path *paths_next();
 
-  void appendLog(const QString l);
-  QString getLog() const;
-
 private:
-  std::vector<Detection*> detections;
-  std::vector<Detection*>::const_iterator detections_iter;
+  std::map<int,Detection*> detections;
+  std::map<int,Detection*>::const_iterator detections_iter;
 
-  std::vector<Movement*> movements;
-  std::vector<Movement*>::const_iterator movements_iter;
+  std::map<int,Movement*> movements;
+  std::map<int,Movement*>::const_iterator movements_iter;
 
-  std::vector<Path*> paths;
-  std::vector<Path*>::const_iterator paths_iter;
-
-  QString log;
+  std::map<int,Path*> paths;
+  std::map<int,Path*>::const_iterator paths_iter;
 };
 
 #endif

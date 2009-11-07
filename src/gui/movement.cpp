@@ -1,38 +1,32 @@
 
 #include "movement.h"
 #include "detection.h"
-#include "entities.h"
 
-Movement::Movement(QString _id, bool _accepted, std::vector<Detection*> _detections)
-  : id(_id), accepted(_accepted), entities(NULL), detections(_detections)
+Movement::Movement(int _id, Detection *_det1, Detection *_det2)
+  : id(_id), det1(_det1), det2(_det2)
 { }
 
-void Movement::setEntities(Entities *e)
-{
-    entities = e;
-}
-
-QString Movement::getId() const
+int Movement::getId() const
 {
     return id;
 }
 
-void Movement::detections_begin()
+void Movement::setAccepted(bool _accepted)
 {
-    detections_iter = detections.begin();
-}
-
-bool Movement::detections_end() const
-{
-    return detections_iter == detections.end();
-}
-
-Detection *Movement::detections_next()
-{
-    return *(detections_iter++);
+    accepted = _accepted;
 }
 
 bool Movement::isAccepted() const
 {
     return accepted;
+}
+
+Detection *Movement::getDet1() const
+{
+    return det1;
+}
+
+Detection *Movement::getDet2() const
+{
+    return det2;
 }

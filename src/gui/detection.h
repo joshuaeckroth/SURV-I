@@ -3,33 +3,30 @@
 
 #include <QString>
 
-class Entities;
-
 class Detection
 {
 public:
-  Detection(QString _id, double _lat, double _lon,
+  Detection(int _id, double _lat, double _lon,
             double _startTime, double _endTime,
-            double _area, bool _accepted);
-  void setEntities(Entities *e);
+            double _area);
 
-  QString getId() const;
+  int getId() const;
   double getLat() const;
   double getLon() const;
   double getStartTime() const;
   double getEndTime() const;
   double getArea() const;
+  void setAccepted(bool);
   bool isAccepted() const;
 
 private:
-  QString id;
+  int id;
   double lat;
   double lon;
   double startTime;
   double endTime;
   double area;
   bool accepted;
-  Entities *entities;
 };
 
 #endif

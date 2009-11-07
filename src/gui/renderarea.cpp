@@ -231,24 +231,23 @@ void RenderArea::paintEvent(QPaintEvent*)
                 else
                     painter.setPen(movementUnacceptedPen);
 
-                // should only be two detections
                 QPoint points[2][numCameras];
-                int j = 0;
-
-                m->detections_begin();
-                while(!m->detections_end())
+                Detection *d;
+                d = m->getDet1();
+                for(int i = 0; i < numCameras; i++)
                 {
-                    Detection* d = m->detections_next();
-                    for(int i = 0; i < numCameras; i++)
-                    {
-                        QPair<int,int> p = CameraModel::warpToImage(i, QPair<double,double>(d->getLat(), d->getLon()));
-
-                        scaledX = (int)(p.first * scaleFactor[i]);
-                        scaledY = (int)(p.second * scaleFactor[i]);
-
-                        points[j][i] = QPoint(i * eachWidth + scaledX, scaledY);
-                    }
-                    j++;
+                    QPair<int,int> p = CameraModel::warpToImage(i, QPair<double,double>(d->getLat(), d->getLon()));
+                    scaledX = (int)(p.first * scaleFactor[i]);
+                    scaledY = (int)(p.second * scaleFactor[i]);
+                    points[0][i] = QPoint(i * eachWidth + scaledX, scaledY);
+                }
+                d = m->getDet2();
+                for(int i = 0; i < numCameras; i++)
+                {
+                    QPair<int,int> p = CameraModel::warpToImage(i, QPair<double,double>(d->getLat(), d->getLon()));
+                    scaledX = (int)(p.first * scaleFactor[i]);
+                    scaledY = (int)(p.second * scaleFactor[i]);
+                    points[1][i] = QPoint(i * eachWidth + scaledX, scaledY);
                 }
 
                 for(int i = 0; i < numCameras; i++)
@@ -273,14 +272,16 @@ void RenderArea::paintEvent(QPaintEvent*)
                 while(!p->movements_end())
                 {
                     Movement *m = p->movements_next();
-                    m->detections_begin();
-                    while(!m->detections_end())
+                    Detection *d;
+                    d = m->getDet1();
+                    for(int i = 0; i < numCameras; i++)
                     {
-                        Detection *d = m->detections_next();
-                        for(int i = 0; i < numCameras; i++)
-                        {
-                            points.push_back(QPair<double,double>(d->getLat(), d->getLon()));
-                        }
+                        points.push_back(QPair<double,double>(d->getLat(), d->getLon()));
+                    }
+                    d = m->getDet2();
+                    for(int i = 0; i < numCameras; i++)
+                    {
+                        points.push_back(QPair<double,double>(d->getLat(), d->getLon()));
                     }
                 }
 
@@ -370,17 +371,19 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
     {
         Movement* m = entities->movements_next();
         QPoint points[2];
-        int j = 0;
-        m->detections_begin();
-        while(!m->detections_end())
-        {
-            Detection* d = m->detections_next();
-            QPair<int,int> p = CameraModel::warpToImage(camera, QPair<double,double>(d->getLat(), d->getLon()));
-            scaledX = (int)(p.first * scaleFactor[camera]);
-            scaledY = (int)(p.second * scaleFactor[camera]);
-            points[j] = QPoint(camera * eachWidth + scaledX, scaledY);
-            j++;
-        }
+        Detection* d;
+        QPair<int,int> p;
+        d = m->getDet1();
+        p = CameraModel::warpToImage(camera, QPair<double,double>(d->getLat(), d->getLon()));
+        scaledX = (int)(p.first * scaleFactor[camera]);
+        scaledY = (int)(p.second * scaleFactor[camera]);
+        points[0] = QPoint(camera * eachWidth + scaledX, scaledY);
+
+        d = m->getDet2();
+        p = CameraModel::warpToImage(camera, QPair<double,double>(d->getLat(), d->getLon()));
+        scaledX = (int)(p.first * scaleFactor[camera]);
+        scaledY = (int)(p.second * scaleFactor[camera]);
+        points[1] = QPoint(camera * eachWidth + scaledX, scaledY);
 
         qDebug() << QString("Dist from movement %1: %2").arg(m->getId()).arg(clickDistance(points[0], points[1], e->pos()));
         // ensure we are close to the line segment

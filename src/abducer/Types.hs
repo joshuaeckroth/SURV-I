@@ -8,8 +8,9 @@ import Text.XML.HaXml.Types
 import WrappedInts.Types
 import Reasoner.Types (CategoryID(..), HypothesisID(..), ExplainsID(..))
 import Data.Dynamic
-import Data.HashTable (hashString)
 import Data.Maybe
+import Data.HashTable (hashString)
+import Debug.Trace
 
 type Entity = Dynamic
 
@@ -37,20 +38,20 @@ mkDetHypId (CameraDetection camera lat lon _ startTime endTime) =
 
 {- hashes list of detections -}
 mkMovHypId :: [Detection] -> HypothesisID
-mkMovHypId dets =
-    fromIntegral $ hashString $
-                     (foldl1 (++) $
-                             map (\(Detection id lat lon startTime endTime area _) ->
-                                  (show id) ++ (show lat) ++ (show lon)
-                                                ++ (show startTime) ++ (show endTime) ++ (show area)) dets)
+mkMovHypId dets = fromIntegral $ hashString $ foldl1 (++) (map (show . detectionId) dets)
 
 {- hashes the hashes of constituent movements of a path -}
 mkPathHypId :: [Movement] -> HypothesisID
-mkPathHypId movs = fromIntegral $ hashString $
-                   foldl1 (++) $ map (\(Movement _ (NonEmpty dets)) -> show $ mkMovHypId dets) movs
+mkPathHypId movs = fromIntegral $ hashString $ foldl1 (++) $ map (show . movementId) movs
 
-mkHypPairId :: (Num a) => HypothesisID -> HypothesisID -> a
-mkHypPairId subject object = fromIntegral $ hashString $ (show subject) ++ (show object)
+mkExplainsId :: (Num a) => HypothesisID -> HypothesisID -> a
+mkExplainsId subject object = fromIntegral $ hashString $ "explains" ++ (show subject) ++ (show object)
+
+mkImpliesId :: (Num a) => HypothesisID -> HypothesisID -> a
+mkImpliesId subject object = fromIntegral $ hashString $ "implies" ++ (show subject) ++ (show object)
+
+mkConflictsId :: (Num a) => HypothesisID -> HypothesisID -> a
+mkConflictsId subject object = fromIntegral $ hashString $ "conflicts" ++ (show subject) ++ (show object)
 
 -- | Calculate Euclidean distance between two camera detections
 cameraDetDist :: CameraDetection -> CameraDetection -> Double
@@ -93,10 +94,23 @@ detBefore (Detection { detectionStartTime = start1
                      , detectionEndTime   = end2 }) =
           ((start1 + end1) / 2.0) < (0.5 + (start2 + end2) / 2.0)
 
--- | Gather a list of detections that have movements explaining them.
-detsExplained :: [Movement] -> [Detection]
-detsExplained [] = []
-detsExplained ((Movement _ (NonEmpty dets)):movs) = dets ++ (detsExplained movs)
+extractDetHypId :: Detection -> HypothesisID
+extractDetHypId (Detection {detectionId = hypId}) = hypId
+
+mkDetectionRef :: HypothesisID -> DetectionRef
+mkDetectionRef hypId = DetectionRef hypId
+
+extractMovHypId :: Movement -> HypothesisID
+extractMovHypId (Movement hypId _ _) = hypId
+
+mkMovementRef :: HypothesisID -> MovementRef
+mkMovementRef hypId = MovementRef hypId
+
+extractPathHypId :: Path -> HypothesisID
+extractPathHypId (Path (Path_Attrs hypId) _) = hypId
+
+mkPathRef :: HypothesisID -> PathRef
+mkPathRef hypId = PathRef hypId
 
 extractEntity :: Hypothesis a -> a
 extractEntity (Hyp {entity = e}) = e
@@ -170,30 +184,41 @@ instance XmlAttributes CameraDetection where
 
 {-Type decls-}
 
-data Results = Results Accepted Rejected
-               deriving (Eq,Show)
-data Accepted = Accepted [Detection] [Movement] [Path]
+data Results  = Results Entities Accepted Rejected
                 deriving (Eq,Show)
-data Rejected = Rejected [Detection] [Movement] [Path]
+data Entities = Entities [Detection] [Movement] [Path]
+                deriving (Eq,Show)
+data Accepted = Accepted [DetectionRef] [MovementRef] [PathRef]
+                deriving (Eq,Show)
+data Rejected = Rejected [DetectionRef] [MovementRef] [PathRef]
                 deriving (Eq,Show)
 data Detection = Detection
-    { detectionId :: HypothesisID
-    , detectionLat :: Latitude
-    , detectionLon :: Longitude
+    { detectionId        :: HypothesisID
+    , detectionLat       :: Latitude
+    , detectionLon       :: Longitude
     , detectionStartTime :: Time
-    , detectionEndTime :: Time
-    , detectionArea :: Double
-    , detectionCamera :: Maybe CameraDetection
+    , detectionEndTime   :: Time
+    , detectionArea      :: Double
+    , detectionCamera    :: Maybe CameraDetection
     } deriving (Eq,Show,Typeable)
-data Movement = Movement Movement_Attrs (List1 Detection)
-              deriving (Eq,Show,Typeable)
-data Movement_Attrs = Movement_Attrs
-    { movementId :: HypothesisID
+data DetectionRef = DetectionRef
+    { detectionRefDetId :: HypothesisID
     } deriving (Eq,Show)
-data Path = Path Path_Attrs (List1 Movement)
+data Movement = Movement
+    { movementId     :: HypothesisID
+    , movementDetId1 :: HypothesisID
+    , movementDetId2 :: HypothesisID
+    } deriving (Eq,Show,Typeable)
+data MovementRef = MovementRef
+    { movementRefMovId :: HypothesisID
+    } deriving (Eq,Show)
+data Path = Path Path_Attrs (List1 MovementRef)
           deriving (Eq,Show,Typeable)
 data Path_Attrs = Path_Attrs
     { pathId :: HypothesisID
+    } deriving (Eq,Show)
+data PathRef = PathRef
+    { pathRefPathId :: HypothesisID
     } deriving (Eq,Show)
 
 
@@ -203,13 +228,26 @@ data Path_Attrs = Path_Attrs
 instance HTypeable Results where
     toHType x = Defined "Results" [] []
 instance XmlContent Results where
-    toContents (Results a b) =
-        [CElem (Elem "Results" [] (toContents a ++ toContents b)) ()]
+    toContents (Results a b c) =
+        [CElem (Elem "Results" [] (toContents a ++ toContents b ++
+                                   toContents c)) ()]
     parseContents = do
         { e@(Elem _ [] _) <- element ["Results"]
         ; interior e $ return (Results) `apply` parseContents
-                       `apply` parseContents
+                       `apply` parseContents `apply` parseContents
         } `adjustErr` ("in <Results>, "++)
+
+instance HTypeable Entities where
+    toHType x = Defined "Entities" [] []
+instance XmlContent Entities where
+    toContents (Entities a b c) =
+        [CElem (Elem "Entities" [] (concatMap toContents a ++
+                                    concatMap toContents b ++ concatMap toContents c)) ()]
+    parseContents = do
+        { e@(Elem _ [] _) <- element ["Entities"]
+        ; interior e $ return (Entities) `apply` many parseContents
+                       `apply` many parseContents `apply` many parseContents
+        } `adjustErr` ("in <Entities>, "++)
 
 instance HTypeable Accepted where
     toHType x = Defined "Accepted" [] []
@@ -264,23 +302,62 @@ instance XmlAttributes Detection where
         , toAttrFrStr "area" (show $ detectionArea v)
         ]
 
+instance HTypeable DetectionRef where
+    toHType x = Defined "DetectionRef" [] []
+instance XmlContent DetectionRef where
+    toContents as =
+        [CElem (Elem "DetectionRef" (toAttrs as) []) ()]
+    parseContents = do
+        { (Elem _ as []) <- element ["DetectionRef"]
+        ; return (fromAttrs as)
+        } `adjustErr` ("in <DetectionRef>, "++)
+instance XmlAttributes DetectionRef where
+    fromAttrs as =
+        DetectionRef
+          { detectionRefDetId = HasInt $ read $ definiteA fromAttrToStr "DetectionRef" "detId" as
+          }
+    toAttrs v = catMaybes 
+        [ toAttrFrStr "detId" (show $ detectionRefDetId v)
+        ]
+
 instance HTypeable Movement where
     toHType x = Defined "Movement" [] []
 instance XmlContent Movement where
-    toContents (Movement as a) =
-        [CElem (Elem "Movement" (toAttrs as) (toContents a)) ()]
+    toContents as =
+        [CElem (Elem "Movement" (toAttrs as) []) ()]
     parseContents = do
-        { e@(Elem _ as _) <- element ["Movement"]
-        ; interior e $ return (Movement (fromAttrs as))
-                       `apply` parseContents
+        { (Elem _ as []) <- element ["Movement"]
+        ; return (fromAttrs as)
         } `adjustErr` ("in <Movement>, "++)
-instance XmlAttributes Movement_Attrs where
+instance XmlAttributes Movement where
     fromAttrs as =
-        Movement_Attrs
+        Movement
           { movementId = HasInt $ read $ definiteA fromAttrToStr "Movement" "id" as
+          , movementDetId1 = HasInt $ read $ definiteA fromAttrToStr "Movement" "detId1" as
+          , movementDetId2 = HasInt $ read $ definiteA fromAttrToStr "Movement" "detId2" as
           }
     toAttrs v = catMaybes 
         [ toAttrFrStr "id" (show $ movementId v)
+        , toAttrFrStr "detId1" (show $ movementDetId1 v)
+        , toAttrFrStr "detId2" (show $ movementDetId2 v)
+        ]
+
+instance HTypeable MovementRef where
+    toHType x = Defined "MovementRef" [] []
+instance XmlContent MovementRef where
+    toContents as =
+        [CElem (Elem "MovementRef" (toAttrs as) []) ()]
+    parseContents = do
+        { (Elem _ as []) <- element ["MovementRef"]
+        ; return (fromAttrs as)
+        } `adjustErr` ("in <MovementRef>, "++)
+instance XmlAttributes MovementRef where
+    fromAttrs as =
+        MovementRef
+          { movementRefMovId = HasInt $ read $ definiteA fromAttrToStr "MovementRef" "movId" as
+          }
+    toAttrs v = catMaybes 
+        [ toAttrFrStr "movId" (show $ movementRefMovId v)
         ]
 
 instance HTypeable Path where
@@ -301,6 +378,23 @@ instance XmlAttributes Path_Attrs where
         [ toAttrFrStr "id" (show $ pathId v)
         ]
 
+instance HTypeable PathRef where
+    toHType x = Defined "PathRef" [] []
+instance XmlContent PathRef where
+    toContents as =
+        [CElem (Elem "PathRef" (toAttrs as) []) ()]
+    parseContents = do
+        { (Elem _ as []) <- element ["PathRef"]
+        ; return (fromAttrs as)
+        } `adjustErr` ("in <PathRef>, "++)
+instance XmlAttributes PathRef where
+    fromAttrs as =
+        PathRef
+          { pathRefPathId = HasInt $ read $ definiteA fromAttrToStr "PathRef" "pathId" as
+          }
+    toAttrs v = catMaybes 
+        [ toAttrFrStr "pathId" (show $ pathRefPathId v)
+        ]
 
 
 {-Done-}
