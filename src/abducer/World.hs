@@ -40,9 +40,10 @@ cleanWorld world =
         newerDetHypIds     = newerDetections (entityMap world) (allHypotheses world)
         oldDetHypIds       = allDetHypIds \\ newerDetHypIds
         invalidMovHypIds   = invalidMovements oldDetHypIds (entityMap world) (allHypotheses world)
+        rejectedMovHypIds  = map extractMovHypId $ gatherEntities (entityMap world) (rejectedHypotheses world)
         invalidPathHypIds  = invalidPaths invalidMovHypIds (entityMap world) (allHypotheses world)
         rejectedPathHypIds = map extractPathHypId $ gatherEntities (entityMap world) (rejectedHypotheses world)
-        removable          = oldDetHypIds ++ invalidMovHypIds ++ invalidPathHypIds ++ rejectedPathHypIds
+        removable          = oldDetHypIds ++ invalidMovHypIds ++ rejectedMovHypIds ++ invalidPathHypIds ++ rejectedPathHypIds
     in foldr removeHypothesis world removable
 
 newerDetections :: HypothesisMap Entity

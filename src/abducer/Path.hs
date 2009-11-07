@@ -83,9 +83,10 @@ movsTemporallyConnected entityMap (Movement _ _ detEndHypId) (Movement _ detStar
         delta    = detDelta detStart detEnd
     in delta < 0.5 && delta >= 0.0
 
--- | Check if a path is shorter than 3.0 seconds
+-- | Check if a path is shorter than 3.0 seconds or contains only one movement
 isShortMovChain :: HypothesisMap Entity -> [Movement] -> Bool
-isShortMovChain _ [] = True
+isShortMovChain _ []       = True -- no movements is a "short chain"
+isShortMovChain _ (mov:[]) = True -- one movement is a short chain
 isShortMovChain entityMap movs =
     let (Movement _ detStartHypId _) = head movs -- earliest
         (Movement _ _ detEndHypId)   = last movs -- most recent

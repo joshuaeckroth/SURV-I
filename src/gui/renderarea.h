@@ -55,6 +55,7 @@ private:
     pathPen, pathUnacceptedPen;
   double clickDistance(QPoint p1, QPoint p2, QPoint click);
   double pointDistance(QPoint p1, QPoint p2);
+  void drawArrowHead(QPainter &painter, QPoint p1, QPoint p2);
 };
 
 #endif

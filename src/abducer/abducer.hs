@@ -117,5 +117,5 @@ runAbducer cameraDetections world =
         -- also filter out duplicate paths
         newPaths       = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) paths
     in
-      reason $ updateConflictingPaths $ removeSubPaths $ hypothesize newPaths $
+      reason $ {-- updateConflictingPaths $ --} removeSubPaths $ hypothesize newPaths $
              hypothesize newMovs $ hypothesize dets cleanedWorld
