@@ -53,6 +53,9 @@ private:
   QPen detectionPen, detectionCenterPen, detectionUnacceptedPen,
     movementPen, movementUnacceptedPen,
     pathPen, pathUnacceptedPen;
+  int maxHeight, mapTopLeftX, mapTopLeftY;
+  QPoint warpToCameraRegion(int camera, double lat, double lon);
+  QPoint warpToMapRegion(double lat, double lon);
   double clickDistance(QPoint p1, QPoint p2, QPoint click);
   double pointDistance(QPoint p1, QPoint p2);
   void drawArrowHead(QPainter &painter, QPoint p1, QPoint p2);

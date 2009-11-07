@@ -145,7 +145,7 @@ void RenderArea::paintEvent(QPaintEvent*)
     if(!clear)
     {
         // draw camera frames
-        int maxHeight = 0;
+        maxHeight = 0;
         int eachWidth = width() / numCameras;
         for(int i = 0; i < numCameras; i++)
         {
@@ -169,17 +169,15 @@ void RenderArea::paintEvent(QPaintEvent*)
         QPoint mapcenter = QPoint(857, 577);
         int cropHeight = height() - maxHeight;
         int cropWidth = width();
-        int mapTopLeftX = mapcenter.x() - (cropWidth / 2);
-        int mapTopLeftY = mapcenter.y() - (cropHeight / 2);
+        mapTopLeftX = mapcenter.x() - (cropWidth / 2);
+        mapTopLeftY = mapcenter.y() - (cropHeight / 2);
         painter.drawImage(0, maxHeight, map, mapTopLeftX, mapTopLeftY, cropWidth, cropHeight);
         mapRegion = QRegion(0, maxHeight, cropWidth, cropHeight);
 
         mutex.lock();
         if(entities != NULL)
         {
-            int scaledX, scaledY;
             int radius;
-
 
             entities->detections_begin();
             while(!entities->detections_end())
@@ -188,12 +186,7 @@ void RenderArea::paintEvent(QPaintEvent*)
                 for(int i = 0; i < numCameras; i++)
                 {
                     painter.setClipRegion(cameraRegion[i]);
-
-                    // draw on camera image
-                    QPair<int,int> p = CameraModel::warpToImage(i, QPair<double,double>(d->getLat(), d->getLon()));
-
-                    scaledX = (int)(p.first * scaleFactor[i]);
-                    scaledY = (int)(p.second * scaleFactor[i]);
+                    QPoint detCenter = warpToCameraRegion(i, d->getLat(), d->getLon());
 
                     // draw pixel at center
                     if(d->isAccepted())
@@ -201,11 +194,10 @@ void RenderArea::paintEvent(QPaintEvent*)
                     else
                         painter.setPen(detectionUnacceptedPen);
 
-                    painter.drawLine(i * eachWidth + scaledX, scaledY,
-                                     i * eachWidth + scaledX, scaledY);
+                    painter.drawLine(detCenter, detCenter);
 
                     radius = (int)(5.0 * scaleFactor[i]);
-                    painter.drawEllipse(QPoint(i * eachWidth + scaledX, scaledY), radius, radius);
+                    painter.drawEllipse(detCenter, radius, radius);
                 }
             }
 
@@ -220,23 +212,14 @@ void RenderArea::paintEvent(QPaintEvent*)
                     painter.setPen(movementUnacceptedPen);
 
                 QPoint points[2][numCameras];
+
                 Detection *d;
                 d = m->getDet1();
                 for(int i = 0; i < numCameras; i++)
-                {
-                    QPair<int,int> p = CameraModel::warpToImage(i, QPair<double,double>(d->getLat(), d->getLon()));
-                    scaledX = (int)(p.first * scaleFactor[i]);
-                    scaledY = (int)(p.second * scaleFactor[i]);
-                    points[0][i] = QPoint(i * eachWidth + scaledX, scaledY);
-                }
+                    points[0][i] = warpToCameraRegion(i, d->getLat(), d->getLon());
                 d = m->getDet2();
                 for(int i = 0; i < numCameras; i++)
-                {
-                    QPair<int,int> p = CameraModel::warpToImage(i, QPair<double,double>(d->getLat(), d->getLon()));
-                    scaledX = (int)(p.first * scaleFactor[i]);
-                    scaledY = (int)(p.second * scaleFactor[i]);
-                    points[1][i] = QPoint(i * eachWidth + scaledX, scaledY);
-                }
+                    points[1][i] = warpToCameraRegion(i, d->getLat(), d->getLon());
 
                 for(int i = 0; i < numCameras; i++)
                 {
@@ -252,10 +235,12 @@ void RenderArea::paintEvent(QPaintEvent*)
                 std::vector<QPair<double,double> >::const_iterator points_iter;
 
                 Path *p = entities->paths_next();
+
                 if(p->isAccepted())
                     painter.setPen(pathPen);
                 else
                     painter.setPen(pathUnacceptedPen);
+
                 p->movements_begin();
                 while(!p->movements_end())
                 {
@@ -269,7 +254,6 @@ void RenderArea::paintEvent(QPaintEvent*)
 
                 QPair<double,double> point1, point2;
                 QPair<int,int> scaledPoint1, scaledPoint2;
-                int scaledX1, scaledY1, scaledX2, scaledY2;
                 for(int i = 0; i < numCameras; i++)
                 {
                     painter.setClipRegion(cameraRegion[i]);
@@ -281,15 +265,10 @@ void RenderArea::paintEvent(QPaintEvent*)
                         else
                             point2 = point1;
 
-                        scaledPoint1 = CameraModel::warpToImage(i, point1);
-                        scaledPoint2 = CameraModel::warpToImage(i, point2);
-                        scaledX1 = (int)(scaledPoint1.first * scaleFactor[i]);
-                        scaledY1 = (int)(scaledPoint1.second * scaleFactor[i]);
-                        scaledX2 = (int)(scaledPoint2.first * scaleFactor[i]);
-                        scaledY2 = (int)(scaledPoint2.second * scaleFactor[i]);
-                        QPoint p1(i * eachWidth + scaledX1, scaledY1);
-                        QPoint p2(i * eachWidth + scaledX2, scaledY2);
+                        QPoint p1 = warpToCameraRegion(i, point1.first, point1.second);
+                        QPoint p2 = warpToCameraRegion(i, point2.first, point2.second);
                         painter.drawLine(p1, p2);
+
                         // draw arrowhead on last pair
                         if(p1 != p2 && (points_iter + 1) != points.end() && (points_iter + 2) == points.end())
                             drawArrowHead(painter, p1, p2);
@@ -304,13 +283,11 @@ void RenderArea::paintEvent(QPaintEvent*)
                         point2 = *(points_iter + 1);
                     else
                         point2 = point1;
-                    scaledPoint1 = CameraModel::warpToMap(point1);
-                    scaledPoint2 = CameraModel::warpToMap(point2);
-                    QPoint p1(scaledPoint1.first - mapTopLeftX,
-                              maxHeight + scaledPoint1.second - mapTopLeftY);
-                    QPoint p2(scaledPoint2.first - mapTopLeftX,
-                              maxHeight + scaledPoint2.second - mapTopLeftY);
+
+                    QPoint p1 = warpToMapRegion(point1.first, point1.second);
+                    QPoint p2 = warpToMapRegion(point2.first, point2.second);
                     painter.drawLine(p1, p2);
+
                     // draw arrowhead on last pair
                     if(p1 != p2 && (points_iter + 1) != points.end() && (points_iter + 2) == points.end())
                         drawArrowHead(painter, p1, p2);
@@ -325,6 +302,24 @@ void RenderArea::paintEvent(QPaintEvent*)
         painter.drawRect(rect());
     }
     painter.end();
+}
+
+QPoint RenderArea::warpToCameraRegion(int camera, double lat, double lon)
+{
+    int eachWidth = width() / numCameras;
+    QPair<int,int> p = CameraModel::warpToImage(camera, QPair<double,double>(lat, lon));
+    int scaledX = (int)(p.first * scaleFactor[camera]);
+    int scaledY = (int)(p.second * scaleFactor[camera]);
+    int x = camera * eachWidth + scaledX;
+    int y = scaledY;
+
+    return QPoint(x, y);
+}
+
+QPoint RenderArea::warpToMapRegion(double lat, double lon)
+{
+    QPair<int,int> p = CameraModel::warpToMap(QPair<double,double>(lat, lon));
+    return QPoint(p.first - mapTopLeftX, maxHeight + p.second - mapTopLeftY);
 }
 
 void RenderArea::mousePressEvent(QMouseEvent *e)
