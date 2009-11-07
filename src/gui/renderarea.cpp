@@ -327,6 +327,8 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
     if(entities == NULL)
         return;
 
+    double maxClickDist = 5.0;
+
     int camera = -1;
     // find the camera that the user clicked on
     for(int i = 0; i < numCameras; i++)
@@ -337,62 +339,53 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
             break;
         }
     }
-    if(camera == -1) // map clicked
-        return;
+    // if camera == -1, map was clicked
 
     QString msg; // we will build a message to show to the user
 
     mutex.lock();
-    int eachWidth = width() / numCameras;
-    int scaledX, scaledY;
-    int entityX, entityY;
 
-    // check for detections under the mouse
-    entities->detections_begin();
-    while(!entities->detections_end())
+    if(camera != -1) // detections are not shown in map
     {
-        Detection* d = entities->detections_next();
-        QPair<int,int> p = CameraModel::warpToImage(camera, QPair<double,double>(d->getLat(), d->getLon()));
-        scaledX = (int)(p.first * scaleFactor[camera]);
-        scaledY = (int)(p.second * scaleFactor[camera]);
-        entityX = camera * eachWidth + scaledX;
-        entityY = scaledY;
-
-        if(2.0 >= sqrt(pow(e->x() - entityX, 2) + pow(e->y() - entityY, 2)))
+        // check for detections under the mouse
+        entities->detections_begin();
+        while(!entities->detections_end())
         {
-            msg += QString("Detection %1 (%2 lat, %3 lon); area = %4, time = (%5/%6)\n")
-                   .arg(d->getId()).arg(d->getLat()).arg(d->getLon()).arg(d->getArea(), 0, 'f', 0)
-                   .arg(d->getStartTime(), 0, 'f', 1).arg(d->getEndTime(), 0, 'f', 1);
+            Detection* d = entities->detections_next();
+            QPoint p;
+            p = warpToCameraRegion(camera, d->getLat(), d->getLon());
+
+            if(maxClickDist >= pointDistance(e->pos(), p))
+            {
+                msg += QString("Detection %1 (%2 lat, %3 lon); area = %4, time = (%5/%6)\n")
+                       .arg(d->getId()).arg(d->getLat()).arg(d->getLon()).arg(d->getArea(), 0, 'f', 0)
+                       .arg(d->getStartTime(), 0, 'f', 1).arg(d->getEndTime(), 0, 'f', 1);
+            }
         }
     }
 
-    // check for movements under the mouse
-    entities->movements_begin();
-    while(!entities->movements_end())
+    if(camera != -1) // movements are not shown in map
     {
-        Movement* m = entities->movements_next();
-        QPoint points[2];
-        Detection* d;
-        QPair<int,int> p;
-        d = m->getDet1();
-        p = CameraModel::warpToImage(camera, QPair<double,double>(d->getLat(), d->getLon()));
-        scaledX = (int)(p.first * scaleFactor[camera]);
-        scaledY = (int)(p.second * scaleFactor[camera]);
-        points[0] = QPoint(camera * eachWidth + scaledX, scaledY);
-
-        d = m->getDet2();
-        p = CameraModel::warpToImage(camera, QPair<double,double>(d->getLat(), d->getLon()));
-        scaledX = (int)(p.first * scaleFactor[camera]);
-        scaledY = (int)(p.second * scaleFactor[camera]);
-        points[1] = QPoint(camera * eachWidth + scaledX, scaledY);
-
-        qDebug() << QString("Dist from movement %1: %2").arg(m->getId()).arg(clickDistance(points[0], points[1], e->pos()));
-        // ensure we are close to the line segment
-        if(2.0 >= clickDistance(points[0], points[1], e->pos()))
+        // check for movements under the mouse
+        entities->movements_begin();
+        while(!entities->movements_end())
         {
-            msg += QString("Movement %1\n").arg(m->getId());
+            Movement* m = entities->movements_next();
+            QPoint points[2];
+            Detection* d;
+            d = m->getDet1();
+            points[0] = warpToCameraRegion(camera, d->getLat(), d->getLon());
+            d = m->getDet2();
+            points[1] = warpToCameraRegion(camera, d->getLat(), d->getLon());
+
+            // ensure we are close to the line segment
+            if(maxClickDist >= clickDistance(points[0], points[1], e->pos()))
+            {
+                msg += QString("Movement %1\n").arg(m->getId());
+            }
         }
     }
+
     mutex.unlock();
 
     if(!msg.isNull())
@@ -403,28 +396,24 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
     }
 }
 
-// from Grumdrig's post (Oct 1) on
-// http://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment
+// from http://www.gamedev.net/community/forums/viewreply.asp?ID=1250842
 double RenderArea::clickDistance(QPoint p1, QPoint p2, QPoint click)
 {
-    double pointDist = pointDistance(p1, p2);
+    QPair<int,int> p1ToClick(click.x() - p1.x(), click.y() - p1.y());
+    double segmentLength = pointDistance(p1, p2);
+    QPair<double,double> unitSegment((double)(p2.x() - p1.x())/segmentLength,
+                                     (double)(p2.y() - p1.y())/segmentLength);
 
-    // if p1 == p2
-    if(pointDist < 0.1) return pointDistance(click, p1);
+    double intersectionDist = unitSegment.first * (double)p1ToClick.first +
+                              unitSegment.second * (double)p1ToClick.second;
 
-    QPoint p1ClickDiff = p1 - click;
-    QPoint p2ClickDiff = p2 - click;
-    double projection = ((double)p1ClickDiff.x() * (double)p2ClickDiff.x()
-                         + (double)p1ClickDiff.y() * (double)p2ClickDiff.y())
-                        / pow(pointDist, 2.0);
-    qDebug() << QString("projection: %1").arg(projection);
-    // projection of click on segment is beyond p1
-    if(projection < 0.0) return pointDistance(click, p1);
-    // projection of click on segment is beyond p2
-    else if(projection > 1.0) return pointDistance(click, p2);
-    // projection is between p1 and p2
-    QPoint projPoint = p1 + projection * (p2 - click);
-    return pointDistance(click, projPoint);
+    QPoint intersectionPoint;
+    if(intersectionDist < 0.1) intersectionPoint = p1;
+    else if(intersectionDist > segmentLength) intersectionPoint = p2;
+    else intersectionPoint = QPoint((int)(unitSegment.first * intersectionDist) + p1.x(),
+                                    (int)(unitSegment.second * intersectionDist) + p1.y());
+
+    return pointDistance(intersectionPoint, click);
 }
 
 double RenderArea::pointDistance(QPoint p1, QPoint p2)
