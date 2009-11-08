@@ -25,6 +25,7 @@ private:
     QList<EntitiesTreeItem*> childEntitiesTreeItems;
     EntitiesTreeItem *parentEntitiesTreeItem;
     Entity *entity;
+    QStringList columns;
 };
 
 #endif // ENTITIESTREEITEM_H

@@ -18,8 +18,9 @@ mkPath :: HypothesisMap Entity -> [[Movement]] -> [Movement] -> Hypothesis Path
 mkPath entityMap movChains movs =
     let hypId     = mkPathHypId movs
         movRefs   = map extractMovHypId movs
-        path      = Path (Path_Attrs hypId) (NonEmpty $ map mkMovementRef movRefs)
-        aPriori   = mkPathScore entityMap movs
+        score     = mkPathScore entityMap movs
+        path      = Path (Path_Attrs hypId (show $ score Medium)) (NonEmpty $ map mkMovementRef movRefs)
+        aPriori   = score
         explains  = movRefs
         implies   = movRefs
         conflicts = []
@@ -27,7 +28,9 @@ mkPath entityMap movChains movs =
 
 mkPathScore :: HypothesisMap Entity -> [Movement] -> (Level -> Level)
 mkPathScore entityMap movs
-    | {-- avgChainDifferences < 5.0 && --} sumChainSpeedDifferences < 300.0 = (\s -> High)
+    | avgChainDifferences < 5.0 && sumChainSpeedDifferences < 10.0 = (\s -> High)
+    | avgChainDifferences < 5.0 && sumChainSpeedDifferences < 20.0 = (\s -> SlightlyHigh)
+    | avgChainDifferences < 5.0 && sumChainSpeedDifferences < 40.0 = (\s -> Medium)
     | otherwise = (\s -> Low)
     where avgChainDifferences      = (sumChainDifferences entityMap movs) / (fromIntegral $ length movs)
           avgChainSpeed            = (sum $ movChainSpeeds entityMap movs) / (fromIntegral $ length movs)
@@ -38,7 +41,7 @@ mkPathScore entityMap movs
 sumChainDifferences :: HypothesisMap Entity -> [Movement] -> Double
 sumChainDifferences _         []     = 0.0
 sumChainDifferences _         (_:[]) = 0.0
-sumChainDifferences entityMap ((Movement _ _ detEndHypId):(Movement _ _ detStartHypId):movs) =
+sumChainDifferences entityMap ((Movement _ _ detEndHypId _):(Movement _ detStartHypId _ _):movs) =
     let detEnd   = getEntity entityMap detEndHypId
         detStart = getEntity entityMap detStartHypId
     in (detDist detEnd detStart) * (detDelta detEnd detStart) + (sumChainDifferences entityMap movs)
@@ -46,7 +49,7 @@ sumChainDifferences entityMap ((Movement _ _ detEndHypId):(Movement _ _ detStart
 -- | Find the speed each of link in the chain
 movChainSpeeds :: HypothesisMap Entity -> [Movement] -> [Double]
 movChainSpeeds _ [] = []
-movChainSpeeds entityMap ((Movement _ det1HypId det2HypId):movs) =
+movChainSpeeds entityMap ((Movement _ det1HypId det2HypId _):movs) =
     let det1 = getEntity entityMap det1HypId
         det2 = getEntity entityMap det2HypId
     in [(detDist det2 det1) / (detDelta det2 det1)] ++ (movChainSpeeds entityMap movs)
@@ -71,13 +74,13 @@ genMovChains entityMap (mov:movs) = [mov:rest | rest <- genMovChains entityMap
 -- Two movements are connected if the end point of the earlier movement
 -- is with 2.0 units of the start point of the later movement.
 movsSpatiallyConnected :: HypothesisMap Entity -> Movement -> Movement -> Bool
-movsSpatiallyConnected entityMap (Movement _ _ detEndHypId) (Movement _ detStartHypId _) =
+movsSpatiallyConnected entityMap (Movement _ _ detEndHypId _) (Movement _ detStartHypId _ _) =
     let detEnd   = getEntity entityMap detEndHypId
         detStart = getEntity entityMap detStartHypId
     in detDist detEnd detStart < 2.0
 
 movsTemporallyConnected :: HypothesisMap Entity -> Movement -> Movement -> Bool
-movsTemporallyConnected entityMap (Movement _ _ detEndHypId) (Movement _ detStartHypId _) =
+movsTemporallyConnected entityMap (Movement _ _ detEndHypId _) (Movement _ detStartHypId _ _) =
     let detStart = getEntity entityMap detStartHypId
         detEnd   = getEntity entityMap detEndHypId
         delta    = detDelta detStart detEnd
@@ -88,8 +91,8 @@ isShortMovChain :: HypothesisMap Entity -> [Movement] -> Bool
 isShortMovChain _ []       = True -- no movements is a "short chain"
 isShortMovChain _ (mov:[]) = True -- one movement is a short chain
 isShortMovChain entityMap movs =
-    let (Movement _ detStartHypId _) = head movs -- earliest
-        (Movement _ _ detEndHypId)   = last movs -- most recent
+    let (Movement _ detStartHypId _ _) = head movs -- earliest
+        (Movement _ _ detEndHypId _)   = last movs -- most recent
         detStart                     = getEntity entityMap detStartHypId
         detEnd                       = getEntity entityMap detEndHypId
     in 3.0 < (detDelta detEnd detStart)

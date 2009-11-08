@@ -81,6 +81,12 @@ detAscOrdering det1 det2
     where
       avgDetTime det = ((detectionStartTime det) + (detectionStartTime det)) / 2.0
 
+detAreaDiff :: Detection -> Detection -> Double
+detAreaDiff det1 det2 = abs $ (detectionArea det1) - (detectionArea det2)
+
+detSpeed :: Detection -> Detection -> Double
+detSpeed det1 det2 = (detDist det1 det2) / (abs $ detDelta det1 det2)
+
 -- | A detection is "before" another detection if its most likely occurrence time
 --   (mean of start and end times) is before the other's most likely occurrence time.
 --
@@ -101,13 +107,13 @@ mkDetectionRef :: HypothesisID -> DetectionRef
 mkDetectionRef hypId = DetectionRef hypId
 
 extractMovHypId :: Movement -> HypothesisID
-extractMovHypId (Movement hypId _ _) = hypId
+extractMovHypId (Movement hypId _ _ _) = hypId
 
 mkMovementRef :: HypothesisID -> MovementRef
 mkMovementRef hypId = MovementRef hypId
 
 extractPathHypId :: Path -> HypothesisID
-extractPathHypId (Path (Path_Attrs hypId) _) = hypId
+extractPathHypId (Path (Path_Attrs hypId _) _) = hypId
 
 mkPathRef :: HypothesisID -> PathRef
 mkPathRef hypId = PathRef hypId
@@ -199,6 +205,7 @@ data Detection = Detection
     , detectionStartTime :: Time
     , detectionEndTime   :: Time
     , detectionArea      :: Double
+    , detectionScore     :: String
     , detectionCamera    :: Maybe CameraDetection
     } deriving (Eq,Show,Typeable)
 data DetectionRef = DetectionRef
@@ -208,6 +215,7 @@ data Movement = Movement
     { movementId     :: HypothesisID
     , movementDetId1 :: HypothesisID
     , movementDetId2 :: HypothesisID
+    , movementScore  :: String
     } deriving (Eq,Show,Typeable)
 data MovementRef = MovementRef
     { movementRefMovId :: HypothesisID
@@ -215,7 +223,8 @@ data MovementRef = MovementRef
 data Path = Path Path_Attrs (List1 MovementRef)
           deriving (Eq,Show,Typeable)
 data Path_Attrs = Path_Attrs
-    { pathId :: HypothesisID
+    { pathId    :: HypothesisID
+    , pathScore :: String
     } deriving (Eq,Show)
 data PathRef = PathRef
     { pathRefPathId :: HypothesisID
@@ -291,6 +300,7 @@ instance XmlAttributes Detection where
           , detectionStartTime = read $ definiteA fromAttrToStr "Detection" "startTime" as
           , detectionEndTime = read $ definiteA fromAttrToStr "Detection" "endTime" as
           , detectionArea = read $ definiteA fromAttrToStr "Detection" "area" as
+          , detectionScore = definiteA fromAttrToStr "Detection" "score" as
           , detectionCamera = Nothing
           }
     toAttrs v = catMaybes 
@@ -300,6 +310,7 @@ instance XmlAttributes Detection where
         , toAttrFrStr "startTime" (show $ detectionStartTime v)
         , toAttrFrStr "endTime" (show $ detectionEndTime v)
         , toAttrFrStr "area" (show $ detectionArea v)
+        , toAttrFrStr "score" (detectionScore v)
         ]
 
 instance HTypeable DetectionRef where
@@ -335,11 +346,13 @@ instance XmlAttributes Movement where
           { movementId = HasInt $ read $ definiteA fromAttrToStr "Movement" "id" as
           , movementDetId1 = HasInt $ read $ definiteA fromAttrToStr "Movement" "detId1" as
           , movementDetId2 = HasInt $ read $ definiteA fromAttrToStr "Movement" "detId2" as
+          , movementScore = definiteA fromAttrToStr "Movement" "score" as
           }
     toAttrs v = catMaybes 
         [ toAttrFrStr "id" (show $ movementId v)
         , toAttrFrStr "detId1" (show $ movementDetId1 v)
         , toAttrFrStr "detId2" (show $ movementDetId2 v)
+        , toAttrFrStr "score" (movementScore v)
         ]
 
 instance HTypeable MovementRef where
@@ -373,9 +386,11 @@ instance XmlAttributes Path_Attrs where
     fromAttrs as =
         Path_Attrs
           { pathId = HasInt $ read $ definiteA fromAttrToStr "Path" "id" as
+          , pathScore = definiteA fromAttrToStr "Path" "score" as
           }
     toAttrs v = catMaybes 
         [ toAttrFrStr "id" (show $ pathId v)
+        , toAttrFrStr "score" (pathScore v)
         ]
 
 instance HTypeable PathRef where

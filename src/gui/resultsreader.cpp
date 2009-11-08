@@ -31,8 +31,9 @@ bool ResultsReader::startElement(const QString&, const QString&,
         double startTime = attributes.value("startTime").toDouble();
         double endTime = attributes.value("endTime").toDouble();
         double area = attributes.value("area").toDouble();
+        QString score = attributes.value("score");
 
-        detections[id] = new Detection(id, lat, lon, startTime, endTime, area);
+        detections[id] = new Detection(id, lat, lon, startTime, endTime, area, score);
     }
     if(qName == "Accepted")
     {
@@ -52,11 +53,13 @@ bool ResultsReader::startElement(const QString&, const QString&,
         int id = attributes.value("id").toInt();
         int detId1 = attributes.value("detId1").toInt();
         int detId2 = attributes.value("detId2").toInt();
-        movements[id] = new Movement(id, detections[detId1], detections[detId2]);
+        QString score = attributes.value("score");
+        movements[id] = new Movement(id, detections[detId1], detections[detId2], score);
     }
     else if(qName == "Path")
     {
         pathId = attributes.value("id").toInt();
+        pathScore = attributes.value("score");
         inPath = true;
         pathMovements.clear();
     }
@@ -87,7 +90,7 @@ bool ResultsReader::endElement(const QString&, const QString&, const QString& qN
     }
     else if(qName == "Path")
     {
-        paths[pathId] = new Path(pathId, pathMovements);
+        paths[pathId] = new Path(pathId, pathMovements, pathScore);
         inPath = false;
     }
     return true;

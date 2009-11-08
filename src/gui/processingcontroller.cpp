@@ -13,9 +13,10 @@
 #include "frame.h"
 #include "cameramodel.h"
 #include "entities.h"
+#include "entitiesTree.h"
 
-ProcessingController::ProcessingController(RenderArea* r, int n)
-        : numCameras(n), renderer(r)
+ProcessingController::ProcessingController(RenderArea* r, int n, EntitiesTree *e)
+        : numCameras(n), renderer(r), entitiesTree(e)
 {
     renderer->setNumCameras(numCameras);
     CameraModel::setNumCameras(numCameras);
@@ -30,7 +31,8 @@ void ProcessingController::init()
     mutex.unlock();
 
     abducerReader = new AbducerReader();
-    connect(abducerReader, SIGNAL(newEntities(Entities*)), this, SLOT(newEntities(Entities*)));
+    connect(abducerReader, SIGNAL(newEntities(Entities*)), renderer, SLOT(updateEntities(Entities*)));
+    connect(abducerReader, SIGNAL(newEntities(Entities*)), entitiesTree, SLOT(updateEntities(Entities*)));
     abducerReader->start();
 
     abducerWriter = new AbducerWriter();
@@ -173,9 +175,3 @@ void ProcessingController::sendDetections()
     abducerWriter->newDetections(detections);
     detections.clear();
 }
-
-void ProcessingController::newEntities(Entities* e)
-{
-    renderer->updateEntities(e);
-}
-

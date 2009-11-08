@@ -27,9 +27,13 @@ HEADERS += src/gui/cameramodel.h \
     src/gui/movement.h \
     src/gui/abducerwriter.h \
     src/gui/abducerreader.h \
-    src/gui/path.h
+    src/gui/path.h \
+    src/gui/entitiestree.h \
+    src/gui/entity.h \
+    src/gui/entitiestreeitem.h
 FORMS += src/gui/mainwindow.ui \
-    src/gui/settings.ui
+    src/gui/settings.ui \
+    src/gui/entitiesTree.ui
 SOURCES += src/gui/cameramodel.cpp \
     src/gui/capturethread.cpp \
     src/gui/decoder.cpp \
@@ -45,4 +49,7 @@ SOURCES += src/gui/cameramodel.cpp \
     src/gui/movement.cpp \
     src/gui/abducerwriter.cpp \
     src/gui/abducerreader.cpp \
-    src/gui/path.cpp
+    src/gui/path.cpp \
+    src/gui/entitiestree.cpp \
+    src/gui/entity.cpp \
+    src/gui/entitiestreeitem.cpp

@@ -3,6 +3,7 @@
 #include <QTextStream>
 #include <QDebug>
 #include <QPair>
+#include <QPoint>
 
 #include <math.h>
 #include <vector>
@@ -36,28 +37,7 @@ QString Decoder::decodeFrame(Frame *frame)
     return result;
 }
 
-
-typedef struct coordinate {
-    double x, y, w, h;
-
-    coordinate(double i, double j, double s, double t)
-            : x(i), y(j), w(s), h(t)
-    { }
-
-    double distance(double i, double j)
-    {
-        double a = i-x;
-        double b = j-y;
-        return sqrt(a*a + b*b);
-    }
-
-    double area()
-    {
-        return w * h;
-    }
-} coordinate;
-
-void group_blobs(std::vector<coordinate> blobs_in, double threshold, std::vector<coordinate>& bigblobs);
+//void group_blobs(std::vector<coordinate> blobs_in, double threshold, std::vector<coordinate>& bigblobs);
 
 // copied from OpenCV 1.1.0 enteringblobdetection.cpp
 int compareContour(const void* a, const void* b, void*)
@@ -110,6 +90,12 @@ void Decoder::findBlobsByCCClasters(CvSeq** clasters, int&
     claster_num = cvSeqPartition(*cnt_list, storage, clasters, compareContour, NULL);
 }
 
+struct blob
+{
+    QPoint center;
+    double area;
+};
+
 QString Decoder::findBlobs(Frame *frame, bool drawContours)
 {
     double startTime = frame->getTime();
@@ -118,15 +104,14 @@ QString Decoder::findBlobs(Frame *frame, bool drawContours)
     CvSeq* clasters = NULL;
     CvSeq* cnt_list = NULL;
     int claster_num;
-    std::vector<coordinate> blobs_temp;
+    std::vector<struct blob> blobs;
 
     QString result;
     QTextStream stream(&result);
 
     findBlobsByCCClasters(&clasters, claster_num, &cnt_list);
 
-    CvRect rect;
-    double area;
+    double m00, m01, m10;
     int cx, cy;
     for(int claster_cur = 0; claster_cur < claster_num; ++claster_cur)
     {
@@ -142,36 +127,40 @@ QString Decoder::findBlobs(Frame *frame, bool drawContours)
             cvInitTreeNodeIterator(&iterator, cnt, maxLevel);
             while((cnt = (CvSeq*)cvNextTreeNode(&iterator)) != 0)
             {
-                area = fabs(cvContourArea(cnt));
-                rect = cvBoundingRect(cnt);
-
                 if(drawContours)
                     cvDrawContours(frame->getImage(), cnt, cvScalarAll(255), cvScalarAll(255), 100);
 
-                cx = rect.x + rect.width / 2;
-                cy = rect.y + rect.height / 2;
+                CvMoments moments;
+                cvContourMoments(cnt, &moments);
+
+                m00 = cvGetSpatialMoment(&moments, 0, 0);
+                m01 = cvGetSpatialMoment(&moments, 0, 1);
+                m10 = cvGetSpatialMoment(&moments, 1, 0);
+                cx = (int)(m10 / m00);
+                cy = (int)(m01 / m00);
 
                 QPair<double,double> p = CameraModel::warpToGround(camera,  QPair<int,int>(cx, cy));
 
-                // Insert centroids into list
-                blobs_temp.push_back(coordinate(p.first, p.second, rect.width, rect.height));
+                struct blob b;
+                b.center = QPoint((int)p.first, (int)p.second);
+                b.area = m00;
+                blobs.push_back(b);
             }
         }
     }
 
-    double threshold = 20.0; // in feet
-    std::vector<coordinate> bigblobs;
-    group_blobs(blobs_temp, threshold, bigblobs);
+    //double threshold = 20.0; // in feet
+    //std::vector<coordinate> bigblobs;
+    //group_blobs(blobs_temp, threshold, bigblobs);
 
-    for(std::vector<coordinate>::iterator it = bigblobs.begin();
-    it != bigblobs.end(); ++it)
+    for(std::vector<struct blob>::iterator it = blobs.begin(); it != blobs.end(); ++it)
     {
-        if(it->area() < 100.0) continue; // skip noisy detections
+        if(it->area < 100.0) continue; // skip noisy detections
 
         stream << "\t<CameraDetection camera=\"" << camera << "\" "
-                << "area=\"" << it->area() << "\" "
-                << "lat=\"" << it->x << "\" "
-                << "lon=\"" << it->y << "\" "
+                << "area=\"" << it->area << "\" "
+                << "lat=\"" << (it->center).x() << "\" "
+                << "lon=\"" << (it->center).y() << "\" "
                 << "startTime=\"" << startTime << "\" "
                 << "endTime=\"" << endTime << "\" />\n";
     }
@@ -180,7 +169,7 @@ QString Decoder::findBlobs(Frame *frame, bool drawContours)
 }
 
 
-
+/*
 void group_blobs(std::vector<coordinate> blobs_in, double threshold, std::vector<coordinate>& bigblobs)
 {
     std::vector<coordinate> nearme;
@@ -255,3 +244,4 @@ void group_blobs(std::vector<coordinate> blobs_in, double threshold, std::vector
         bigblobs.push_back(coordinate(cx, cy, w, h));
     }
 }
+*/

@@ -5,6 +5,7 @@
 #include "mainwindow.h"
 #include "renderarea.h"
 #include "settings.h"
+#include "entitiestree.h"
 #include "processingcontroller.h"
 
 
@@ -15,7 +16,11 @@ MainWindow::MainWindow() : QMainWindow(0)
     renderArea = new RenderArea(this);
     ui.verticalLayout->insertWidget(0, renderArea);
 
-    processingController = new ProcessingController(renderArea, 2 /* num of cameras */);
+    entitiesTree = new EntitiesTree(this);
+    connect(ui.entitiesButton, SIGNAL(clicked()), entitiesTree, SLOT(show()));
+    connect(ui.entitiesButton, SIGNAL(clicked()), entitiesTree, SLOT(raise()));
+
+    processingController = new ProcessingController(renderArea, 2 /* num of cameras */, entitiesTree);
 
     // settings dock widget
     /*

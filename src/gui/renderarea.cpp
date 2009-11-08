@@ -357,8 +357,10 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
 
             if(maxClickDist >= pointDistance(e->pos(), p))
             {
-                msg += QString("Detection %1 (%2 lat, %3 lon); area = %4, time = (%5/%6)\n")
-                       .arg(d->getId()).arg(d->getLat()).arg(d->getLon()).arg(d->getArea(), 0, 'f', 0)
+                msg += QString("Detection %1 (%2; score: %3) (%4 lat, %5 lon); area = %6, time = (%7/%8)\n\n")
+                       .arg(d->getId()).arg(d->isAccepted() ? "accepted" : "rejected")
+                       .arg(d->getScore())
+                       .arg(d->getLat()).arg(d->getLon()).arg(d->getArea(), 0, 'f', 0)
                        .arg(d->getStartTime(), 0, 'f', 1).arg(d->getEndTime(), 0, 'f', 1);
             }
         }
@@ -381,7 +383,10 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
             // ensure we are close to the line segment
             if(maxClickDist >= clickDistance(points[0], points[1], e->pos()))
             {
-                msg += QString("Movement %1\n").arg(m->getId());
+                msg += QString("Movement %1 (%2; score: %3) from detection %4 to detection %5\n\n")
+                       .arg(m->getId()).arg(m->isAccepted() ? "accepted" : "rejected")
+                       .arg(m->getScore())
+                       .arg(m->getDet1()->getId()).arg(m->getDet2()->getId());
             }
         }
     }

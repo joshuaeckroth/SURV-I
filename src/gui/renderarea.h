@@ -23,10 +23,10 @@ public:
   RenderArea(QWidget* parent);
   void setNumCameras(int n);
   void showFrame(Frame* frame);
-  void updateEntities(Entities* e);
 
 public slots:
   void onFrameSizeChanged(int width, int height, int camera);
+  void updateEntities(Entities *e);
 
 signals:
   void frameSizeChanged(int width, int height, int camera);

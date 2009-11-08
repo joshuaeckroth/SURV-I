@@ -10,7 +10,8 @@
 	               lon       CDATA #REQUIRED
                        startTime CDATA #REQUIRED
                        endTime   CDATA #REQUIRED
-                       area      CDATA #REQUIRED>
+                       area      CDATA #REQUIRED
+                       score     CDATA #REQUIRED>
 
 <!ELEMENT DetectionRef EMPTY>
 <!ATTLIST DetectionRef detId     CDATA #REQUIRED>
@@ -18,13 +19,15 @@
 <!ELEMENT Movement     EMPTY>
 <!ATTLIST Movement     id        CDATA #REQUIRED
 	               detId1    CDATA #REQUIRED
-                       detId2    CDATA #REQUIRED>
+                       detId2    CDATA #REQUIRED
+                       score     CDATA #REQUIRED>
 
 <!ELEMENT MovementRef  EMPTY>
 <!ATTLIST MovementRef  movId     CDATA #REQUIRED>
 
 <!ELEMENT Path         (MovementRef+)>
-<!ATTLIST Path         id        CDATA #REQUIRED>
+<!ATTLIST Path         id        CDATA #REQUIRED
+	               score     CDATA #REQUIRED>
 
 <!ELEMENT PathRef      EMPTY>
 <!ATTLIST PathRef      pathId    CDATA #REQUIRED>

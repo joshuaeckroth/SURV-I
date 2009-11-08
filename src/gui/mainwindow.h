@@ -8,31 +8,33 @@
 
 class RenderArea;
 class SettingsWidget;
+class EntitiesTree;
 class ProcessingController;
 
 class MainWindow : public QMainWindow
 {
-  Q_OBJECT;
+    Q_OBJECT;
 
 public:
-  MainWindow();
-  
+    MainWindow();
+
 public slots:
-  void startProcessing();
-  void stopProcessing();
-  void updateStats();
-  void numCamerasChanged(int);
+    void startProcessing();
+    void stopProcessing();
+    void updateStats();
+    void numCamerasChanged(int);
 
 protected:
-  void closeEvent(QCloseEvent*);
+    void closeEvent(QCloseEvent*);
 
 private:
-  Ui::MainWindow ui;
-  RenderArea *renderArea;
-  QTimer* updateTimer;
-  QDockWidget* settingsDock;
-  SettingsWidget* settingsWidget;
-  ProcessingController* processingController;
+    Ui::MainWindow ui;
+    EntitiesTree *entitiesTree;
+    RenderArea *renderArea;
+    QTimer* updateTimer;
+    QDockWidget* settingsDock;
+    SettingsWidget* settingsWidget;
+    ProcessingController* processingController;
 };
 
 #endif

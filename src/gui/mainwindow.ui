@@ -27,7 +27,7 @@
           <string>Start</string>
          </property>
          <property name="icon">
-          <iconset resource="surv-1.qrc">
+          <iconset>
            <normaloff>:/images/images/media-playback-start.png</normaloff>:/images/images/media-playback-start.png</iconset>
          </property>
          <property name="toolButtonStyle">
@@ -44,11 +44,18 @@
           <string>Stop</string>
          </property>
          <property name="icon">
-          <iconset resource="surv-1.qrc">
+          <iconset>
            <normaloff>:/images/images/media-playback-stop.png</normaloff>:/images/images/media-playback-stop.png</iconset>
          </property>
          <property name="toolButtonStyle">
           <enum>Qt::ToolButtonTextBesideIcon</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="entitiesButton">
+         <property name="text">
+          <string>Entities</string>
          </property>
         </widget>
        </item>
@@ -78,8 +85,6 @@
    </property>
   </widget>
  </widget>
- <resources>
-  <include location="surv-1.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>

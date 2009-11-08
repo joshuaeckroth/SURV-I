@@ -8,6 +8,10 @@ EntitiesTreeItem::EntitiesTreeItem(Entity *e, EntitiesTreeItem *p)
 {
     entity = e;
     parentEntitiesTreeItem = p;
+
+    columns << "Entity Type" << "Id" << "Accepted?" << "Score"
+            << "Lat" << "Lon" << "Start Time" << "End Time" << "Duration"
+            << "Distance" << "Avg Speed" << "Area";
 }
 
 EntitiesTreeItem::~EntitiesTreeItem()
@@ -37,19 +41,15 @@ EntitiesTreeItem *EntitiesTreeItem::parent()
 
 int EntitiesTreeItem::columnCount() const
 {
-    return 4;
+    return columns.count();
 }
 
 QVariant EntitiesTreeItem::data(int column) const
 {
-    switch(column)
-    {
-    case 0: return (entity ? entity->getType() : "Entity Type");
-    case 1: return (entity ? QString::number(entity->getId()) : "Id");
-    case 2: return (entity ? (entity->isAccepted() ? "Accepted" : "Rejected") : "Accepted?");
-    case 3: return (entity ? entity->getScore() : "Score");
-    default: return QVariant();
-    }
+    QStringList data;
+    if(entity) data = entity->getData();
+    else data = columns;
+    return data.at(column);
 }
 
 int EntitiesTreeItem::row() const

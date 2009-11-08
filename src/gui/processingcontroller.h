@@ -14,13 +14,14 @@ class AbducerWriter;
 class AbducerReader;
 class Frame;
 class Entities;
+class EntitiesTree;
 
 class ProcessingController : public QObject
 {
   Q_OBJECT;
   
 public:
-  ProcessingController(RenderArea* r, int n);
+  ProcessingController(RenderArea* r, int n, EntitiesTree *e);
   QString getCameraTimes() const;
   void numCamerasChanged(int n);
 
@@ -30,7 +31,6 @@ public slots:
 
 private slots:
   void newDetections(QString, Frame*);
-  void newEntities(Entities*);
   void sendDetections();
 
 private:
@@ -47,6 +47,7 @@ private:
   QTimer* abducerTimer;
   Frame** curFrame;
   QString detections;
+  EntitiesTree *entitiesTree;
 };
 
 #endif

@@ -60,7 +60,7 @@ invalidMovements :: [HypothesisID]
                  -> [HypothesisID]
 invalidMovements detHypIds entityMap hypIds =
     map extractMovHypId $
-    filter (\(Movement _ detId1 detId2) -> (elem detId1 detHypIds) || (elem detId2 detHypIds))
+    filter (\(Movement _ detId1 detId2 _) -> (elem detId1 detHypIds) || (elem detId2 detHypIds))
     (gatherEntities entityMap hypIds :: [Movement])
 
 invalidPaths :: [HypothesisID]
@@ -88,8 +88,8 @@ removeSubPaths world = foldr removeHypothesis world (map extractPathHypId subPat
           findSubPaths paths path = filter (isSubPath path) paths
 
           isSubPath :: Path -> Path -> Bool
-          isSubPath (Path (Path_Attrs hypId1) (NonEmpty movRefs1))
-                        (Path (Path_Attrs hypId2) (NonEmpty movRefs2))
+          isSubPath (Path (Path_Attrs hypId1 _) (NonEmpty movRefs1))
+                        (Path (Path_Attrs hypId2 _) (NonEmpty movRefs2))
               -- a path is not a subpath of itself
               | hypId1 == hypId2            = False
               -- a path is a subpath if all of the latter path's movements are
@@ -126,13 +126,13 @@ updateConflictingPaths world = mergeIntoWorld world $ findConflictingPaths' path
 
       findConflictingPaths' :: [Path] -> [Path] -> [(HypothesisID, [HypothesisID])]
       findConflictingPaths' [] _ = []
-      findConflictingPaths' (path@(Path (Path_Attrs hypId) _):paths) paths' =
+      findConflictingPaths' (path@(Path (Path_Attrs hypId _) _):paths) paths' =
           [(hypId, map extractPathHypId $ filter (pathsConflict path) paths')]
           ++ (findConflictingPaths' paths paths')
 
       pathsConflict :: Path -> Path -> Bool
-      pathsConflict (Path (Path_Attrs hypId1) (NonEmpty movRefs1))
-                        (Path (Path_Attrs hypId2) (NonEmpty movRefs2))
+      pathsConflict (Path (Path_Attrs hypId1 _) (NonEmpty movRefs1))
+                        (Path (Path_Attrs hypId2 _) (NonEmpty movRefs2))
           -- a path does not conflict with itself
           | hypId1 == hypId2   = False
           -- a path conflicts with another path if at least one path shares > 80% of
@@ -192,8 +192,8 @@ addConflicts subject object world =
                    subject lowerOnAcceptance object (mind world)
           }
 
-boostOnAcceptance = Left (Just $ increaseLevelBy 2, Nothing)
-lowerOnAcceptance = Left (Just $ decreaseLevelBy 2, Nothing)
+boostOnAcceptance = Left (Just increaseLevel, Just decreaseLevel)
+lowerOnAcceptance = Left (Just decreaseLevel, Just increaseLevel)
 
 reason :: World -> World
 reason world = world { mind = R.reason (R.ReasonerSettings False) Medium (mind world) }

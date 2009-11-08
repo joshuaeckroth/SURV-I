@@ -2,13 +2,17 @@
 #define DETECTION_H
 
 #include <QString>
+#include <QStringList>
 
-class Detection
+#include "entity.h"
+
+class Detection : public Entity
 {
 public:
   Detection(int _id, double _lat, double _lon,
             double _startTime, double _endTime,
-            double _area);
+            double _area, QString _score);
+  ~Detection();
 
   int getId() const;
   double getLat() const;
@@ -18,6 +22,8 @@ public:
   double getArea() const;
   void setAccepted(bool);
   bool isAccepted() const;
+  QString getScore() const;
+  QStringList getData() const;
 
 private:
   int id;
@@ -27,6 +33,7 @@ private:
   double endTime;
   double area;
   bool accepted;
+  QString score;
 };
 
 #endif

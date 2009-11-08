@@ -12,6 +12,7 @@ mkDetection :: [CameraDetection]
             -> Hypothesis Detection
 mkDetection cdets cdet =
     let hypId     = mkDetHypId cdet
+        score     = mkDetectionScore cdets cdet
         det       = Detection
                     { detectionId        = hypId
                     , detectionLat       = cameraDetectionLat cdet
@@ -19,9 +20,10 @@ mkDetection cdets cdet =
                     , detectionStartTime = cameraDetectionStartTime cdet
                     , detectionEndTime   = cameraDetectionEndTime cdet
                     , detectionArea      = cameraDetectionArea cdet
+                    , detectionScore     = show (score Medium)
                     , detectionCamera    = Just cdet
                     }
-        aPriori   = mkDetectionScore cdets cdet
+        aPriori   = score
         explains  = []
         implies   = []
         conflicts = []
