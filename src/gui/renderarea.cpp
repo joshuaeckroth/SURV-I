@@ -13,6 +13,7 @@
 
 #include "renderarea.h"
 #include "entities.h"
+#include "entity.h"
 #include "detection.h"
 #include "movement.h"
 #include "path.h"
@@ -42,11 +43,8 @@ RenderArea::RenderArea(QWidget* parent)
     detectionPen.setColor(Qt::blue);
     detectionPen.setWidth(1);
 
-    detectionUnacceptedPen.setColor(Qt::yellow);
+    detectionUnacceptedPen.setColor(Qt::darkBlue);
     detectionUnacceptedPen.setWidth(1);
-
-    detectionCenterPen.setColor(Qt::blue);
-    detectionCenterPen.setWidth(1);
 
     movementPen.setColor(Qt::green);
     movementPen.setWidth(1);
@@ -57,8 +55,12 @@ RenderArea::RenderArea(QWidget* parent)
     pathPen.setColor(Qt::black);
     pathPen.setWidth(1);
 
-    pathUnacceptedPen.setColor(Qt::white);
+    pathUnacceptedPen.setColor(Qt::gray);
     pathUnacceptedPen.setWidth(1);
+
+    highlightedPen.setColor(Qt::white);
+    highlightedPen.setWidth(3);
+    highlighted = NULL;
 }
 
 void RenderArea::setNumCameras(int n)
@@ -188,7 +190,9 @@ void RenderArea::paintEvent(QPaintEvent*)
                     QPoint detCenter = warpToCameraRegion(i, d->getLat(), d->getLon());
 
                     // draw pixel at center
-                    if(d->isAccepted())
+                    if(d == highlighted)
+                        painter.setPen(highlightedPen);
+                    else if(d->isAccepted())
                         painter.setPen(detectionPen);
                     else
                         painter.setPen(detectionUnacceptedPen);
@@ -205,7 +209,9 @@ void RenderArea::paintEvent(QPaintEvent*)
             {
                 Movement* m = entities->movements_next();
 
-                if(m->isAccepted())
+                if(m == highlighted)
+                    painter.setPen(highlightedPen);
+                else if(m->isAccepted())
                     painter.setPen(movementPen);
                 else
                     painter.setPen(movementUnacceptedPen);
@@ -235,7 +241,9 @@ void RenderArea::paintEvent(QPaintEvent*)
 
                 Path *p = entities->paths_next();
 
-                if(p->isAccepted())
+                if(p == highlighted)
+                    painter.setPen(highlightedPen);
+                else if(p->isAccepted())
                     painter.setPen(pathPen);
                 else
                     painter.setPen(pathUnacceptedPen);
@@ -366,7 +374,10 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
             p = warpToCameraRegion(camera, d->getLat(), d->getLon());
 
             if(maxClickDist >= pointDistance(e->pos(), p))
+            {
                 d->setHighlighted(true);
+                highlighted = d;
+            }
         }
     }
 
@@ -386,7 +397,10 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
 
             // ensure we are close to the line segment
             if(maxClickDist >= clickDistance(points[0], points[1], e->pos()))
+            {
                 m->setHighlighted(true);
+                highlighted = m;
+            }
         }
     }
 
@@ -422,6 +436,7 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
             if(maxClickDist >= clickDistance(points[0], points[1], e->pos()))
             {
                 p->setHighlighted(true);
+                highlighted = p;
                 found = true;
             }
         }
@@ -431,6 +446,8 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
     entities->updateHighlights();
 
     mutex.unlock();
+
+    update();
 }
 
 // from http://www.gamedev.net/community/forums/viewreply.asp?ID=1250842
@@ -481,4 +498,10 @@ void RenderArea::drawArrowHead(QPainter &painter, QPoint p1, QPoint p2)
     // draw it
     painter.drawLine(p2, QPoint(ax1, ay1));
     painter.drawLine(p2, QPoint(ax2, ay2));
+}
+
+void RenderArea::highlightEntity(Entity *e)
+{
+    highlighted = e;
+    update();
 }

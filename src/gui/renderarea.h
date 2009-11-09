@@ -13,6 +13,7 @@
 #include "highgui.h"
 
 class Entities;
+class Entity;
 class Frame;
 
 class RenderArea : public QWidget
@@ -23,6 +24,7 @@ public:
   RenderArea(QWidget* parent);
   void setNumCameras(int n);
   void showFrame(Frame* frame);
+  void highlightEntity(Entity *e);
 
 public slots:
   void onFrameSizeChanged(int width, int height, int camera);
@@ -50,15 +52,16 @@ private:
   bool clear;
   Entities* entities;
   QMutex mutex;
-  QPen detectionPen, detectionCenterPen, detectionUnacceptedPen,
+  QPen detectionPen, detectionUnacceptedPen,
     movementPen, movementUnacceptedPen,
-    pathPen, pathUnacceptedPen;
+    pathPen, pathUnacceptedPen, highlightedPen;
   int maxHeight, mapTopLeftX, mapTopLeftY;
   QPoint warpToCameraRegion(int camera, double lat, double lon);
   QPoint warpToMapRegion(double lat, double lon);
   double clickDistance(QPoint p1, QPoint p2, QPoint click);
   double pointDistance(QPoint p1, QPoint p2);
   void drawArrowHead(QPainter &painter, QPoint p1, QPoint p2);
+  Entity *highlighted;
 };
 
 #endif

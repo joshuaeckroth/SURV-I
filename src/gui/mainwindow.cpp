@@ -16,7 +16,7 @@ MainWindow::MainWindow() : QMainWindow(0)
     renderArea = new RenderArea(this);
     ui.verticalLayout->insertWidget(0, renderArea);
 
-    entitiesTree = new EntitiesTree(this);
+    entitiesTree = new EntitiesTree(this, renderArea);
     connect(ui.entitiesButton, SIGNAL(clicked()), entitiesTree, SLOT(show()));
     connect(ui.entitiesButton, SIGNAL(clicked()), entitiesTree, SLOT(raise()));
 
