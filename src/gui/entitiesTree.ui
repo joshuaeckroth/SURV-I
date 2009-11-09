@@ -13,6 +13,10 @@
   <property name="windowTitle">
    <string>Entities</string>
   </property>
+  <property name="windowIcon">
+   <iconset resource="surv-1.qrc">
+    <normaloff>:/images/images/entities.png</normaloff>:/images/images/entities.png</iconset>
+  </property>
   <property name="sizeGripEnabled">
    <bool>true</bool>
   </property>
@@ -74,7 +78,9 @@
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="surv-1.qrc"/>
+ </resources>
  <connections>
   <connection>
    <sender>entitesClose</sender>

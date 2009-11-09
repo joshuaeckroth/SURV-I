@@ -13,6 +13,10 @@
   <property name="windowTitle">
    <string>SURV-I</string>
   </property>
+  <property name="windowIcon">
+   <iconset resource="surv-1.qrc">
+    <normaloff>:/images/images/window-icon.png</normaloff>:/images/images/window-icon.png</iconset>
+  </property>
   <property name="dockNestingEnabled">
    <bool>true</bool>
   </property>
@@ -27,8 +31,8 @@
           <string>Start</string>
          </property>
          <property name="icon">
-          <iconset>
-           <normaloff>:/images/images/media-playback-start.png</normaloff>:/images/images/media-playback-start.png</iconset>
+          <iconset resource="surv-1.qrc">
+           <normaloff>:/images/images/start.png</normaloff>:/images/images/start.png</iconset>
          </property>
          <property name="toolButtonStyle">
           <enum>Qt::ToolButtonTextBesideIcon</enum>
@@ -44,8 +48,8 @@
           <string>Stop</string>
          </property>
          <property name="icon">
-          <iconset>
-           <normaloff>:/images/images/media-playback-stop.png</normaloff>:/images/images/media-playback-stop.png</iconset>
+          <iconset resource="surv-1.qrc">
+           <normaloff>:/images/images/stop.png</normaloff>:/images/images/stop.png</iconset>
          </property>
          <property name="toolButtonStyle">
           <enum>Qt::ToolButtonTextBesideIcon</enum>
@@ -56,6 +60,13 @@
         <widget class="QToolButton" name="entitiesButton">
          <property name="text">
           <string>Entities</string>
+         </property>
+         <property name="icon">
+          <iconset resource="surv-1.qrc">
+           <normaloff>:/images/images/entities.png</normaloff>:/images/images/entities.png</iconset>
+         </property>
+         <property name="toolButtonStyle">
+          <enum>Qt::ToolButtonTextBesideIcon</enum>
          </property>
         </widget>
        </item>
@@ -85,6 +96,8 @@
    </property>
   </widget>
  </widget>
- <resources/>
+ <resources>
+  <include location="surv-1.qrc"/>
+ </resources>
  <connections/>
 </ui>
