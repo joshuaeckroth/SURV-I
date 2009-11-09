@@ -21,6 +21,9 @@ public:
     Detection *getDet2() const;
     QString getScore() const;
     QStringList getData() const;
+    void setHighlighted(bool h);
+    bool isHighlighted() const;
+
 
 private:
     int id;
@@ -28,6 +31,7 @@ private:
     Detection *det1, *det2;
     QString score;
     double distance;
+    bool highlighted;
 };
 
 #endif // MOVEMENT_H

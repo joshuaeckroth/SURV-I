@@ -6,7 +6,7 @@
 #include "entity.h"
 
 Path::Path(int _id, std::vector<Movement*> _movements, QString _score)
-        : Entity(), id(_id), movements(_movements), score(_score)
+        : Entity(), id(_id), movements(_movements), score(_score), highlighted(false)
 {
     distance = 0.0;
     for(std::vector<Movement*>::const_iterator it = movements.begin();
@@ -73,4 +73,14 @@ QStringList Path::getData() const
             << QString::number(distance / duration, 'f', 2)
             << "";
     return data;
+}
+
+void Path::setHighlighted(bool h)
+{
+    highlighted = h;
+}
+
+bool Path::isHighlighted() const
+{
+    return highlighted;
 }

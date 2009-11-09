@@ -58,3 +58,8 @@ int EntitiesTreeItem::row() const
         return parentEntitiesTreeItem->childEntitiesTreeItems.indexOf(const_cast<EntitiesTreeItem*>(this));
     return 0;
 }
+
+Entity *EntitiesTreeItem::getEntity() const
+{
+    return entity;
+}

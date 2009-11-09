@@ -8,7 +8,6 @@
 #include <QImage>
 #include <QWidget>
 #include <QMouseEvent>
-#include <QMessageBox>
 
 #include <cmath>
 
@@ -341,7 +340,18 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
     }
     // if camera == -1, map was clicked
 
-    QString msg; // we will build a message to show to the user
+    // unhighlight everything
+    entities->detections_begin();
+    while(!entities->detections_end())
+        entities->detections_next()->setHighlighted(false);
+
+    entities->movements_begin();
+    while(!entities->movements_end())
+        entities->movements_next()->setHighlighted(false);
+
+    entities->paths_begin();
+    while(!entities->paths_end())
+        entities->paths_next()->setHighlighted(false);
 
     mutex.lock();
 
@@ -351,18 +361,12 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
         entities->detections_begin();
         while(!entities->detections_end())
         {
-            Detection* d = entities->detections_next();
+            Detection *d = entities->detections_next();
             QPoint p;
             p = warpToCameraRegion(camera, d->getLat(), d->getLon());
 
             if(maxClickDist >= pointDistance(e->pos(), p))
-            {
-                msg += QString("Detection %1 (%2; score: %3) (%4 lat, %5 lon); area = %6, time = (%7/%8)\n\n")
-                       .arg(d->getId()).arg(d->isAccepted() ? "accepted" : "rejected")
-                       .arg(d->getScore())
-                       .arg(d->getLat()).arg(d->getLon()).arg(d->getArea(), 0, 'f', 0)
-                       .arg(d->getStartTime(), 0, 'f', 1).arg(d->getEndTime(), 0, 'f', 1);
-            }
+                d->setHighlighted(true);
         }
     }
 
@@ -372,9 +376,9 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
         entities->movements_begin();
         while(!entities->movements_end())
         {
-            Movement* m = entities->movements_next();
+            Movement *m = entities->movements_next();
             QPoint points[2];
-            Detection* d;
+            Detection *d;
             d = m->getDet1();
             points[0] = warpToCameraRegion(camera, d->getLat(), d->getLon());
             d = m->getDet2();
@@ -382,23 +386,51 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
 
             // ensure we are close to the line segment
             if(maxClickDist >= clickDistance(points[0], points[1], e->pos()))
+                m->setHighlighted(true);
+        }
+    }
+
+    // check for paths under the mouse
+    bool found = false;
+    entities->paths_begin();
+    while(!entities->paths_end() && !found)
+    {
+        Path *p = entities->paths_next();
+
+        // check for constituent movements under the mouse
+        p->movements_begin();
+        while(!p->movements_end() && !found)
+        {
+            Movement *m = p->movements_next();
+            QPoint points[2];
+            Detection *d1, *d2;
+            d1 = m->getDet1();
+            d2 = m->getDet2();
+
+            if(camera == -1)
             {
-                msg += QString("Movement %1 (%2; score: %3) from detection %4 to detection %5\n\n")
-                       .arg(m->getId()).arg(m->isAccepted() ? "accepted" : "rejected")
-                       .arg(m->getScore())
-                       .arg(m->getDet1()->getId()).arg(m->getDet2()->getId());
+                points[0] = warpToMapRegion(d1->getLat(), d1->getLon());
+                points[1] = warpToMapRegion(d2->getLat(), d2->getLon());
+            }
+            else
+            {
+                points[0] = warpToCameraRegion(camera, d1->getLat(), d1->getLon());
+                points[1] = warpToCameraRegion(camera, d2->getLat(), d2->getLon());
+            }
+
+            // ensure we are close to the line segment
+            if(maxClickDist >= clickDistance(points[0], points[1], e->pos()))
+            {
+                p->setHighlighted(true);
+                found = true;
             }
         }
     }
 
-    mutex.unlock();
 
-    if(!msg.isNull())
-    {
-        QMessageBox msgBox;
-        msgBox.setText(msg);
-        msgBox.exec();
-    }
+    entities->updateHighlights();
+
+    mutex.unlock();
 }
 
 // from http://www.gamedev.net/community/forums/viewreply.asp?ID=1250842

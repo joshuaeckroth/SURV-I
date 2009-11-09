@@ -6,7 +6,7 @@ Detection::Detection(int _id, double _lat, double _lon,
                      double _startTime, double _endTime,
                      double _area, QString _score)
 : Entity(), id(_id), lat(_lat), lon(_lon), startTime(_startTime), endTime(_endTime),
-area(_area), score(_score)
+    area(_area), score(_score), highlighted(false)
 { }
 
 Detection::~Detection() { }
@@ -69,4 +69,14 @@ QStringList Detection::getData() const
             << "" << "" << ""
             << QString::number(area, 'f', 2);
     return data;
+}
+
+void Detection::setHighlighted(bool h)
+{
+    highlighted = h;
+}
+
+bool Detection::isHighlighted() const
+{
+    return highlighted;
 }

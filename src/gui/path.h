@@ -23,6 +23,9 @@ public:
     bool isAccepted() const;
     QString getScore() const;
     QStringList getData() const;
+    void setHighlighted(bool h);
+    bool isHighlighted() const;
+
 
 private:
     int id;
@@ -32,6 +35,7 @@ private:
     QString score;
     double distance;
     double duration;
+    bool highlighted;
 };
 
 #endif // PATH_H

@@ -10,6 +10,7 @@
 class Detection;
 class Movement;
 class Path;
+class Entity;
 class EntitiesTreeItem;
 
 class Entities : public QAbstractItemModel
@@ -43,6 +44,8 @@ public:
     QModelIndex parent(const QModelIndex &index) const;
     int rowCount(const QModelIndex &parent = QModelIndex()) const;
     int columnCount(const QModelIndex &parent = QModelIndex()) const;
+
+    void updateHighlights();
 
 private:
     std::map<int,Detection*> detections;

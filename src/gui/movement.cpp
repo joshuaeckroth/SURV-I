@@ -6,7 +6,7 @@
 #include "entity.h"
 
 Movement::Movement(int _id, Detection *_det1, Detection *_det2, QString _score)
-        : Entity(), id(_id), det1(_det1), det2(_det2), score(_score)
+        : Entity(), id(_id), det1(_det1), det2(_det2), score(_score), highlighted(false)
 {
     distance = std::sqrt(std::pow(det2->getLat() - det1->getLat(), 2.0) +
                          std::pow(det2->getLon() - det1->getLon(), 2.0));
@@ -58,4 +58,14 @@ QStringList Movement::getData() const
             << QString::number(distance / (det2->getEndTime() - det1->getStartTime()), 'f', 2)
             << "";
     return data;
+}
+
+void Movement::setHighlighted(bool h)
+{
+    highlighted = h;
+}
+
+bool Movement::isHighlighted() const
+{
+    return highlighted;
 }

@@ -1,4 +1,5 @@
 
+#include <QFont>
 #include <QDebug>
 #include <QList>
 
@@ -124,12 +125,21 @@ QVariant Entities::data(const QModelIndex &index, int role) const
     if(!index.isValid())
         return QVariant();
 
-    if(role != Qt::DisplayRole)
+    if(role == Qt::FontRole)
+    {
+        QFont font;
+        EntitiesTreeItem *e = static_cast<EntitiesTreeItem*>(index.internalPointer());
+        if(e->getEntity()->isHighlighted()) font.setBold(true);
+        return font;
+    }
+    else if(role == Qt::DisplayRole)
+    {
+        EntitiesTreeItem *e = static_cast<EntitiesTreeItem*>(index.internalPointer());
+
+        return e->data(index.column());
+    }
+    else
         return QVariant();
-
-    EntitiesTreeItem *e = static_cast<EntitiesTreeItem*>(index.internalPointer());
-
-    return e->data(index.column());
 }
 
 Qt::ItemFlags Entities::flags(const QModelIndex &index) const
@@ -197,4 +207,7 @@ int Entities::rowCount(const QModelIndex &parent) const
     return parentEntitiesTreeItem->childCount();
 }
 
-
+void Entities::updateHighlights()
+{
+    reset();
+}

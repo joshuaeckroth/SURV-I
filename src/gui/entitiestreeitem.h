@@ -21,6 +21,8 @@ public:
     int row() const;
     EntitiesTreeItem *parent();
 
+    Entity *getEntity() const;
+
 private:
     QList<EntitiesTreeItem*> childEntitiesTreeItems;
     EntitiesTreeItem *parentEntitiesTreeItem;
