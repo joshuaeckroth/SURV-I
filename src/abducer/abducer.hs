@@ -75,7 +75,7 @@ logStatistics world world' =
       putStr (if (rdetsDiff > 0) then ("+" ++ (show rdetsDiff)) else (show rdetsDiff))
       putStr ") rejected; "
       putStr (show $ length movs')
-      putStr " ("
+      putStr "("
       putStr (if (movsDiff > 0) then ("+" ++ (show movsDiff)) else (show movsDiff))
       putStr ") movements - "
       putStr (show $ length rmovs')

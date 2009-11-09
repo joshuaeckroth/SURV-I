@@ -5,8 +5,8 @@
 #include "movement.h"
 #include "entity.h"
 
-Path::Path(int _id, std::vector<Movement*> _movements, QString _score)
-        : Entity(), id(_id), movements(_movements), score(_score), highlighted(false)
+Path::Path(int _id, std::vector<Movement*> _movements, QString _score, QString _conflicts)
+        : Entity(), id(_id), movements(_movements), score(_score), conflicts(_conflicts), highlighted(false)
 {
     distance = 0.0;
     for(std::vector<Movement*>::const_iterator it = movements.begin();
@@ -71,7 +71,7 @@ QStringList Path::getData() const
             << QString::number(duration, 'f', 2)
             << QString::number(distance, 'f', 2)
             << QString::number(distance / duration, 'f', 2)
-            << "";
+            << "" << conflicts;
     return data;
 }
 

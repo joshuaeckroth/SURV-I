@@ -11,7 +11,7 @@ EntitiesTreeItem::EntitiesTreeItem(Entity *e, EntitiesTreeItem *p)
 
     columns << "Entity Type" << "Id" << "Accepted?" << "Score"
             << "Lat" << "Lon" << "Start Time" << "End Time" << "Duration"
-            << "Distance" << "Avg Speed" << "Area";
+            << "Distance" << "Avg Speed" << "Area" << "Conflicts";
 }
 
 EntitiesTreeItem::~EntitiesTreeItem()

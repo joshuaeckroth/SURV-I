@@ -67,7 +67,8 @@ QStringList Detection::getData() const
             << QString::number(startTime, 'f', 2)
             << QString::number(endTime, 'f', 2)
             << "" << "" << ""
-            << QString::number(area, 'f', 2);
+            << QString::number(area, 'f', 2)
+            << "";
     return data;
 }
 

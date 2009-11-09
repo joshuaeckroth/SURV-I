@@ -6,102 +6,104 @@ import Vocabulary
 import Text.XML.HaXml.XmlContent.Parser (List1(..))
 import Reasoner.Types (HypothesisMap(..))
 import World (getEntity)
-import Data.List ((\\), subsequences, sortBy)
+import Data.List ((\\), sortBy)
 import Debug.Trace
 
 mkPaths :: HypothesisMap Entity -> [Movement] -> [Hypothesis Path]
 mkPaths entityMap movs =
-    let movChains = genMovChains entityMap movs
-    in map (mkPath entityMap movChains) movChains
+    let -- extract detections of movements for efficiency
+        movsAndDets = map (\mov@(Movement _ detStart detEnd _) ->
+                           (mov, (getEntity entityMap detStart, getEntity entityMap detEnd))) movs
+        movChains   = genMovChains movsAndDets
+    in map (mkPath movChains) movChains
 
-mkPath :: HypothesisMap Entity -> [[Movement]] -> [Movement] -> Hypothesis Path
-mkPath entityMap movChains movs =
-    let hypId     = mkPathHypId movs
-        movRefs   = map extractMovHypId movs
-        score     = mkPathScore entityMap movs
-        path      = Path (Path_Attrs hypId (show $ score Medium)) (NonEmpty $ map mkMovementRef movRefs)
+mkPath :: [[(Movement, (Detection, Detection))]]
+       -> [(Movement, (Detection, Detection))]
+       -> Hypothesis Path
+mkPath movChains movs =
+    let hypId     = mkPathHypId (map fst movs)
+        movRefs   = map extractMovHypId (map fst movs)
+        score     = mkPathScore movs
+        path      = Path (Path_Attrs hypId (show $ score Medium) "") (NonEmpty $ map mkMovementRef movRefs)
         aPriori   = score
         explains  = movRefs
         implies   = movRefs
         conflicts = []
     in Hyp path hypId aPriori explains implies conflicts
 
-mkPathScore :: HypothesisMap Entity -> [Movement] -> (Level -> Level)
-mkPathScore entityMap movs
-    | avgChainDifferences < 5.0 && sumChainSpeedDifferences < 10.0 = (\s -> High)
-    | avgChainDifferences < 5.0 && sumChainSpeedDifferences < 20.0 = (\s -> SlightlyHigh)
-    | avgChainDifferences < 5.0 && sumChainSpeedDifferences < 40.0 = (\s -> Medium)
+mkPathScore :: [(Movement, (Detection, Detection))] -> (Level -> Level)
+mkPathScore movs
+    | avgChainDiffs < 5.0 && sumSpeedDiffs < 10.0 = (\s -> High)
+    | avgChainDiffs < 5.0 && sumSpeedDiffs < 20.0 = (\s -> SlightlyHigh)
+    | avgChainDiffs < 5.0 && sumSpeedDiffs < 40.0 = (\s -> Medium)
     | otherwise = (\s -> Low)
-    where avgChainDifferences      = (sumChainDifferences entityMap movs) / (fromIntegral $ length movs)
-          avgChainSpeed            = (sum $ movChainSpeeds entityMap movs) / (fromIntegral $ length movs)
-          sumChainSpeedDifferences = sum $ map (\s -> abs (s - avgChainSpeed)) $ movChainSpeeds entityMap movs
+    where avgChainDiffs = (sumChainDifferences movs) / (fromIntegral $ length movs)
+          sumSpeedDiffs = sumChainSpeedDifferences movs
+
+sumChainSpeedDifferences :: [(Movement, (Detection, Detection))] -> Double
+sumChainSpeedDifferences movs =
+    let avgChainSpeed = (sum $ movChainSpeeds movs) / (fromIntegral $ length movs)
+    in sum $ map (\s -> abs (s - avgChainSpeed)) $ movChainSpeeds movs
 
 -- | Find the sum of differences (distance * time) of starting and ending
 --   points of each link in a movement chain.
-sumChainDifferences :: HypothesisMap Entity -> [Movement] -> Double
-sumChainDifferences _         []     = 0.0
-sumChainDifferences _         (_:[]) = 0.0
-sumChainDifferences entityMap ((Movement _ _ detEndHypId _):(Movement _ detStartHypId _ _):movs) =
-    let detEnd   = getEntity entityMap detEndHypId
-        detStart = getEntity entityMap detStartHypId
-    in (detDist detEnd detStart) * (detDelta detEnd detStart) + (sumChainDifferences entityMap movs)
+sumChainDifferences :: [(Movement, (Detection, Detection))] -> Double
+sumChainDifferences []     = 0.0
+sumChainDifferences (_:[]) = 0.0
+sumChainDifferences (((_, (_, detEnd))):((_, (detStart, _))):movs) =
+    (detDist detEnd detStart) * (detDelta detEnd detStart) + (sumChainDifferences movs)
 
 -- | Find the speed each of link in the chain
-movChainSpeeds :: HypothesisMap Entity -> [Movement] -> [Double]
-movChainSpeeds _ [] = []
-movChainSpeeds entityMap ((Movement _ det1HypId det2HypId _):movs) =
-    let det1 = getEntity entityMap det1HypId
-        det2 = getEntity entityMap det2HypId
-    in [(detDist det2 det1) / (detDelta det2 det1)] ++ (movChainSpeeds entityMap movs)
+movChainSpeeds :: [(Movement, (Detection, Detection))] -> [Double]
+movChainSpeeds [] = []
+movChainSpeeds ((_, (detStart, detEnd)):movs) =
+    [(detDist detEnd detStart) / (detDelta detEnd detStart)] ++ (movChainSpeeds movs)
 
--- | Find movement sequences that are longer than two movements and whose
---   movements \"connect\" to each other.
+-- | Find movement sequences that are longer than two movements, whose
+--   movements \"connect\" to each other, and whose changes in speed
+--   are minimal.
 -- 
 -- \"Connection\" is defined as a closeness of the end point of
 -- the earlier movement to the start point of the later movement.
 -- This connection property is implemented in 'movsSpatiallyConnected'
 -- and 'movsTemporallyConnected'; we do this successive filtering
 -- for efficiency.
-genMovChains :: HypothesisMap Entity -> [Movement] -> [[Movement]]
-genMovChains entityMap movs = 
-    let sortedMovs   = filter (\movs -> length movs > 2) $
-                       subsequences (sortBy (movStartTimeCompare entityMap) movs)
-        temporalMovs = filter (\movs -> and $ zipWith (\mov1 mov2 -> movsTemporallyConnected entityMap mov1 mov2)
-                                        movs (tail movs)) sortedMovs
-        spatialMovs  = filter (\movs -> and $ zipWith (\mov1 mov2 -> movsSpatiallyConnected entityMap mov1 mov2)
-                                        movs (tail movs)) temporalMovs
-    in spatialMovs
+genMovChains :: [(Movement, (Detection, Detection))] -> [[(Movement, (Detection, Detection))]]
+genMovChains movs = 
+    let connectedMovs = filter (\movs -> length movs > 2) $ nonEmptySubMovChains (sortBy movStartTimeCompare movs)
+        -- movements that have a similar speed
+        simSpeedMovs = filter (\movs -> sumChainSpeedDifferences movs < 50.0) connectedMovs
+    in simSpeedMovs
 
-movStartTimeCompare :: HypothesisMap Entity -> Movement -> Movement -> Ordering
-movStartTimeCompare entityMap mov1 mov2 =
-    let detStart1 = getEntity entityMap (movementDetId1 mov1)
-        detStart2 = getEntity entityMap (movementDetId1 mov2)
-    in compare (detectionStartTime detStart1) (detectionStartTime detStart2)
+nonEmptySubMovChains :: [(Movement, (Detection, Detection))]
+                     -> [[(Movement, (Detection, Detection))]]
+nonEmptySubMovChains [] = []
+nonEmptySubMovChains (mov:movs) = [mov] : foldr f [] (nonEmptySubMovChains movs)
+    where
+      f [] r = [mov] : r
+      f ys@(mov':movs') r = if (movsTemporallyConnected mov mov') && (movsSpatiallyConnected mov mov')
+                            then ys : (mov : ys) : r
+                            else ys : r
+
+movStartTimeCompare :: (Movement, (Detection, Detection))
+                    -> (Movement, (Detection, Detection))
+                    -> Ordering
+movStartTimeCompare (_, (detStart1, _)) (_, (detStart2, _)) =
+    compare (detectionStartTime detStart1) (detectionStartTime detStart2)
 
 -- | Determine if two movements are \"connected\".
 -- 
 -- Two movements are connected if the end point of the earlier movement
 -- is with 2.0 units of the start point of the later movement.
-movsSpatiallyConnected :: HypothesisMap Entity -> Movement -> Movement -> Bool
-movsSpatiallyConnected entityMap (Movement _ _ detEndHypId _) (Movement _ detStartHypId _ _) =
-    let detEnd   = getEntity entityMap detEndHypId
-        detStart = getEntity entityMap detStartHypId
-    in detDist detEnd detStart < 2.0
+movsSpatiallyConnected :: (Movement, (Detection, Detection))
+                       -> (Movement, (Detection, Detection))
+                       -> Bool
+movsSpatiallyConnected (_, (_, detEnd)) (_, (detStart, _)) = detDist detEnd detStart < 2.0
 
-movsTemporallyConnected :: HypothesisMap Entity -> Movement -> Movement -> Bool
-movsTemporallyConnected entityMap (Movement _ _ detEndHypId _) (Movement _ detStartHypId _ _) =
-    let detStart = getEntity entityMap detStartHypId
-        detEnd   = getEntity entityMap detEndHypId
-        delta    = detDelta detStart detEnd
+movsTemporallyConnected :: (Movement, (Detection, Detection))
+                        -> (Movement, (Detection, Detection))
+                        -> Bool
+movsTemporallyConnected (_, (_, detEnd)) (_, (detStart, _)) =
+    let delta = detDelta detStart detEnd
     in delta < 0.5 && delta >= 0.0
 
--- | Check if a path is shorter than 3.0 seconds or contains only one movement
-isShortMovChain :: HypothesisMap Entity -> [Movement] -> Bool
-isShortMovChain _ []       = True -- no movements is a "short chain"
-isShortMovChain _ (mov:[]) = True -- one movement is a short chain
-isShortMovChain entityMap movs =
-    let (Movement _ detStartHypId _ _) = head movs -- earliest
-        (Movement _ _ detEndHypId _)   = last movs -- most recent
-        detStart                     = getEntity entityMap detStartHypId
-        detEnd                       = getEntity entityMap detEndHypId
-    in 3.0 < (detDelta detEnd detStart)

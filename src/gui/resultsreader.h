@@ -32,6 +32,7 @@ private:
   int pathId;
   bool inPath;
   QString pathScore;
+  QString pathConflicts;
   std::map<int,Detection*> detections;
   std::map<int,Movement*> movements;
   std::map<int,Path*> paths;

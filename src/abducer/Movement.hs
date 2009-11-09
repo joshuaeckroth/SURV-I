@@ -17,7 +17,7 @@ mkMovements dets =
                          det1 /= det2,
                          dist < 150.0,
                          areaDiff < 2000.0,
-                         speed < 200.0,
+                         speed < 100.0,
                          delta < 1.5, delta > 0.0,
                          detBefore det1 det2]
     in map (mkMovement closeDetPairs) closeDetPairs

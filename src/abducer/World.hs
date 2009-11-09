@@ -14,7 +14,7 @@ import Text.XML.HaXml.XmlContent.Parser (List1(..))
 import qualified Data.Sequence as Seq
 import Data.Maybe
 import Data.Dynamic
-import Data.List (sortBy, intersect, (\\), nub)
+import Data.List (sortBy, intersect, (\\), nub, intercalate)
 import Debug.Trace
 
 data World = World { mind      :: R.Mind Level Level Level
@@ -88,8 +88,8 @@ removeSubPaths world = foldr removeHypothesis world (map extractPathHypId subPat
           findSubPaths paths path = filter (isSubPath path) paths
 
           isSubPath :: Path -> Path -> Bool
-          isSubPath (Path (Path_Attrs hypId1 _) (NonEmpty movRefs1))
-                        (Path (Path_Attrs hypId2 _) (NonEmpty movRefs2))
+          isSubPath (Path (Path_Attrs hypId1 _ _) (NonEmpty movRefs1))
+                        (Path (Path_Attrs hypId2 _ _) (NonEmpty movRefs2))
               -- a path is not a subpath of itself
               | hypId1 == hypId2            = False
               -- a path is a subpath if all of the latter path's movements are
@@ -103,7 +103,7 @@ removeSubPaths world = foldr removeHypothesis world (map extractPathHypId subPat
 -- Two paths conflict or are rivals if they share a significant (> 80%) number
 -- of movements.
 updateConflictingPaths :: World -> World
-updateConflictingPaths world = mergeIntoWorld world $ findConflictingPaths' paths paths
+updateConflictingPaths world = mergeIntoWorld world $ findConflictingPaths paths paths
     where
       paths = gatherEntities (entityMap world) (allHypotheses world)
 
@@ -111,10 +111,18 @@ updateConflictingPaths world = mergeIntoWorld world $ findConflictingPaths' path
       -- then add conflict relations for each (path, conflicts) pair
       mergeIntoWorld :: World -> [(HypothesisID, [HypothesisID])] -> World
       mergeIntoWorld world conflicts =
-          foldl (\w (subject, objects) ->
-                 foldl (\w' object ->
-                        addConflicts subject object w') w objects)
-          (removePathConflicts world (map fst conflicts)) conflicts
+          let -- first add the conflicts relations
+              world1 = foldl (\w (subject, objects) ->
+                              foldl (\w' object ->
+                                     addConflicts subject object w') w objects)
+                       (removePathConflicts world (map fst conflicts)) conflicts
+              -- then update the path entities to record their conflicts
+              world2 = foldl (\w (subject, objects) ->
+                              let (Path (Path_Attrs hypId score _) movs) = getEntity (entityMap w) subject in
+                              w {entityMap = IDMap.insert subject
+                                             (toDyn $ (Path (Path_Attrs hypId score (intercalate "," (map show objects))) movs))
+                                             (entityMap w)}) world1 conflicts
+          in world2
 
       -- remove all adjusting (conflict) relations exclusively involving paths
       -- FIXME: this is very inefficient!
@@ -124,27 +132,27 @@ updateConflictingPaths world = mergeIntoWorld world $ findConflictingPaths' path
                  w {mind = R.removeAdjuster (mkConflictsId subject object) (mind w)})
                     world [(subject, object) | subject <- hypIds, object <- hypIds]
 
-      findConflictingPaths' :: [Path] -> [Path] -> [(HypothesisID, [HypothesisID])]
-      findConflictingPaths' [] _ = []
-      findConflictingPaths' (path@(Path (Path_Attrs hypId _) _):paths) paths' =
-          [(hypId, map extractPathHypId $ filter (pathsConflict path) paths')]
-          ++ (findConflictingPaths' paths paths')
+findConflictingPaths :: [Path] -> [Path] -> [(HypothesisID, [HypothesisID])]
+findConflictingPaths [] _ = []
+findConflictingPaths (path@(Path (Path_Attrs hypId _ _) _):paths) paths' =
+    [(hypId, map extractPathHypId $ filter (pathsConflict path) paths')]
+    ++ (findConflictingPaths paths paths')
 
-      pathsConflict :: Path -> Path -> Bool
-      pathsConflict (Path (Path_Attrs hypId1 _) (NonEmpty movRefs1))
-                        (Path (Path_Attrs hypId2 _) (NonEmpty movRefs2))
-          -- a path does not conflict with itself
-          | hypId1 == hypId2   = False
-          -- a path conflicts with another path if at least one path shares > 80% of
-          -- the same movements with the other
-          | movsShared12 > 0.8 = True
-          | movsShared21 > 0.8 = True
-          -- otherwise there is no conflict
-          | otherwise          = False
-          where movsShared12 = (fromIntegral $ length $ movRefs1 \\ movRefs2) /
-                               (fromIntegral $ length movRefs1)
-                movsShared21 = (fromIntegral $ length $ movRefs2 \\ movRefs1) /
-                               (fromIntegral $ length movRefs2)
+pathsConflict :: Path -> Path -> Bool
+pathsConflict (Path (Path_Attrs hypId1 _ _) (NonEmpty movRefs1))
+                  (Path (Path_Attrs hypId2 _ _) (NonEmpty movRefs2))
+    -- a path does not conflict with itself
+    | hypId1 == hypId2       = False
+    -- a path conflicts with another path if the one shares at least 80% of
+    -- the same movements with the other
+    | movsNotShared12 <= 0.2 = True
+    | movsNotShared21 <= 0.2 = True
+    -- otherwise there is no conflict
+    | otherwise              = False
+    where movsNotShared12 = (fromIntegral $ length $ movRefs1 \\ movRefs2) /
+                            (fromIntegral $ length movRefs1)
+          movsNotShared21 = (fromIntegral $ length $ movRefs2 \\ movRefs1) /
+                            (fromIntegral $ length movRefs2)
 
 hypothesize :: (Typeable a) => [Hypothesis a] -> World -> World
 hypothesize hs world =

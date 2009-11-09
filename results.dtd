@@ -27,7 +27,8 @@
 
 <!ELEMENT Path         (MovementRef+)>
 <!ATTLIST Path         id        CDATA #REQUIRED
-	               score     CDATA #REQUIRED>
+	               score     CDATA #REQUIRED
+                       conflicts CDATA #REQUIRED>
 
 <!ELEMENT PathRef      EMPTY>
 <!ATTLIST PathRef      pathId    CDATA #REQUIRED>

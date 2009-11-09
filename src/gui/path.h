@@ -12,7 +12,7 @@ class Movement;
 class Path : public Entity
 {
 public:
-    Path(int _id, std::vector<Movement*> _movements, QString _score);
+    Path(int _id, std::vector<Movement*> _movements, QString _score, QString _conflicts);
     ~Path();
 
     int getId() const;
@@ -33,6 +33,7 @@ private:
     std::vector<Movement*> movements;
     std::vector<Movement*>::const_iterator movements_iter;
     QString score;
+    QString conflicts;
     double distance;
     double duration;
     bool highlighted;

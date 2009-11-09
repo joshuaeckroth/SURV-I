@@ -60,6 +60,7 @@ bool ResultsReader::startElement(const QString&, const QString&,
     {
         pathId = attributes.value("id").toInt();
         pathScore = attributes.value("score");
+        pathConflicts = attributes.value("conflicts");
         inPath = true;
         pathMovements.clear();
     }
@@ -90,7 +91,7 @@ bool ResultsReader::endElement(const QString&, const QString&, const QString& qN
     }
     else if(qName == "Path")
     {
-        paths[pathId] = new Path(pathId, pathMovements, pathScore);
+        paths[pathId] = new Path(pathId, pathMovements, pathScore, pathConflicts);
         inPath = false;
     }
     return true;

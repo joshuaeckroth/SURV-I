@@ -56,7 +56,7 @@ QStringList Movement::getData() const
             << QString::number(det2->getEndTime() - det1->getStartTime(), 'f', 2)
             << QString::number(distance, 'f', 2)
             << QString::number(distance / (det2->getEndTime() - det1->getStartTime()), 'f', 2)
-            << "";
+            << "" << "";
     return data;
 }
 

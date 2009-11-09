@@ -113,7 +113,7 @@ mkMovementRef :: HypothesisID -> MovementRef
 mkMovementRef hypId = MovementRef hypId
 
 extractPathHypId :: Path -> HypothesisID
-extractPathHypId (Path (Path_Attrs hypId _) _) = hypId
+extractPathHypId (Path (Path_Attrs hypId _ _) _) = hypId
 
 mkPathRef :: HypothesisID -> PathRef
 mkPathRef hypId = PathRef hypId
@@ -225,6 +225,7 @@ data Path = Path Path_Attrs (List1 MovementRef)
 data Path_Attrs = Path_Attrs
     { pathId    :: HypothesisID
     , pathScore :: String
+    , pathConflicts :: String
     } deriving (Eq,Show)
 data PathRef = PathRef
     { pathRefPathId :: HypothesisID
@@ -387,10 +388,12 @@ instance XmlAttributes Path_Attrs where
         Path_Attrs
           { pathId = HasInt $ read $ definiteA fromAttrToStr "Path" "id" as
           , pathScore = definiteA fromAttrToStr "Path" "score" as
+          , pathConflicts = definiteA fromAttrToStr "Path" "conflicts" as
           }
     toAttrs v = catMaybes 
         [ toAttrFrStr "id" (show $ pathId v)
         , toAttrFrStr "score" (pathScore v)
+        , toAttrFrStr "conflicts" (pathConflicts v)
         ]
 
 instance HTypeable PathRef where
