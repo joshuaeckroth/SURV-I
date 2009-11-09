@@ -6,13 +6,13 @@ import Vocabulary
 import Text.XML.HaXml.XmlContent.Parser (List1(..))
 import Reasoner.Types (HypothesisMap(..))
 import World (getEntity)
-import Data.List ((\\))
+import Data.List ((\\), subsequences, sortBy)
 import Debug.Trace
 
 mkPaths :: HypothesisMap Entity -> [Movement] -> [Hypothesis Path]
-mkPaths entityMap movs = let movChains = filter (not . (isShortMovChain entityMap))
-                                         (genMovChains entityMap movs)
-                         in map (mkPath entityMap movChains) movChains
+mkPaths entityMap movs =
+    let movChains = genMovChains entityMap movs
+    in map (mkPath entityMap movChains) movChains
 
 mkPath :: HypothesisMap Entity -> [[Movement]] -> [Movement] -> Hypothesis Path
 mkPath entityMap movChains movs =
@@ -54,7 +54,8 @@ movChainSpeeds entityMap ((Movement _ det1HypId det2HypId _):movs) =
         det2 = getEntity entityMap det2HypId
     in [(detDist det2 det1) / (detDelta det2 det1)] ++ (movChainSpeeds entityMap movs)
 
--- | Find movements that \"connect\" to each other.
+-- | Find movement sequences that are longer than two movements and whose
+--   movements \"connect\" to each other.
 -- 
 -- \"Connection\" is defined as a closeness of the end point of
 -- the earlier movement to the start point of the later movement.
@@ -62,12 +63,20 @@ movChainSpeeds entityMap ((Movement _ det1HypId det2HypId _):movs) =
 -- and 'movsTemporallyConnected'; we do this successive filtering
 -- for efficiency.
 genMovChains :: HypothesisMap Entity -> [Movement] -> [[Movement]]
-genMovChains _ [] = []
-genMovChains _ (mov:[]) = [[mov]]
-genMovChains entityMap (mov:movs) = [mov:rest | rest <- genMovChains entityMap
-                                                        (filter (movsTemporallyConnected entityMap mov)
-                                                         (filter (movsSpatiallyConnected entityMap mov) movs))]
-                                    ++ (genMovChains entityMap movs)
+genMovChains entityMap movs = 
+    let sortedMovs   = filter (\movs -> length movs > 2) $
+                       subsequences (sortBy (movStartTimeCompare entityMap) movs)
+        temporalMovs = filter (\movs -> and $ zipWith (\mov1 mov2 -> movsTemporallyConnected entityMap mov1 mov2)
+                                        movs (tail movs)) sortedMovs
+        spatialMovs  = filter (\movs -> and $ zipWith (\mov1 mov2 -> movsSpatiallyConnected entityMap mov1 mov2)
+                                        movs (tail movs)) temporalMovs
+    in spatialMovs
+
+movStartTimeCompare :: HypothesisMap Entity -> Movement -> Movement -> Ordering
+movStartTimeCompare entityMap mov1 mov2 =
+    let detStart1 = getEntity entityMap (movementDetId1 mov1)
+        detStart2 = getEntity entityMap (movementDetId1 mov2)
+    in compare (detectionStartTime detStart1) (detectionStartTime detStart2)
 
 -- | Determine if two movements are \"connected\".
 -- 
