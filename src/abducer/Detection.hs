@@ -38,7 +38,7 @@ mkDetectionScore cdets cdet
           -- is this detection (maybe) seen in more than one camera?
           -- this is judged to be true if there is at least one detection very close by
           corroboration = if (1 < (length $ filter (nearby cdet) cdets)) then
-                              increaseLevel
+                              increaseLevelBy 2
                           else id
           nearby cdet cdet' = 20.0 > (cameraDetDist cdet cdet')
 
@@ -53,4 +53,4 @@ mergeMultCameraDets (hdet:hdets) = [hdet] ++ (mergeMultCameraDets $ filter (not 
 -- ^ Check if two detections are likely the same (possibly across different cameras).
 likelySameHypDet :: Hypothesis Detection -> Hypothesis Detection -> Bool
 likelySameHypDet (Hyp {entity = det1}) (Hyp {entity = det2}) =
-    (detDist det1 det2 < 50.0) && (detDelta det1 det2 < 3.0)
+    (detDist det1 det2 < 80.0) && (detDelta det1 det2 < 2.0)

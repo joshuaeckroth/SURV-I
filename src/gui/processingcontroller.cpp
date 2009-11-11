@@ -70,8 +70,8 @@ void ProcessingController::startProcessing()
         }
     }
 
-    // send detections to abducer every 2 seconds
-    abducerTimer->start(2000);
+    // send detections to abducer every 3 seconds
+    abducerTimer->start(3000);
     isProcessing = true;
     mutex.unlock();
 }

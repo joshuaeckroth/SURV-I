@@ -6,7 +6,7 @@ import Vocabulary
 import Text.XML.HaXml.XmlContent.Parser (List1(..))
 import Reasoner.Types (HypothesisMap(..))
 import World (getEntity)
-import Data.List ((\\), sortBy)
+import Data.List ((\\), sortBy, nub)
 import Debug.Trace
 
 mkPaths :: HypothesisMap Entity -> [Path] -> [Movement] -> [Hypothesis Path]
@@ -19,8 +19,8 @@ mkPaths entityMap paths movs =
         existingPaths    = map (\(Path _ (NonEmpty pmovs)) -> extractDets $
                                 map (\mref -> getEntity entityMap (movementRefMovId mref)) pmovs) paths
         newPaths         = map mkPath movChains
-        extendedPaths    = map mkPath $ concat $ map (extendPaths movChains) existingPaths
-    in newPaths ++ extendedPaths
+        extendedPaths    = map mkPath $ nub $ concat $ map (extendPaths movChains) existingPaths
+    in nub $ newPaths ++ extendedPaths
 
 mkPath :: [(Movement, (Detection, Detection))]
        -> Hypothesis Path
@@ -39,23 +39,20 @@ extendPaths :: [[(Movement, (Detection, Detection))]]
             -> [(Movement, (Detection, Detection))]
             -> [[(Movement, (Detection, Detection))]]
 extendPaths movChains pmovs =
-    map (\movs -> pmovs ++ movs) $
-        filter (\movs -> (movsTemporallyConnected (last pmovs) (head movs)) &&
-                         (movsSpatiallyConnected (last pmovs) (head movs))) movChains
+    map (\movs -> nub $ pmovs ++ movs) $
+        filter (\movs -> movsConnected (last pmovs) (head movs)) movChains
 
 mkPathScore :: [(Movement, (Detection, Detection))] -> (Level -> Level)
 mkPathScore movs
-    | avgChainDiffs < 5.0 && sumSpeedDiffs < 30.0 && duration > 5.0 = (\s -> High)
-    | avgChainDiffs < 5.0 && sumSpeedDiffs < 40.0 && duration > 4.0 = (\s -> SlightlyHigh)
-    | avgChainDiffs < 5.0 && sumSpeedDiffs < 50.0 && duration > 3.0 = (\s -> Medium)
-    | avgChainDiffs < 5.0 && sumSpeedDiffs < 60.0 && duration > 2.0 = (\s -> SlightlyLow)
-    | avgChainDiffs < 5.0 && sumSpeedDiffs < 70.0 && duration > 1.0 = (\s -> Low)
+    | duration > 5.0 = (\s -> VeryHigh)
+    | duration > 4.0 = (\s -> High)
+    | duration > 3.0 = (\s -> SlightlyHigh)
+    | duration > 2.0 = (\s -> Medium)
     | otherwise = (\s -> VeryLow)
-    where avgChainDiffs = (sumChainDifferences movs) / (fromIntegral $ length movs)
-          sumSpeedDiffs = sumChainSpeedDifferences movs
-          duration      = let detStart = (fst . snd) $ last movs
-                              detEnd   = (snd . snd) $ head movs
-                          in detDelta detEnd detStart
+    where sumSpeedDiffs = sumChainSpeedDifferences movs
+          duration      = let detStart = (fst . snd) $ head movs
+                              detEnd   = (snd . snd) $ last movs
+                          in detDelta detStart detEnd
 
 sumChainSpeedDifferences :: [(Movement, (Detection, Detection))] -> Double
 sumChainSpeedDifferences movs =
@@ -82,14 +79,12 @@ movChainSpeeds ((_, (detStart, detEnd)):movs) =
 -- 
 -- \"Connection\" is defined as a closeness of the end point of
 -- the earlier movement to the start point of the later movement.
--- This connection property is implemented in 'movsSpatiallyConnected'
--- and 'movsTemporallyConnected'; we do this successive filtering
--- for efficiency.
+-- This connection property is implemented in 'movsConnected'.
 genMovChains :: [(Movement, (Detection, Detection))] -> [[(Movement, (Detection, Detection))]]
 genMovChains movs = 
-    let connectedMovs = filter (\movs -> length movs >= 4) $ nonEmptySubMovChains (sortBy movStartTimeCompare movs)
+    let connectedMovs = filter (\movs -> length movs >= 3) $ nonEmptySubMovChains (sortBy movStartTimeCompare movs)
         -- movements that have a similar speed
-        simSpeedMovs = filter (\movs -> sumChainSpeedDifferences movs < 100.0) connectedMovs
+        simSpeedMovs = filter (\movs -> sumChainSpeedDifferences movs < 70.0) connectedMovs
     in simSpeedMovs
 
 nonEmptySubMovChains :: [(Movement, (Detection, Detection))]
@@ -98,7 +93,9 @@ nonEmptySubMovChains [] = []
 nonEmptySubMovChains (mov:movs) = [mov] : foldr f [] (nonEmptySubMovChains movs)
     where
       f [] r = [mov] : r
-      f ys@(mov':movs') r = if (movsTemporallyConnected mov mov') && (movsSpatiallyConnected mov mov')
+      f ys@(mov':movs') r = if (((fst $ snd mov) /= (fst $ snd mov')) -- movs do not start at same detection
+                                && ((snd $ snd mov) /= (snd $ snd mov')) -- movs do not end at same detection
+                                && (movsConnected mov mov'))
                             then ys : (mov : ys) : r
                             else ys : r
 
@@ -111,19 +108,18 @@ movStartTimeCompare (_, (detStart1, _)) (_, (detStart2, _)) =
 -- | Determine if two movements are \"connected\".
 -- 
 -- Two movements are connected if the end point of the earlier movement
--- is with 0.0 units of the start point of the later movement.
-movsSpatiallyConnected :: (Movement, (Detection, Detection))
-                       -> (Movement, (Detection, Detection))
-                       -> Bool
-movsSpatiallyConnected (_, (detStart1, detEnd1)) (_, (detStart2, detEnd2)) =
-    (detDist detEnd1 detStart2 == 0.0) && (detDistanceToSegment detStart1 detEnd1 detEnd2 < 30.0)
-
-movsTemporallyConnected :: (Movement, (Detection, Detection))
-                        -> (Movement, (Detection, Detection))
-                        -> Bool
-movsTemporallyConnected (_, (_, detEnd)) (_, (detStart, _)) =
-    let delta = detDelta detStart detEnd
-    in delta == 0.0
+-- is within 20.0 units of the start point of the later movement.
+movsConnected :: (Movement, (Detection, Detection))
+              -> (Movement, (Detection, Detection))
+              -> Bool
+movsConnected (_, (detStart1, detEnd1)) (_, (detStart2, detEnd2)) =
+    (detDist detEnd1 detStart2 <= 20.0)
+    -- && (detDistanceToSegment detStart1 detEnd1 detEnd2 < 20.0)
+           -- require that traveling from point 1 to 2 to 3 require less speed than traveling from point 1 to 3
+           -- (take the most efficient route; may not always be the true route if the route was a short loop)
+           && ((((detDist detStart1 detEnd1) + (detDist detStart2 detEnd2)) / (detDelta detStart1 detEnd2))
+               <= (detSpeed detStart1 detEnd2))
+                  && (25.0 > (abs $ (detSpeed detStart1 detEnd1) - (detSpeed detStart2 detEnd2)))
 
 -- from http://www.gamedev.net/community/forums/viewreply.asp?ID=1250842
 detDistanceToSegment :: Detection -> Detection -> Detection -> Double

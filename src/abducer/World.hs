@@ -50,7 +50,7 @@ newerDetections :: HypothesisMap Entity
                 -> HypothesisIDs
                 -> [HypothesisID]
 newerDetections entityMap hypIds =
-    take 40 $ map extractDetHypId $
+    take 60 $ map extractDetHypId $
     reverse $ sortBy detAscOrdering $
     gatherEntities entityMap hypIds
 

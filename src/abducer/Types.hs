@@ -26,6 +26,9 @@ data Hypothesis a =
     , conflicts :: [HypothesisID]
     }
 
+instance Eq (Hypothesis a) where
+    (Hyp {hypId = hypId1}) == (Hyp {hypId = hypId2}) = hypId1 == hypId2
+
 type Time = Double
 type Latitude = Double
 type Longitude = Double

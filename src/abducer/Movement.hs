@@ -16,7 +16,7 @@ mkMovements dets =
                          let speed      = detSpeed det1 det2,
                          ((detectionLat det1) /= (detectionLat det2) ||
                           (detectionLon det1) /= (detectionLon det2)),
-                         dist < 150.0, dist > 10.0,
+                         dist < 150.0, dist > 0.0,
                          -- areaChange < 0.8,
                          speed < 100.0,
                          delta < 2.5, delta > 0.0,
