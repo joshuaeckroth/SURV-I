@@ -8,28 +8,29 @@ import Debug.Trace
 
 mkMovements :: [Detection] -> [Hypothesis Movement]
 mkMovements dets =
-    let closeDetPairs = [(det1, det2, dist, delta, areaDiff, speed) |
+    let closeDetPairs = [(det1, det2, dist, delta, areaChange, speed) |
                          det1 <- dets, det2 <- dets,
-                         let dist     = detDist det1 det2,
-                         let delta    = detDelta det1 det2,
-                         let areaDiff = detAreaDiff det1 det2,
-                         let speed    = detSpeed det1 det2,
-                         det1 /= det2,
-                         dist < 150.0,
-                         areaDiff < 2000.0,
+                         let dist       = detDist det1 det2,
+                         let delta      = detDelta det1 det2,
+                         let areaChange = detAreaChange det1 det2,
+                         let speed      = detSpeed det1 det2,
+                         ((detectionLat det1) /= (detectionLat det2) ||
+                          (detectionLon det1) /= (detectionLon det2)),
+                         dist < 150.0, dist > 10.0,
+                         -- areaChange < 0.8,
                          speed < 100.0,
-                         delta < 1.5, delta > 0.0,
+                         delta < 2.5, delta > 0.0,
                          detBefore det1 det2]
     in map (mkMovement closeDetPairs) closeDetPairs
 
 mkMovement :: [(Detection, Detection, Double, Time, Double, Double)]
            -> (Detection, Detection, Double, Time, Double, Double)
            -> Hypothesis Movement
-mkMovement dets (det1, det2, dist, delta, areaDiff, speed) =
+mkMovement dets (det1, det2, dist, delta, areaChange, speed) =
     let hypId     = mkMovHypId [det1, det2]
         detHypId1 = extractDetHypId det1
         detHypId2 = extractDetHypId det2
-        score     = mkMovementScore dets (det1, det2, dist, delta, areaDiff, speed)
+        score     = mkMovementScore dets (det1, det2, dist, delta, areaChange, speed)
         mov       = Movement hypId detHypId1 detHypId2 (show $ score Medium)
         aPriori   = score
         explains  = [detHypId1, detHypId2]
@@ -40,9 +41,9 @@ mkMovement dets (det1, det2, dist, delta, areaDiff, speed) =
 mkMovementScore :: [(Detection, Detection, Double, Time, Double, Double)]
                 -> (Detection, Detection, Double, Time, Double, Double)
                 -> (Level -> Level)
-mkMovementScore dets (det1, det2, dist, delta, areaDiff, speed)
+mkMovementScore dets (det1, det2, dist, delta, areaChange, speed)
     | dist < 50.0 && delta < 0.5  = (\s -> corroboration Low)
     | dist < 100.0 && delta < 1.0 = (\s -> corroboration SlightlyLow)
     | otherwise                   = (\s -> corroboration VeryLow)
     -- corroboration depends on two camera detections appearing similar (so far, just area)
-    where corroboration = if areaDiff < 200.0 then increaseLevel else id
+    where corroboration = if areaChange < 0.3 then increaseLevelBy 2 else id

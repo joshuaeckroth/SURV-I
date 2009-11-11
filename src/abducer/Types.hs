@@ -84,6 +84,11 @@ detAscOrdering det1 det2
 detAreaDiff :: Detection -> Detection -> Double
 detAreaDiff det1 det2 = abs $ (detectionArea det1) - (detectionArea det2)
 
+detAreaChange :: Detection -> Detection -> Double
+detAreaChange det1 det2 = let detArea1 = detectionArea det1
+                              detArea2 = detectionArea det2
+                          in (abs $ detArea1 - detArea2) / (max detArea1 detArea2)
+
 detSpeed :: Detection -> Detection -> Double
 detSpeed det1 det2 = (detDist det1 det2) / (abs $ detDelta det1 det2)
 

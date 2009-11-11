@@ -127,9 +127,6 @@ QString Decoder::findBlobs(Frame *frame, bool drawContours)
             cvInitTreeNodeIterator(&iterator, cnt, maxLevel);
             while((cnt = (CvSeq*)cvNextTreeNode(&iterator)) != 0)
             {
-                if(drawContours)
-                    cvDrawContours(frame->getImage(), cnt, cvScalarAll(255), cvScalarAll(255), 100);
-
                 CvMoments moments;
                 cvContourMoments(cnt, &moments);
 
@@ -145,6 +142,9 @@ QString Decoder::findBlobs(Frame *frame, bool drawContours)
                 b.center = QPoint((int)p.first, (int)p.second);
                 b.area = m00;
                 blobs.push_back(b);
+
+                if(drawContours && b.area >= 25.0)
+                    cvDrawContours(frame->getImage(), cnt, cvScalarAll(255), cvScalarAll(255), 100);
             }
         }
     }

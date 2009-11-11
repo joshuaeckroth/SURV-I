@@ -14,6 +14,7 @@ import Detection
 import Movement
 import Path
 import qualified WrappedInts.IDMap as IDMap
+import qualified WrappedInts.IDSet as IDSet
 import Debug.Trace
 
 main = do
@@ -58,12 +59,13 @@ logStatistics :: World -> World -> IO ()
 logStatistics world world' =
     let (Results _ (Accepted dets movs paths) (Rejected rdets rmovs rpaths)) = buildResults world
         (Results _ (Accepted dets' movs' paths') (Rejected rdets' rmovs' rpaths')) = buildResults world'
-        detsDiff   = (length dets') - (length dets)
-        rdetsDiff  = (length rdets') - (length rdets)
-        movsDiff   = (length movs') - (length movs)
-        rmovsDiff  = (length rmovs') - (length rmovs)
-        pathsDiff  = (length paths') - (length paths)
-        rpathsDiff = (length rpaths') - (length rpaths)
+        detsDiff    = (length dets') - (length dets)
+        rdetsDiff   = (length rdets') - (length rdets)
+        movsDiff    = (length movs') - (length movs)
+        rmovsDiff   = (length rmovs') - (length rmovs)
+        pathsDiff   = (length paths') - (length paths)
+        rpathsDiff  = (length rpaths') - (length rpaths)
+        numEntities = IDMap.size (entityMap world')
     in do
       putStr "Hypotheses: "
       putStr (show $ length dets')
@@ -90,6 +92,7 @@ logStatistics world world' =
       putStr "("
       putStr (if (rpathsDiff > 0) then ("+" ++ (show rpathsDiff)) else (show rpathsDiff))
       putStrLn ") rejected"
+      putStrLn ("Number of entities in entity map: " ++ (show numEntities))
 
 respondWithResults :: Socket -> World -> IO ()
 respondWithResults s world = sendResults s $ outputLog world
@@ -104,6 +107,7 @@ runAbducer cameraDetections world =
         allHyps        = allHypotheses cleanedWorld
         existingDets   = gatherEntities emap allHyps :: [Detection]
         existingMovs   = gatherEntities emap allHyps :: [Movement]
+        existingPaths  = gatherEntities emap allHyps :: [Path]
         dets           = mkDetections cameraDetections
         emap'          = foldl addToEntityMap emap (map (\(Hyp {entity = det}) ->
                                                          (extractDetHypId det, det)) dets)
@@ -113,9 +117,12 @@ runAbducer cameraDetections world =
         newMovs        = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) movs
         emap''         = foldl addToEntityMap emap' (map (\(Hyp {entity = mov}) ->
                                                           (extractMovHypId mov, mov)) newMovs)
-        paths          = mkPaths emap'' $ nub (existingMovs ++ (extractEntities movs))
-        -- also filter out duplicate paths
+        paths          = mkPaths emap'' existingPaths $ nub (existingMovs ++ (extractEntities movs))
+        -- filter out duplicate paths
         newPaths       = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) paths
+        -- filter out subpaths among newPaths and existing paths
+        nonSubPaths    = let allPaths = nub $ (extractEntities newPaths) ++ (gatherEntities emap allHyps)
+                         in filter (\(Hyp {entity = path}) -> not $ or $ map (isSubPath path) allPaths) newPaths
     in
-      reason $ updateConflictingPaths $ removeSubPaths $ hypothesize newPaths $
+      reason $ updateConflictingPaths $ removeSubPaths $ hypothesize nonSubPaths $
              hypothesize newMovs $ hypothesize dets cleanedWorld

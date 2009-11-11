@@ -40,19 +40,36 @@ cleanWorld world =
         newerDetHypIds     = newerDetections (entityMap world) (allHypotheses world)
         oldDetHypIds       = allDetHypIds \\ newerDetHypIds
         invalidMovHypIds   = invalidMovements oldDetHypIds (entityMap world) (allHypotheses world)
-        rejectedMovHypIds  = map extractMovHypId $ gatherEntities (entityMap world) (rejectedHypotheses world)
-        invalidPathHypIds  = invalidPaths invalidMovHypIds (entityMap world) (allHypotheses world)
-        rejectedPathHypIds = map extractPathHypId $ gatherEntities (entityMap world) (rejectedHypotheses world)
-        removable          = oldDetHypIds ++ invalidMovHypIds ++ rejectedMovHypIds ++ invalidPathHypIds ++ rejectedPathHypIds
+        allRejPathHypIds   = map extractPathHypId $ gatherEntities (entityMap world) (rejectedHypotheses world)
+        newerRejPathHypIds = newerPaths (entityMap world) (rejectedHypotheses world)
+        oldRejPathHypIds   = allRejPathHypIds \\ newerRejPathHypIds
+        removable          = oldDetHypIds ++ invalidMovHypIds ++ oldRejPathHypIds
     in foldr removeHypothesis world removable
 
 newerDetections :: HypothesisMap Entity
                 -> HypothesisIDs
                 -> [HypothesisID]
 newerDetections entityMap hypIds =
-    take 30 $ map extractDetHypId $
+    take 40 $ map extractDetHypId $
     reverse $ sortBy detAscOrdering $
-    (gatherEntities entityMap hypIds :: [Detection])
+    gatherEntities entityMap hypIds
+
+newerPaths :: HypothesisMap Entity
+           -> HypothesisIDs
+           -> [HypothesisID]
+newerPaths entityMap hypIds =
+    let -- convert paths into (path, detStart) pairs
+        pathAndDetStarts = map (\(path, movs) ->
+                                    (path, let (Movement _ detStartHypId _ _) = head movs in
+                                           getEntity entityMap detStartHypId)) $
+                           map (\path@(Path _ (NonEmpty movRefs)) ->
+                                (path, map (\movRef -> getEntity entityMap $ movementRefMovId movRef) movRefs)) $
+                           gatherEntities entityMap hypIds
+    in take 20 $ map (extractPathHypId . fst) $
+       reverse $ sortBy (\(path1, detStart1) (path2, detStart2) -> detAscOrdering detStart1 detStart2)
+       pathAndDetStarts
+                                       
+
 
 invalidMovements :: [HypothesisID]
                  -> HypothesisMap Entity
@@ -84,18 +101,19 @@ removeSubPaths world = foldr removeHypothesis world (map extractPathHypId subPat
     where paths    = gatherEntities (entityMap world) (allHypotheses world)
           subPaths = nub $ foldl (++) [] (map (findSubPaths paths) paths)
 
-          findSubPaths :: [Path] -> Path -> [Path]
-          findSubPaths paths path = filter (isSubPath path) paths
+findSubPaths :: [Path] -> Path -> [Path]
+findSubPaths paths path = filter (isSubPath path) paths
 
-          isSubPath :: Path -> Path -> Bool
-          isSubPath (Path (Path_Attrs hypId1 _ _) (NonEmpty movRefs1))
-                        (Path (Path_Attrs hypId2 _ _) (NonEmpty movRefs2))
-              -- a path is not a subpath of itself
-              | hypId1 == hypId2            = False
-              -- a path is a subpath if all of the latter path's movements are
-              -- in the former path
-              | null $ movRefs2 \\ movRefs1 = True
-              | otherwise                   = False
+isSubPath :: Path -> Path -> Bool
+isSubPath (Path (Path_Attrs hypId1 _ _) (NonEmpty movRefs1))
+              (Path (Path_Attrs hypId2 _ _) (NonEmpty movRefs2))
+    -- a path is not a subpath of itself
+    | hypId1 == hypId2   = False
+    -- a path is a subpath of another if all of the movements of the first
+    -- path are shared with the second
+    | movsNotShared == 0 = True
+    | otherwise          = False
+    where movsNotShared = length $ movRefs1 \\ movRefs2
 
 -- | Look at all paths and determine which subsets conflict (are \"rivals\"); add
 --   these conflicts into the path hypotheses.
@@ -143,10 +161,10 @@ pathsConflict (Path (Path_Attrs hypId1 _ _) (NonEmpty movRefs1))
                   (Path (Path_Attrs hypId2 _ _) (NonEmpty movRefs2))
     -- a path does not conflict with itself
     | hypId1 == hypId2       = False
-    -- a path conflicts with another path if the one shares at least 80% of
+    -- a path conflicts with another path if the one shares at least 50% of
     -- the same movements with the other
-    | movsNotShared12 <= 0.2 = True
-    | movsNotShared21 <= 0.2 = True
+    | movsNotShared12 <= 0.5 = True
+    | movsNotShared21 <= 0.5 = True
     -- otherwise there is no conflict
     | otherwise              = False
     where movsNotShared12 = (fromIntegral $ length $ movRefs1 \\ movRefs2) /
@@ -176,32 +194,55 @@ addHypothesis entity hypId scoreFunc world =
           , entityMap = entityMap'
           }
 
+-- | Remove a hypothesis from the \"mind\" but not from the entity map.
+-- 
+-- We keep the entity in the map because paths, for example, need to be
+-- able to refer to movements that are too old to \"reason\" about but
+-- are still members of valid paths.
 removeHypothesis :: HypothesisID -> World -> World
-removeHypothesis hypId world =
-    world { mind      = R.removeHypothesis hypId (mind world)
-          , entityMap = IDMap.delete hypId (entityMap world)
-          }
+removeHypothesis hypId world = world { mind = R.removeHypothesis hypId (mind world) }
 
+-- | Add an explains relationship between two hypotheses.
+-- 
+-- Do not add this relationship if the object of the explains relationship
+-- is no longer a hypothesis; this can occur when a path is extended but
+-- some of its earlier movements have been removed from consideration;
+-- in this case, the path will attempt to add an explaining relationship
+-- to all of its movements, but some movements will not exist (as hypotheses).
 addExplains :: HypothesisID -> HypothesisID -> World -> World
 addExplains subject object world =
-    world { mind = R.addExplains (mkExplainsId subject object)
-                   subject object (mind world)
-          }
+    if IDSet.member object (allHypotheses world) then
+        world { mind = R.addExplains (mkExplainsId subject object)
+                       subject object (mind world)
+              }
+    else world
 
+-- | Add an implies relationship between two hypotheses.
+-- 
+-- We check if the object is a valid hypothesis; look at the documentation
+-- for 'addExlains' for more information about this requirement.
 addImplies :: HypothesisID -> HypothesisID -> World -> World
 addImplies subject object world =
-    world { mind = R.addAdjuster (mkImpliesId subject object)
-                   subject boostOnAcceptance object (mind world)
-          }
+    if IDSet.member object (allHypotheses world) then
+        world { mind = R.addAdjuster (mkImpliesId subject object)
+                       subject boostOnAcceptance object (mind world)
+              }
+    else world
 
+-- | Add a conflicts relationship between two hypotheses.
+-- 
+-- We check if the object is a valid hypothesis; look at the documentation
+-- for 'addExplains' for more information about this requirement.
 addConflicts :: HypothesisID -> HypothesisID -> World -> World
 addConflicts subject object world =
-    world { mind = R.addAdjuster (mkConflictsId subject object)
-                   subject lowerOnAcceptance object (mind world)
-          }
+    if IDSet.member object (allHypotheses world) then
+        world { mind = R.addAdjuster (mkConflictsId subject object)
+                       subject lowerOnAcceptance object (mind world)
+              }
+    else world
 
-boostOnAcceptance = Left (Just increaseLevel, Just decreaseLevel)
-lowerOnAcceptance = Left (Just decreaseLevel, Just increaseLevel)
+boostOnAcceptance = Left (Just $ increaseLevelBy 2, Nothing)
+lowerOnAcceptance = Left (Just $ decreaseLevelBy 2, Nothing)
 
 reason :: World -> World
 reason world = world { mind = R.reason (R.ReasonerSettings False) Medium (mind world) }
@@ -240,9 +281,16 @@ buildResults :: World -> Results
 buildResults world =
     let accepted = R.acceptedHypotheses (mind world)
         rejected = R.refutedHypotheses (mind world)
+        -- include movements and detections referred to by current paths but that have been
+        -- removed from the known hypotheses (because they are old)
+        pathMovs = gatherEntities (entityMap world) $ IDSet.fromList $
+                   nub $ concat $ map (\(Path _ (NonEmpty movRefs)) -> map movementRefMovId movRefs)
+                   (gatherEntities (entityMap world) (allHypotheses world))
+        pathDets = gatherEntities (entityMap world) $ IDSet.fromList $
+                   nub $ concat $ map (\(Movement _ det1 det2 _) -> [det1, det2]) pathMovs
     in
-      Results (Entities (gatherEntities (entityMap world) (allHypotheses world))
-                        (gatherEntities (entityMap world) (allHypotheses world))
+      Results (Entities (nub $ pathDets ++ (gatherEntities (entityMap world) (allHypotheses world)))
+                        (nub $ pathMovs ++ (gatherEntities (entityMap world) (allHypotheses world)))
                         (gatherEntities (entityMap world) (allHypotheses world)))
                   (Accepted (map (mkDetectionRef . extractDetHypId) $ gatherEntities (entityMap world) accepted)
                             (map (mkMovementRef . extractMovHypId) $ gatherEntities (entityMap world) accepted)
