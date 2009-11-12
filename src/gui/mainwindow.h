@@ -9,7 +9,11 @@
 class RenderArea;
 class SettingsWidget;
 class EntitiesTree;
+class Entities;
 class ProcessingController;
+class Frame;
+class AbducerReader;
+class AbducerWriter;
 
 class MainWindow : public QMainWindow
 {
@@ -35,6 +39,8 @@ private:
     QDockWidget* settingsDock;
     SettingsWidget* settingsWidget;
     ProcessingController* processingController;
+    AbducerReader *abducerReader;
+    AbducerWriter *abducerWriter;
 };
 
 #endif

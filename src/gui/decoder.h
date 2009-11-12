@@ -15,6 +15,7 @@ private:
   QString findBlobs(Frame *frame, bool drawContours);
   void findBlobsByCCClasters(CvSeq** clasters, int& claster_num, CvSeq** cnt_list);
   CvBGStatModel* bg_model;
+  struct CvFGDStatModelParams modelParams;
 };
 
 #endif

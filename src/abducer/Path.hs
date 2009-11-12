@@ -40,7 +40,7 @@ extendPaths :: [[(Movement, (Detection, Detection))]]
             -> [[(Movement, (Detection, Detection))]]
 extendPaths movChains pmovs =
     map (\movs -> nub $ pmovs ++ movs) $
-        filter (\movs -> movsConnected (last pmovs) (head movs)) movChains
+    filter (\movs -> movsConnected (last pmovs) (head movs)) movChains
 
 mkPathScore :: [(Movement, (Detection, Detection))] -> (Level -> Level)
 mkPathScore movs
@@ -73,19 +73,14 @@ movChainSpeeds [] = []
 movChainSpeeds ((_, (detStart, detEnd)):movs) =
     [(detDist detEnd detStart) / (detDelta detEnd detStart)] ++ (movChainSpeeds movs)
 
--- | Find movement sequences that are longer than two movements, whose
---   movements \"connect\" to each other, and whose changes in speed
---   are minimal.
+-- | Find movement sequences that are four movements or longer and whose
+--   movements \"connect\" to each other.
 -- 
 -- \"Connection\" is defined as a closeness of the end point of
 -- the earlier movement to the start point of the later movement.
 -- This connection property is implemented in 'movsConnected'.
 genMovChains :: [(Movement, (Detection, Detection))] -> [[(Movement, (Detection, Detection))]]
-genMovChains movs = 
-    let connectedMovs = filter (\movs -> length movs >= 3) $ nonEmptySubMovChains (sortBy movStartTimeCompare movs)
-        -- movements that have a similar speed
-        simSpeedMovs = filter (\movs -> sumChainSpeedDifferences movs < 70.0) connectedMovs
-    in simSpeedMovs
+genMovChains movs = filter (\movs -> (length movs) >= 4) $ nonEmptySubMovChains (sortBy movStartTimeCompare movs)
 
 nonEmptySubMovChains :: [(Movement, (Detection, Detection))]
                      -> [[(Movement, (Detection, Detection))]]
@@ -113,13 +108,13 @@ movsConnected :: (Movement, (Detection, Detection))
               -> (Movement, (Detection, Detection))
               -> Bool
 movsConnected (_, (detStart1, detEnd1)) (_, (detStart2, detEnd2)) =
-    (detDist detEnd1 detStart2 <= 20.0)
-    -- && (detDistanceToSegment detStart1 detEnd1 detEnd2 < 20.0)
-           -- require that traveling from point 1 to 2 to 3 require less speed than traveling from point 1 to 3
-           -- (take the most efficient route; may not always be the true route if the route was a short loop)
-           && ((((detDist detStart1 detEnd1) + (detDist detStart2 detEnd2)) / (detDelta detStart1 detEnd2))
-               <= (detSpeed detStart1 detEnd2))
-                  && (25.0 > (abs $ (detSpeed detStart1 detEnd1) - (detSpeed detStart2 detEnd2)))
+    (detDist detEnd1 detStart2 <= 30.0)
+    && (detDistanceToSegment detStart1 detEnd1 detEnd2 < 30.0)
+           -- require that traveling from point 1 to 2 to 3 require less than 175% of 
+           -- the distance than traveling from point 1 to 3 (take the most efficient route;
+           -- may not always be the true route if the route was a short loop)
+           && ((((detDist detStart1 detEnd1) + (detDist detStart2 detEnd2))) <= (1.75 * (detDist detStart1 detEnd2)))
+                  && (35.0 > (abs $ (detSpeed detStart1 detEnd1) - (detSpeed detStart2 detEnd2)))
 
 -- from http://www.gamedev.net/community/forums/viewreply.asp?ID=1250842
 detDistanceToSegment :: Detection -> Detection -> Detection -> Double

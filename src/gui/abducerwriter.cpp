@@ -24,6 +24,7 @@ void AbducerWriter::run()
         return;
     }
 
+    int chunkSize = 4000;
     while(true)
     {
         mutex.lock();
@@ -32,7 +33,15 @@ void AbducerWriter::run()
         outSocket->write("NEW DETECTIONS\n");
         outSocket->write(QString::number(detections.head().length()).toAscii());
         outSocket->write("\n");
-        outSocket->write(detections.dequeue().toAscii());
+        qint64 size = detections.back().length();
+        QString output = detections.dequeue();;
+        qint64 pos = 0;
+        while(pos < size)
+        {
+            qint64 next = ((size - pos) >= chunkSize ? chunkSize : size - pos);
+            qint64 count = outSocket->write(output.mid(pos, next).toAscii());
+            pos += count;
+        }
         mutex.unlock();
 
         if(!outSocket->waitForBytesWritten(-1))
@@ -43,7 +52,7 @@ void AbducerWriter::run()
     }
 }
 
-void AbducerWriter::newDetections(QString d)
+void AbducerWriter::sendDetections(QString d)
 {
     mutex.lock();
     detections.enqueue(QString("<?xml version=\"1.0\" ?>\n"

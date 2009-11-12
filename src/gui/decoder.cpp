@@ -3,7 +3,7 @@
 #include <QTextStream>
 #include <QDebug>
 #include <QPair>
-#include <QPoint>
+#include <QPointF>
 
 #include <math.h>
 #include <vector>
@@ -16,7 +16,23 @@
 
 Decoder::Decoder()
         : bg_model(0)
-{ }
+{
+    // see http://opencv.willowgarage.com/wiki/VideoSurveillance
+    modelParams.Lc = 32;
+    modelParams.N1c = 15;
+    modelParams.N2c = 25;
+    modelParams.Lcc = 32;
+    modelParams.N1cc = 25;
+    modelParams.N2cc = 40;
+    modelParams.is_obj_without_holes = 1;
+    modelParams.perform_morphing = 1;
+    modelParams.alpha1 = 0.5f;
+    modelParams.alpha2 = 0.02f;
+    modelParams.alpha3 = 0.2f;
+    modelParams.delta = 2;
+    modelParams.T = 0.7f;
+    modelParams.minArea = 10.0f;
+}
 
 QString Decoder::decodeFrame(Frame *frame)
 {
@@ -26,7 +42,7 @@ QString Decoder::decodeFrame(Frame *frame)
 
     if(!bg_model)
     {
-        bg_model = cvCreateFGDStatModel(image);
+        bg_model = cvCreateFGDStatModel(image, &modelParams);
     }
     else
     {
@@ -92,7 +108,7 @@ void Decoder::findBlobsByCCClasters(CvSeq** clasters, int&
 
 struct blob
 {
-    QPoint center;
+    QPointF center;
     double area;
 };
 
@@ -139,11 +155,11 @@ QString Decoder::findBlobs(Frame *frame, bool drawContours)
                 QPair<double,double> p = CameraModel::warpToGround(camera,  QPair<int,int>(cx, cy));
 
                 struct blob b;
-                b.center = QPoint((int)p.first, (int)p.second);
+                b.center = QPointF(p.first, p.second);
                 b.area = m00;
                 blobs.push_back(b);
 
-                if(drawContours && b.area >= 25.0)
+                if(drawContours)
                     cvDrawContours(frame->getImage(), cnt, cvScalarAll(255), cvScalarAll(255), 100);
             }
         }
@@ -155,8 +171,6 @@ QString Decoder::findBlobs(Frame *frame, bool drawContours)
 
     for(std::vector<struct blob>::iterator it = blobs.begin(); it != blobs.end(); ++it)
     {
-        if(it->area < 25.0) continue; // skip noisy detections
-
         stream << "\t<CameraDetection camera=\"" << camera << "\" "
                 << "area=\"" << it->area << "\" "
                 << "lat=\"" << (it->center).x() << "\" "

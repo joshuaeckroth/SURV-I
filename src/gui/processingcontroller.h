@@ -5,49 +5,47 @@
 
 #include <QMap>
 #include <QPair>
-#include <QMutex>
 #include <QTimer>
+#include <QThread>
+#include <QMutex>
 
-class RenderArea;
 class Decoder;
-class AbducerWriter;
-class AbducerReader;
 class Frame;
 class Entities;
-class EntitiesTree;
 
-class ProcessingController : public QObject
+class ProcessingController : public QThread
 {
   Q_OBJECT;
   
 public:
-  ProcessingController(RenderArea* r, int n, EntitiesTree *e);
+  ProcessingController(int n);
+  void run();
   QString getCameraTimes() const;
   void numCamerasChanged(int n);
+
+signals:
+  void newFrame(Frame*);
+  void sendDetections(QString);
 
 public slots:
   void startProcessing();
   void stopProcessing();
+  void newEntities(Entities*);
 
 private slots:
   void newDetections(QString, Frame*);
-  void sendDetections();
+  void timeoutDetections();
 
 private:
   int numCameras;
-  RenderArea* renderer;
   CaptureThread::FrameSize frameSize;
   CaptureThread* captureThread[10];
   Decoder* decoder[10];
-  AbducerWriter* abducerWriter;
-  AbducerReader* abducerReader;
-  void init();
   QMutex mutex;
   bool isProcessing;
   QTimer* abducerTimer;
   Frame** curFrame;
   QString detections;
-  EntitiesTree *entitiesTree;
 };
 
 #endif

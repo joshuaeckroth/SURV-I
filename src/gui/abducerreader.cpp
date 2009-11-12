@@ -4,6 +4,8 @@
 #include <QDebug>
 #include <QTcpSocket>
 #include <QHostAddress>
+#include <QMutex>
+#include <QWaitCondition>
 
 #include "abducerreader.h"
 #include "resultsreader.h"

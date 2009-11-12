@@ -85,7 +85,7 @@ void RenderArea::updateEntities(Entities* e)
     update();
 }
 
-void RenderArea::showFrame(Frame* frame)
+void RenderArea::newFrame(Frame* frame)
 {
     clear = false;
     updatePixmap(frame->getImage(), frame->getCamera());
@@ -281,23 +281,26 @@ void RenderArea::paintEvent(QPaintEvent*)
                             drawArrowHead(painter, p1, p2);
                     }
                 }
-                // draw on map
-                painter.setClipRegion(mapRegion);
-                for(points_iter = points.begin(); points_iter != points.end(); points_iter++)
+                // draw on map only if accepted
+                if(p->isAccepted())
                 {
-                    point1 = *points_iter;
-                    if((points_iter + 1) != points.end())
-                        point2 = *(points_iter + 1);
-                    else
-                        point2 = point1;
+                    painter.setClipRegion(mapRegion);
+                    for(points_iter = points.begin(); points_iter != points.end(); points_iter++)
+                    {
+                        point1 = *points_iter;
+                        if((points_iter + 1) != points.end())
+                            point2 = *(points_iter + 1);
+                        else
+                            point2 = point1;
 
-                    QPoint p1 = warpToMapRegion(point1.first, point1.second);
-                    QPoint p2 = warpToMapRegion(point2.first, point2.second);
-                    painter.drawLine(p1, p2);
+                        QPoint p1 = warpToMapRegion(point1.first, point1.second);
+                        QPoint p2 = warpToMapRegion(point2.first, point2.second);
+                        painter.drawLine(p1, p2);
 
-                    // draw arrowhead on last pair
-                    if(p1 != p2 && (points_iter + 1) != points.end() && (points_iter + 2) == points.end())
-                        drawArrowHead(painter, p1, p2);
+                        // draw arrowhead on last pair
+                        if(p1 != p2 && (points_iter + 1) != points.end() && (points_iter + 2) == points.end())
+                            drawArrowHead(painter, p1, p2);
+                    }
                 }
             }
         }
@@ -410,6 +413,9 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
     while(!entities->paths_end() && !found)
     {
         Path *p = entities->paths_next();
+
+        // map does not show unaccepted paths
+        if(camera == -1 && !p->isAccepted()) continue;
 
         // check for constituent movements under the mouse
         p->movements_begin();

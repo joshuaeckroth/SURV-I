@@ -99,21 +99,15 @@ invalidPaths movHypIds entityMap hypIds =
 removeSubPaths :: World -> World
 removeSubPaths world = foldr removeHypothesis world (map extractPathHypId subPaths)
     where paths    = gatherEntities (entityMap world) (allHypotheses world)
-          subPaths = nub $ foldl (++) [] (map (findSubPaths paths) paths)
+          subPaths = findSubPaths paths paths
 
-findSubPaths :: [Path] -> Path -> [Path]
-findSubPaths paths path = filter (isSubPath path) paths
+findSubPaths :: [Path] -> [Path] -> [Path]
+findSubPaths subjectPaths allPaths = filter (\path -> or $ map (isSubPath path) allPaths) subjectPaths
 
 isSubPath :: Path -> Path -> Bool
 isSubPath (Path (Path_Attrs hypId1 _ _) (NonEmpty movRefs1))
-              (Path (Path_Attrs hypId2 _ _) (NonEmpty movRefs2))
-    -- a path is not a subpath of itself
-    | hypId1 == hypId2   = False
-    -- a path is a subpath of another if all of the movements of the first
-    -- path are shared with the second
-    | movsNotShared == 0 = True
-    | otherwise          = False
-    where movsNotShared = length $ movRefs1 \\ movRefs2
+              (Path (Path_Attrs hypId2 _ _) (NonEmpty movRefs2)) =
+                  if hypId1 == hypId2 then False else null $ movRefs1 \\ movRefs2
 
 -- | Look at all paths and determine which subsets conflict (are \"rivals\"); add
 --   these conflicts into the path hypotheses.
@@ -242,7 +236,7 @@ addConflicts subject object world =
     else world
 
 boostOnAcceptance = Left (Just $ increaseLevelBy 2, Nothing)
-lowerOnAcceptance = Left (Just $ decreaseLevelBy 2, Nothing)
+lowerOnAcceptance = Left (Just (\_ -> Lowest), Nothing)
 
 reason :: World -> World
 reason world = world { mind = R.reason (R.ReasonerSettings False) Medium (mind world) }

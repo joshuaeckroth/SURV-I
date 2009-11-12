@@ -23,10 +23,10 @@ class RenderArea : public QWidget
 public:
   RenderArea(QWidget* parent);
   void setNumCameras(int n);
-  void showFrame(Frame* frame);
   void highlightEntity(Entity *e);
 
 public slots:
+  void newFrame(Frame* frame);
   void onFrameSizeChanged(int width, int height, int camera);
   void updateEntities(Entities *e);
 

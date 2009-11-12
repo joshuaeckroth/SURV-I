@@ -14,7 +14,9 @@ class AbducerWriter : public QThread
 public:
   AbducerWriter();
   void run();
-  void newDetections(QString d);
+
+public slots:
+  void sendDetections(QString d);
 
 private:
   QWaitCondition detectionsBuffer;

@@ -2,41 +2,28 @@
 #include <QDebug>
 #include <QMap>
 #include <QPair>
+#include <QThread>
 
 #include <iostream>
 
 #include "processingcontroller.h"
-#include "renderarea.h"
+#include "entities.h"
 #include "decoder.h"
-#include "abducerreader.h"
-#include "abducerwriter.h"
 #include "frame.h"
 #include "cameramodel.h"
-#include "entities.h"
-#include "entitiesTree.h"
 
-ProcessingController::ProcessingController(RenderArea* r, int n, EntitiesTree *e)
-        : numCameras(n), renderer(r), entitiesTree(e)
+ProcessingController::ProcessingController(int n)
+        : QThread(), numCameras(n)
 {
-    renderer->setNumCameras(numCameras);
     CameraModel::setNumCameras(numCameras);
     curFrame = new Frame*[numCameras];
-    init();
 }
 
-void ProcessingController::init()
+void ProcessingController::run()
 {
     mutex.lock();
     isProcessing = false;
     mutex.unlock();
-
-    abducerReader = new AbducerReader();
-    connect(abducerReader, SIGNAL(newEntities(Entities*)), renderer, SLOT(updateEntities(Entities*)));
-    connect(abducerReader, SIGNAL(newEntities(Entities*)), entitiesTree, SLOT(updateEntities(Entities*)));
-    abducerReader->start();
-
-    abducerWriter = new AbducerWriter();
-    abducerWriter->start();
 
     for(int i = 0; i < numCameras; i++)
     {
@@ -54,13 +41,22 @@ void ProcessingController::init()
         }
     }
 
-    abducerTimer = new QTimer;
-    connect(abducerTimer, SIGNAL(timeout()), this, SLOT(sendDetections()));
+    abducerTimer = NULL;
+
+    exec();
 }
 
 void ProcessingController::startProcessing()
 {
     mutex.lock();
+    // send detections to abducer every 3 seconds
+    if(abducerTimer == NULL)
+    {
+        abducerTimer = new QTimer;
+        connect(abducerTimer, SIGNAL(timeout()), this, SLOT(timeoutDetections()));
+    }
+    abducerTimer->start(3000);
+
     for(int i = 0; i < numCameras; i++)
     {
         if(!captureThread[i]->hasError())
@@ -70,8 +66,6 @@ void ProcessingController::startProcessing()
         }
     }
 
-    // send detections to abducer every 3 seconds
-    abducerTimer->start(3000);
     isProcessing = true;
     mutex.unlock();
 }
@@ -127,9 +121,7 @@ void ProcessingController::numCamerasChanged(int n)
     numCameras = n;
     curFrame = new Frame*[numCameras];
 
-    renderer->setNumCameras(n);
-
-    init();
+    //renderer->setNumCameras(n);
 }
 
 void ProcessingController::newDetections(QString ds, Frame* frame)
@@ -138,7 +130,6 @@ void ProcessingController::newDetections(QString ds, Frame* frame)
     detections.append(ds);
 
     curFrame[frame->getCamera()] = frame;
-    renderer->showFrame(frame);
 
     if(isProcessing)
     {
@@ -167,11 +158,40 @@ void ProcessingController::newDetections(QString ds, Frame* frame)
             }
         }
     }
+
+    emit newFrame(frame);
     mutex.unlock();
 }
 
-void ProcessingController::sendDetections()
+void ProcessingController::timeoutDetections()
 {
-    abducerWriter->newDetections(detections);
+    /*
+    mutex.lock();
+    for(int i = 0; i < numCameras; i++)
+    {
+        captureThread[i]->stopCapture();
+    }
+    qDebug() << "stopped cameras.";
+    isProcessing = false;
+    abducerTimer->stop();
+    */
+
+    emit sendDetections(detections);
     detections.clear();
+    //mutex.unlock();
+}
+
+void ProcessingController::newEntities(Entities*)
+{
+    /*
+    mutex.lock();
+    for(int i = 0; i < numCameras; i++)
+    {
+        captureThread[i]->startCapture();
+    }
+    qDebug() << "started cameras";
+    isProcessing = true;
+    abducerTimer->start(3000);
+    mutex.unlock();
+    */
 }

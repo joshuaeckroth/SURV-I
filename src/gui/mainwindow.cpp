@@ -1,11 +1,15 @@
 
 #include <QTimer>
 #include <QDockWidget>
+#include <QThread>
 
 #include "mainwindow.h"
+#include "abducerreader.h"
+#include "abducerwriter.h"
 #include "renderarea.h"
 #include "settings.h"
 #include "entitiestree.h"
+#include "entities.h"
 #include "processingcontroller.h"
 
 
@@ -13,14 +17,32 @@ MainWindow::MainWindow() : QMainWindow(0)
 {
     ui.setupUi(this);
 
+    int numCameras = 2;
+
     renderArea = new RenderArea(this);
+    renderArea->setNumCameras(numCameras);
     ui.verticalLayout->insertWidget(0, renderArea);
 
     entitiesTree = new EntitiesTree(this, renderArea);
     connect(ui.entitiesButton, SIGNAL(clicked()), entitiesTree, SLOT(show()));
     connect(ui.entitiesButton, SIGNAL(clicked()), entitiesTree, SLOT(raise()));
 
-    processingController = new ProcessingController(renderArea, 2 /* num of cameras */, entitiesTree);
+    processingController = new ProcessingController(numCameras);
+
+    abducerReader = new AbducerReader();
+    abducerWriter = new AbducerWriter();
+
+    connect(processingController, SIGNAL(newFrame(Frame*)), renderArea, SLOT(newFrame(Frame*)));
+    connect(processingController, SIGNAL(sendDetections(QString)), abducerWriter, SLOT(sendDetections(QString)));
+
+    connect(abducerReader, SIGNAL(newEntities(Entities*)), renderArea, SLOT(updateEntities(Entities*)));
+    connect(abducerReader, SIGNAL(newEntities(Entities*)), entitiesTree, SLOT(updateEntities(Entities*)));
+    connect(abducerReader, SIGNAL(newEntities(Entities*)), processingController, SLOT(newEntities(Entities*)));
+
+    abducerReader->start(QThread::HighestPriority);
+    abducerWriter->start(QThread::HighestPriority);
+
+    processingController->start(QThread::HighestPriority);
 
     // settings dock widget
     /*
@@ -37,19 +59,19 @@ MainWindow::MainWindow() : QMainWindow(0)
     updateTimer->start(100);
 
     connect(ui.actionStart, SIGNAL(clicked()), this, SLOT(startProcessing()));
+    connect(ui.actionStart, SIGNAL(clicked()), processingController, SLOT(startProcessing()));
     connect(ui.actionStop, SIGNAL(clicked()), this, SLOT(stopProcessing()));
+    connect(ui.actionStop, SIGNAL(clicked()), processingController, SLOT(stopProcessing()));
 }
 
 void MainWindow::startProcessing()
 {
-    processingController->startProcessing();
     ui.actionStart->setEnabled(false);
     ui.actionStop->setEnabled(true);
 }
 
 void MainWindow::stopProcessing()
 {
-    processingController->stopProcessing();
     ui.actionStart->setEnabled(true);
     ui.actionStop->setEnabled(false);
 }
@@ -61,10 +83,8 @@ void MainWindow::updateStats()
 
 void MainWindow::numCamerasChanged(int n)
 {
-    processingController->stopProcessing();
     ui.actionStart->setEnabled(true);
     ui.actionStop->setEnabled(false);
-    processingController->numCamerasChanged(n);
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
