@@ -6,12 +6,12 @@ RCC_DIR = build
 UI_DIR = build
 MOC_DIR = build
 RESOURCES += src/gui/surv-1.qrc
-INCLUDEPATH += "C:\Program Files\OpenCV1.2\include\opencv"
-LIBS += -L"C:\Program Files\OpenCV1.2\lib" \
-    -lcv120 \
-    -lcxcore120 \
-    -lhighgui120 \
-    -lcvaux120
+INCLUDEPATH += "C:\OpenCV2.0\include\opencv"
+LIBS += -L"C:\OpenCV2.0\bin" \
+    -lcv200 \
+    -lcxcore200 \
+    -lhighgui200 \
+    -lcvaux200
 HEADERS += src/gui/cameramodel.h \
     src/gui/capturethread.h \
     src/gui/decoder.h \
