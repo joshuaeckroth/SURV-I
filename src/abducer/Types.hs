@@ -47,6 +47,10 @@ mkMovHypId dets = fromIntegral $ hashString $ foldl1 (++) (map (show . detection
 mkPathHypId :: [Movement] -> HypothesisID
 mkPathHypId movs = fromIntegral $ hashString $ foldl1 (++) $ map (show . movementId) movs
 
+{- hashes the hashes of constituent paths of a behavior -}
+mkBehaviorId :: [Path] -> HypothesisID
+mkBehaviorId paths = fromIntegral $ hashString $ foldl1 (++) $ map (show . (\(Path attrs _) -> pathId attrs)) paths
+
 mkExplainsId :: (Num a) => HypothesisID -> HypothesisID -> a
 mkExplainsId subject object = fromIntegral $ hashString $ "explains" ++ (show subject) ++ (show object)
 
@@ -126,6 +130,12 @@ extractPathHypId (Path (Path_Attrs hypId _ _) _) = hypId
 mkPathRef :: HypothesisID -> PathRef
 mkPathRef hypId = PathRef hypId
 
+extractBehaviorHypId :: Behavior -> HypothesisID
+extractBehaviorHypId (Behavior (Behavior_Attrs hypId _) _) = hypId
+
+mkBehaviorRef :: HypothesisID -> BehaviorRef
+mkBehaviorRef hypId = BehaviorRef hypId
+
 extractEntity :: Hypothesis a -> a
 extractEntity (Hyp {entity = e}) = e
 
@@ -200,11 +210,11 @@ instance XmlAttributes CameraDetection where
 
 data Results  = Results Entities Accepted Rejected
                 deriving (Eq,Show)
-data Entities = Entities [Detection] [Movement] [Path]
+data Entities = Entities [Detection] [Movement] [Path] [Behavior]
                 deriving (Eq,Show)
-data Accepted = Accepted [DetectionRef] [MovementRef] [PathRef]
+data Accepted = Accepted [DetectionRef] [MovementRef] [PathRef] [BehaviorRef]
                 deriving (Eq,Show)
-data Rejected = Rejected [DetectionRef] [MovementRef] [PathRef]
+data Rejected = Rejected [DetectionRef] [MovementRef] [PathRef] [BehaviorRef]
                 deriving (Eq,Show)
 data Detection = Detection
     { detectionId        :: HypothesisID
@@ -238,6 +248,16 @@ data Path_Attrs = Path_Attrs
 data PathRef = PathRef
     { pathRefPathId :: HypothesisID
     } deriving (Eq,Show)
+data Behavior = Behavior Behavior_Attrs (List1 PathRef)
+              deriving (Eq,Show,Typeable)
+data Behavior_Attrs = Behavior_Attrs
+    { behaviorId      :: HypothesisID
+    , behaviorScore   :: String
+    , behaviorContent :: String
+    } deriving (Eq,Show)
+data BehaviorRef = BehaviorRef
+    { behaviorRefBehavId :: HypothesisID
+    } deriving (Eq,Show)
 
 
 {-Instance decls-}
@@ -247,48 +267,66 @@ instance HTypeable Results where
     toHType x = Defined "Results" [] []
 instance XmlContent Results where
     toContents (Results a b c) =
-        [CElem (Elem "Results" [] (toContents a ++ toContents b ++
+        [CElem (Elem "Results" [] (toContents a ++
+                                   toContents b ++
                                    toContents c)) ()]
     parseContents = do
         { e@(Elem _ [] _) <- element ["Results"]
-        ; interior e $ return (Results) `apply` parseContents
-                       `apply` parseContents `apply` parseContents
+        ; interior e $ return (Results)
+                       `apply` parseContents
+                       `apply` parseContents
+                       `apply` parseContents
         } `adjustErr` ("in <Results>, "++)
 
 instance HTypeable Entities where
     toHType x = Defined "Entities" [] []
 instance XmlContent Entities where
-    toContents (Entities a b c) =
+    toContents (Entities a b c d) =
         [CElem (Elem "Entities" [] (concatMap toContents a ++
-                                    concatMap toContents b ++ concatMap toContents c)) ()]
+                                    concatMap toContents b ++
+                                    concatMap toContents c ++
+                                    concatMap toContents d)) ()]
     parseContents = do
         { e@(Elem _ [] _) <- element ["Entities"]
-        ; interior e $ return (Entities) `apply` many parseContents
-                       `apply` many parseContents `apply` many parseContents
+        ; interior e $ return (Entities)
+                       `apply` many parseContents
+                       `apply` many parseContents
+                       `apply` many parseContents
+                       `apply` many parseContents
         } `adjustErr` ("in <Entities>, "++)
 
 instance HTypeable Accepted where
     toHType x = Defined "Accepted" [] []
 instance XmlContent Accepted where
-    toContents (Accepted a b c) =
+    toContents (Accepted a b c d) =
         [CElem (Elem "Accepted" [] (concatMap toContents a ++
-                                    concatMap toContents b ++ concatMap toContents c)) ()]
+                                    concatMap toContents b ++
+                                    concatMap toContents c ++
+                                    concatMap toContents d)) ()]
     parseContents = do
         { e@(Elem _ [] _) <- element ["Accepted"]
-        ; interior e $ return (Accepted) `apply` many parseContents
-                       `apply` many parseContents `apply` many parseContents
+        ; interior e $ return (Accepted)
+                       `apply` many parseContents
+                       `apply` many parseContents
+                       `apply` many parseContents
+                       `apply` many parseContents
         } `adjustErr` ("in <Accepted>, "++)
 
 instance HTypeable Rejected where
     toHType x = Defined "Rejected" [] []
 instance XmlContent Rejected where
-    toContents (Rejected a b c) =
+    toContents (Rejected a b c d) =
         [CElem (Elem "Rejected" [] (concatMap toContents a ++
-                                    concatMap toContents b ++ concatMap toContents c)) ()]
+                                    concatMap toContents b ++
+                                    concatMap toContents c ++
+                                    concatMap toContents d)) ()]
     parseContents = do
         { e@(Elem _ [] _) <- element ["Rejected"]
-        ; interior e $ return (Rejected) `apply` many parseContents
-                       `apply` many parseContents `apply` many parseContents
+        ; interior e $ return (Rejected)
+                       `apply` many parseContents
+                       `apply` many parseContents
+                       `apply` many parseContents
+                       `apply` many parseContents
         } `adjustErr` ("in <Rejected>, "++)
 
 instance HTypeable Detection where
@@ -421,6 +459,46 @@ instance XmlAttributes PathRef where
     toAttrs v = catMaybes 
         [ toAttrFrStr "pathId" (show $ pathRefPathId v)
         ]
+
+instance HTypeable Behavior where
+    toHType x = Defined "Behavior" [] []
+instance XmlContent Behavior where
+    toContents (Behavior as a) =
+        [CElem (Elem "Behavior" (toAttrs as) (toContents a)) ()]
+    parseContents = do
+      { e@(Elem _ as _) <- element ["Behavior"]
+      ; interior e $ return (Behavior (fromAttrs as)) `apply` parseContents
+      } `adjustErr` ("in <Behavior>, "++)
+instance XmlAttributes Behavior_Attrs where
+    fromAttrs as =
+        Behavior_Attrs
+        { behaviorId = HasInt $ read $ definiteA fromAttrToStr "Behavior" "id" as
+        , behaviorScore = definiteA fromAttrToStr "Behavior" "score" as
+        , behaviorContent = definiteA fromAttrToStr "Behavior" "content" as
+        }
+    toAttrs v = catMaybes
+                [ toAttrFrStr "id" (show $ behaviorId v)
+                  toAttrFrStr "score" (behaviorScore v)
+                , toAttrFrStr "content" (behaviorContent v)
+                ]
+
+instance HTypeable BehaviorRef where
+    toHType x = Defined "BehaviorRef" [] []
+instance XmlContent BehaviorRef where
+    toContents as =
+        [CElem (Elem "BehaviorRef" (toAttrs as) []) ()]
+    parseContents = do
+      { (Elem _ as []) <- element ["BehaviorRef"]
+      ; return (fromAttrs as)
+      } `adjustErr` ("in <BehaviorRef>, "++)
+instance XmlAttributes BehaviorRef where
+    fromAttrs as =
+        BehaviorRef
+        { behaviorRefBehavId = HasInt $ read $ definiteA fromAttrToStr "BehaviorRef" "behavId" as
+        }
+    toAttrs v = catMaybes
+                [ toAttrFrStr "behavId" (show $ behaviorRefBehavId v)
+                ]
 
 
 {-Done-}

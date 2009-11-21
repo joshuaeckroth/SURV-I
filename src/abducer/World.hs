@@ -275,23 +275,40 @@ buildResults :: World -> Results
 buildResults world =
     let accepted = R.acceptedHypotheses (mind world)
         rejected = R.refutedHypotheses (mind world)
+
         -- include movements and detections referred to by current paths but that have been
         -- removed from the known hypotheses (because they are old)
         pathMovs = gatherEntities (entityMap world) $ IDSet.fromList $
                    nub $ concat $ map (\(Path _ (NonEmpty movRefs)) -> map movementRefMovId movRefs)
                    (gatherEntities (entityMap world) (allHypotheses world))
+
         pathDets = gatherEntities (entityMap world) $ IDSet.fromList $
                    nub $ concat $ map (\(Movement _ det1 det2 _) -> [det1, det2]) pathMovs
+
+        -- include paths and movements and detections referred to by current behaviors
+        -- but that have been removed from the known hypotheses (because they are old)
+        behaviorPaths = gatherEntities (entityMap world) $ IDSet.fromList $
+                        nub $ concat $ map (\(Behavior _ (NonEmpty pathRefs)) -> map pathRefPathId pathRefs)
+                        (gatherEntities (entityMap world) (allHypotheses world))
+
+        behaviorMovs  = gatherEntities (entityMap world) $ IDSet.fromList $
+                        nub $ concat $ map (\(Path _ (NonEmpty movRefs)) -> map movementRefMovId movRefs) behaviorPaths
+
+        behaviorDets  = gatherEntities (entityMap world) $ IDSet.fromList $
+                        nub $ concat $ map (\(Movement _ det1 det2 _) -> [det1, det2]) behaviorMovs
     in
-      Results (Entities (nub $ pathDets ++ (gatherEntities (entityMap world) (allHypotheses world)))
-                        (nub $ pathMovs ++ (gatherEntities (entityMap world) (allHypotheses world)))
+      Results (Entities (nub $ behaviorDets ++ pathDets ++ (gatherEntities (entityMap world) (allHypotheses world)))
+                        (nub $ behaviorMovs ++ pathMovs ++ (gatherEntities (entityMap world) (allHypotheses world)))
+                        (nub $ behaviorPaths ++ (gatherEntities (entityMap world) (allHypotheses world)))
                         (gatherEntities (entityMap world) (allHypotheses world)))
                   (Accepted (map (mkDetectionRef . extractDetHypId) $ gatherEntities (entityMap world) accepted)
                             (map (mkMovementRef . extractMovHypId) $ gatherEntities (entityMap world) accepted)
-                            (map (mkPathRef . extractPathHypId) $ gatherEntities (entityMap world) accepted))
+                            (map (mkPathRef . extractPathHypId) $ gatherEntities (entityMap world) accepted)
+                            (map (mkBehaviorRef . extractBehaviorHypId) $ gatherEntities (entityMap world) accepted))
                   (Rejected (map (mkDetectionRef . extractDetHypId) $ gatherEntities (entityMap world) rejected)
                             (map (mkMovementRef . extractMovHypId) $ gatherEntities (entityMap world) rejected)
-                            (map (mkPathRef . extractPathHypId) $ gatherEntities (entityMap world) rejected))
+                            (map (mkPathRef . extractPathHypId) $ gatherEntities (entityMap world) rejected)
+                            (map (mkBehaviorRef . extractBehaviorHypId) $ gatherEntities (entityMap world) rejected))
 
 outputLog :: World -> String
 outputLog world = showXml False $ buildResults world

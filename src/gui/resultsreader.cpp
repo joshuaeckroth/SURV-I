@@ -6,10 +6,11 @@
 #include "detection.h"
 #include "movement.h"
 #include "path.h"
+#include "behavior.h"
 #include "entities.h"
 
 ResultsReader::ResultsReader()
-        : entities(NULL), inPath(false)
+        : entities(NULL), inPath(false), inBehavior(false)
 { }
 
 bool ResultsReader::startElement(const QString&, const QString&,
@@ -64,6 +65,14 @@ bool ResultsReader::startElement(const QString&, const QString&,
         inPath = true;
         pathMovements.clear();
     }
+    else if(qName == "Behavior")
+    {
+        behaviorId = attributes.value("id").toInt();
+        behaviorScore = attributes.value("score");
+        behaviorContent = attributes.value("content");
+        inBehavior = true;
+        behaviorPaths.clear();
+    }
     else if(qName == "MovementRef" && inPath)
     {
         int movId = attributes.value("movId").toInt();
@@ -74,10 +83,20 @@ bool ResultsReader::startElement(const QString&, const QString&,
         int id = attributes.value("movId").toInt();
         movements[id]->setAccepted(accepted);
     }
-    else if(qName == "PathRef")
+    else if(qName == "PathRef" && inBehavior)
+    {
+        int pathId = attributes.value("pathId").toInt();
+        behaviorPaths.push_back(paths[pathId]);
+    }
+    else if(qName == "PathRef" && !inBehavior)
     {
         int id = attributes.value("pathId").toInt();
         paths[id]->setAccepted(accepted);
+    }
+    else if(qName == "BehaviorRef")
+    {
+        int id = attributes.value("behavId").toInt();
+        behaviors[id]->setAccepted(accepted);
     }
 
     return true;
@@ -87,12 +106,17 @@ bool ResultsReader::endElement(const QString&, const QString&, const QString& qN
 {
     if(qName == "Results")
     {
-        entities = new Entities(detections, movements, paths);
+        entities = new Entities(detections, movements, paths, behaviors);
     }
     else if(qName == "Path")
     {
         paths[pathId] = new Path(pathId, pathMovements, pathScore, pathConflicts);
         inPath = false;
+    }
+    else if(qName == "Behavior")
+    {
+        behaviors[behaviorId] = new Behavior(behaviorId, behaviorPaths, behaviorScore, behaviorContent);
+        inBehavior = false;
     }
     return true;
 }

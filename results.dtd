@@ -1,8 +1,8 @@
 <!ELEMENT Results      (Entities,Accepted,Rejected)>
 
-<!ELEMENT Entities     (Detection*,Movement*,Path*)>
-<!ELEMENT Accepted     (DetectionRef*,MovementRef*,PathRef*)>
-<!ELEMENT Rejected     (DetectionRef*,MovementRef*,PathRef*)>
+<!ELEMENT Entities     (Detection*,Movement*,Path*,Behavior*)>
+<!ELEMENT Accepted     (DetectionRef*,MovementRef*,PathRef*,BehaviorRef*)>
+<!ELEMENT Rejected     (DetectionRef*,MovementRef*,PathRef*,BehaviorRef*)>
 
 <!ELEMENT Detection    EMPTY>
 <!ATTLIST Detection    id        CDATA #REQUIRED
@@ -32,4 +32,12 @@
 
 <!ELEMENT PathRef      EMPTY>
 <!ATTLIST PathRef      pathId    CDATA #REQUIRED>
+
+<!ELEMENT Behavior     (PathRef+)>
+<!ATTLIST Behavior     id        CDATA #REQUIRED
+	               score     CDATA #REQUIRED
+                       content   CDATA #REQUIRED>
+
+<!ELEMENT BehaviorRef  EMPTY>
+<!ATTLIST BehaviorRef  behavId   CDATA #REQUIRED>
 

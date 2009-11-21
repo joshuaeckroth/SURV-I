@@ -10,6 +10,7 @@
 class Detection;
 class Movement;
 class Path;
+class Behavior;
 class Entity;
 class EntitiesTreeItem;
 
@@ -20,7 +21,8 @@ class Entities : public QAbstractItemModel
 public:
     Entities(std::map<int,Detection*>,
              std::map<int,Movement*>,
-             std::map<int,Path*>);
+             std::map<int,Path*>,
+             std::map<int,Behavior*>);
     ~Entities();
 
     void detections_begin();
@@ -34,6 +36,10 @@ public:
     void paths_begin();
     bool paths_end() const;
     Path *paths_next();
+
+    void behaviors_begin();
+    bool behaviors_end() const;
+    Behavior *behaviors_next();
 
     QVariant data(const QModelIndex &index, int role) const;
     Qt::ItemFlags flags(const QModelIndex &index) const;
@@ -56,6 +62,9 @@ private:
 
     std::map<int,Path*> paths;
     std::map<int,Path*>::const_iterator paths_iter;
+
+    std::map<int,Behavior*> behaviors;
+    std::map<int,Behavior*>::const_iterator behaviors_iter;
 
     EntitiesTreeItem *rootEntitiesTreeItem;
 };

@@ -8,11 +8,14 @@
 #include "detection.h"
 #include "movement.h"
 #include "path.h"
+#include "behavior.h"
 
 Entities::Entities(std::map<int,Detection*> _detections,
                    std::map<int,Movement*> _movements,
-                   std::map<int,Path*> _paths)
-: QAbstractItemModel(0), detections(_detections), movements(_movements), paths(_paths)
+                   std::map<int,Path*> _paths,
+                   std::map<int,Behavior*> _behaviors)
+: QAbstractItemModel(0), detections(_detections), movements(_movements),
+    paths(_paths), behaviors(_behaviors)
 {
     rootEntitiesTreeItem = new EntitiesTreeItem(NULL, 0);
     for(std::map<int,Detection*>::const_iterator it = detections.begin();
@@ -52,6 +55,35 @@ Entities::Entities(std::map<int,Detection*> _detections,
 
             EntitiesTreeItem *ed2 = new EntitiesTreeItem(m->getDet2() ,em);
             em->appendChild(ed2);
+        }
+    }
+    for(std::map<int,Behavior*>::const_iterator it = behaviors.begin();
+        it != behaviors.end(); it++)
+    {
+        Behavior *b = (*it).second;
+        EntitiesTreeItem *e = new EntitiesTreeItem(b, rootEntitiesTreeItem);
+        rootEntitiesTreeItem->appendChild(e);
+
+        b->paths_begin();
+        while(!b->paths_end())
+        {
+            Path *p = b->paths_next();
+            EntitiesTreeItem *ep = new EntitiesTreeItem(p, e);
+            rootEntitiesTreeItem->appendChild(ep);
+
+            p->movements_begin();
+            while(!p->movements_end())
+            {
+                Movement *m = p->movements_next();
+                EntitiesTreeItem *em = new EntitiesTreeItem(m, ep);
+                e->appendChild(em);
+
+                EntitiesTreeItem *ed1 = new EntitiesTreeItem(m->getDet1(), em);
+                em->appendChild(ed1);
+
+                EntitiesTreeItem *ed2 = new EntitiesTreeItem(m->getDet2() ,em);
+                em->appendChild(ed2);
+            }
         }
     }
 }
@@ -110,6 +142,23 @@ Path *Entities::paths_next()
     Path *p = (*paths_iter).second;
     paths_iter++;
     return p;
+}
+
+void Entities::behaviors_begin()
+{
+    behaviors_iter = behaviors.begin();
+}
+
+bool Entities::behaviors_end() const
+{
+    return behaviors_iter == behaviors.end();
+}
+
+Behavior *Entities::behaviors_next()
+{
+    Behavior *b = (*behaviors_iter).second;
+    behaviors_iter++;
+    return b;
 }
 
 int Entities::columnCount(const QModelIndex &parent) const

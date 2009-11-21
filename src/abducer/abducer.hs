@@ -57,33 +57,37 @@ getCameraDetections s = do
 
 logStatistics :: World -> World -> IO ()
 logStatistics world world' =
-    let (Results _ (Accepted dets movs paths) (Rejected rdets rmovs rpaths)) = buildResults world
-        (Results _ (Accepted dets' movs' paths') (Rejected rdets' rmovs' rpaths')) = buildResults world'
+    let (Results _ (Accepted dets movs paths behavs)
+                     (Rejected rdets rmovs rpaths rbehavs)) = buildResults world
+        (Results _ (Accepted dets' movs' paths' behavs')
+                     (Rejected rdets' rmovs' rpaths' rbehavs')) = buildResults world'
         detsDiff    = (length dets') - (length dets)
         rdetsDiff   = (length rdets') - (length rdets)
         movsDiff    = (length movs') - (length movs)
         rmovsDiff   = (length rmovs') - (length rmovs)
         pathsDiff   = (length paths') - (length paths)
         rpathsDiff  = (length rpaths') - (length rpaths)
+        behavsDiff  = (length behavs') - (length behavs)
+        rbehavsDiff = (length rbehavs') - (length rbehavs)
         numEntities = IDMap.size (entityMap world')
     in do
-      putStr "Hypotheses: "
+      putStr "Hyps: "
       putStr (show $ length dets')
       putStr "("
       putStr (if (detsDiff > 0) then ("+" ++ (show detsDiff)) else (show detsDiff))
-      putStr ") detections - "
+      putStr ") dets - "
       putStr (show $ length rdets')
       putStr "("
       putStr (if (rdetsDiff > 0) then ("+" ++ (show rdetsDiff)) else (show rdetsDiff))
-      putStr ") rejected; "
+      putStr ") rej; "
       putStr (show $ length movs')
       putStr "("
       putStr (if (movsDiff > 0) then ("+" ++ (show movsDiff)) else (show movsDiff))
-      putStr ") movements - "
+      putStr ") movs - "
       putStr (show $ length rmovs')
       putStr "("
       putStr (if (rmovsDiff > 0) then ("+" ++ (show rmovsDiff)) else (show rmovsDiff))
-      putStr ") rejected; "
+      putStr ") rej; "
       putStr (show $ length paths')
       putStr "("
       putStr (if (pathsDiff > 0) then ("+" ++ (show pathsDiff)) else (show pathsDiff))
@@ -91,7 +95,15 @@ logStatistics world world' =
       putStr (show $ length rpaths')
       putStr "("
       putStr (if (rpathsDiff > 0) then ("+" ++ (show rpathsDiff)) else (show rpathsDiff))
-      putStrLn ") rejected"
+      putStr ") rej; "
+      putStr (show $ length behavs')
+      putStr "("
+      putStr (if (behavsDiff > 0) then ("+" ++ (show behavsDiff)) else (show behavsDiff))
+      putStr ") behavs - "
+      putStr (show $ length rbehavs')
+      putStr "("
+      putStr (if (rbehavsDiff > 0) then ("+" ++ (show rbehavsDiff)) else (show rbehavsDiff))
+      putStrLn ") rej"
       putStrLn ("Number of entities in entity map: " ++ (show numEntities))
 
 respondWithResults :: Socket -> World -> IO ()
@@ -108,6 +120,7 @@ runAbducer cameraDetections world =
         existingDets   = gatherEntities emap allHyps :: [Detection]
         existingMovs   = gatherEntities emap allHyps :: [Movement]
         existingPaths  = gatherEntities emap allHyps :: [Path]
+        existingBehavs = gatherEntities emap allHyps :: [Behavior]
         dets           = mkDetections cameraDetections
         emap'          = foldl addToEntityMap emap (map (\(Hyp {entity = det}) ->
                                                          (extractDetHypId det, det)) dets)

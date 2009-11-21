@@ -9,6 +9,7 @@
 class Detection;
 class Movement;
 class Path;
+class Behavior;
 class Entities;
 
 class ResultsReader : public QXmlDefaultHandler
@@ -33,10 +34,16 @@ private:
   bool inPath;
   QString pathScore;
   QString pathConflicts;
+  int behaviorId;
+  bool inBehavior;
+  QString behaviorScore;
+  QString behaviorContent;
   std::map<int,Detection*> detections;
   std::map<int,Movement*> movements;
   std::map<int,Path*> paths;
   std::vector<Movement*> pathMovements;
+  std::map<int,Behavior*> behaviors;
+  std::vector<Path*>behaviorPaths;
 };
 
 #endif
