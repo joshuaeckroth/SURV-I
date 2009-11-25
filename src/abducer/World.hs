@@ -2,6 +2,7 @@
 
 module World where
 import Types
+import Context
 import qualified Reasoner.Core as R
 import Reasoner.Types (HypothesisID(..), HypothesisMap(..), HypothesisIDs, ExplainsID(..))
 import qualified Reasoner.Constrainers as RC
@@ -19,12 +20,14 @@ import Debug.Trace
 
 data World = World { mind      :: R.Mind Level Level Level
                    , entityMap :: HypothesisMap Entity
+                   , context   :: Context
                    }
 
-mkWorld :: World
-mkWorld = World { mind      = (R.setTrace True $ R.newMind confidenceBoost suggestStatus R.NoTransitive)
-                , entityMap = IDMap.empty
-                }
+mkWorld :: Context -> World
+mkWorld c = World { mind      = (R.setTrace True $ R.newMind confidenceBoost suggestStatus R.NoTransitive)
+                  , entityMap = IDMap.empty
+                  , context   = c
+                  }
 
 allHypotheses :: World -> HypothesisIDs
 allHypotheses world = R.acceptedHypotheses (mind world)

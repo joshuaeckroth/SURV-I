@@ -2,6 +2,8 @@ module Main
 where
 
 import IO
+import System.Environment
+import System.Console.GetOpt
 import Network.Socket
 import System.Win32.Process (sleep)
 import Text.XML.HaXml.Parse
@@ -9,27 +11,48 @@ import Text.XML.HaXml.XmlContent
 import Data.List (nub)
 import Comm
 import Types
+import Context
 import World
 import Detection
 import Movement
 import Path
+import Behavior
 import qualified WrappedInts.IDMap as IDMap
 import qualified WrappedInts.IDSet as IDSet
 import Debug.Trace
 
+data Flag = ContextFile String
+            deriving (Show)
+
+options :: [OptDescr Flag]
+options = [ Option "c" ["context"] (ReqArg ContextFile "FILE") "context file" ]
+
+abducerOptions :: [String] -> IO ([Flag], [String])
+abducerOptions argv =
+    case getOpt Permute options argv of
+      (o, n, [])   -> return (o, n)
+      (_, _, errs) -> ioError (userError (concat errs ++ usageInfo header options))
+    where header = "Usage: abducer [OPTION...]"
+
+getContextFlag :: [Flag] -> String
+getContextFlag ((ContextFile file):fs) = file
+
 main = do
+  argv <- getArgs
+  opts <- abducerOptions argv
+  context <- loadContext $ getContextFlag (fst opts)
   outSocket <- initSocket 10000
   inSocket <- initSocket 10001
-  loop (outSocket, inSocket)
-    where loop (outSocket, inSocket) = do
+  loop (outSocket, inSocket) context
+    where loop (outSocket, inSocket) context = do
             outSocket' <- listenForDetector outSocket
             inSocket'  <- listenForDetector inSocket
-            let world = mkWorld
+            let world = mkWorld context
             waitForCommands (outSocket', inSocket') world
             putStrLn "Shutting down sockets."
             sClose outSocket'
             sClose inSocket'
-            loop (outSocket, inSocket)
+            loop (outSocket, inSocket) context
 
 waitForCommands :: (Socket, Socket) -> World -> IO ()
 waitForCommands (outSocket, inSocket) world = do
@@ -137,6 +160,11 @@ runAbducer cameraDetections world =
         nonSubPaths    = let allPaths = (extractEntities newPaths) ++ (gatherEntities emap allHyps)
                              subPaths = findSubPaths (extractEntities newPaths) allPaths
                          in filter (\(Hyp {entity = path}) -> not $ elem path subPaths) newPaths
+
+        worldWithPaths = updateConflictingPaths $ removeSubPaths $ hypothesize nonSubPaths $
+                         hypothesize newMovs $ hypothesize dets cleanedWorld
+
+        behaviors      = mkBehaviors (entityMap worldWithPaths) (gatherEntities (entityMap worldWithPaths)
+                                                                                (allHypotheses worldWithPaths))
     in
-      reason $ updateConflictingPaths $ removeSubPaths $ hypothesize nonSubPaths $
-             hypothesize newMovs $ hypothesize dets cleanedWorld
+      reason $ hypothesize behaviors worldWithPaths

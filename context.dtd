@@ -1,0 +1,27 @@
+<!ELEMENT Context     (Cameras,Map,Regions)>
+
+<!ELEMENT Cameras     (CameraInput*,FileInput*)>
+
+<!ELEMENT CameraInput EMPTY>
+<!ATTLIST CameraInput name     CDATA #REQUIRED
+	              streamId CDATA #REQUIRED
+                      warpFile CDATA #REQUIRED>
+
+<!ELEMENT FileInput   EMPTY>
+<!ATTLIST FileInput   name     CDATA #REQUIRED
+	              file     CDATA #REQUIRED
+                      warpFile CDATA #REQUIRED>
+
+<!ELEMENT Map         EMPTY>
+<!ATTLIST Map         mapFile  CDATA #REQUIRED
+                      warpFile CDATA #REQUIRED>
+
+<!ELEMENT Regions     (Region*)>
+
+<!ELEMENT Region      (RegionPoint+)>
+<!ATTLIST Region      name     CDATA #REQUIRED>
+
+<!ELEMENT RegionPoint EMPTY>
+<!ATTLIST RegionPoint worldX   CDATA #REQUIRED
+                      worldY   CDATA #REQUIRED>
+
