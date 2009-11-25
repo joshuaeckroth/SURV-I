@@ -9,7 +9,7 @@ EntitiesTreeItem::EntitiesTreeItem(Entity *e, EntitiesTreeItem *p)
     entity = e;
     parentEntitiesTreeItem = p;
 
-    columns << "Entity Type" << "Id" << "Accepted?" << "Score"
+    columns << "Entity Type" << "Id" << "Content" << "Accepted?" << "Score"
             << "Lat" << "Lon" << "Start Time" << "End Time" << "Duration"
             << "Distance" << "Avg Speed" << "Area" << "Conflicts";
 }

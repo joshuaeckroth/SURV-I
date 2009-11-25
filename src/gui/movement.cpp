@@ -48,6 +48,7 @@ QStringList Movement::getData() const
 {
     QStringList data;
     data << "Movement" << QString::number(id)
+            << ""
             << (accepted ? "Accepted" : "Rejected")
             << score
             << "" << ""

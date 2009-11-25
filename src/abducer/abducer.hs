@@ -164,7 +164,7 @@ runAbducer cameraDetections world =
         worldWithPaths = updateConflictingPaths $ removeSubPaths $ hypothesize nonSubPaths $
                          hypothesize newMovs $ hypothesize dets cleanedWorld
 
-        behaviors      = mkBehaviors (entityMap worldWithPaths) (gatherEntities (entityMap worldWithPaths)
-                                                                                (allHypotheses worldWithPaths))
+        behaviors      = mkBehaviors (context worldWithPaths) (entityMap worldWithPaths)
+                         (gatherEntities (entityMap worldWithPaths) (allHypotheses worldWithPaths))
     in
       reason $ hypothesize behaviors worldWithPaths

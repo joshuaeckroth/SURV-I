@@ -17,9 +17,9 @@ mkMovements dets =
                          ((detectionLat det1) /= (detectionLat det2) ||
                           (detectionLon det1) /= (detectionLon det2)),
                          dist < 120.0, dist > 0.0,
-                         areaChange < 1.0,
+                         -- areaChange < 1.0,
                          speed < 100.0,
-                         delta < 2.0, delta > 0.0,
+                         delta < 3.0, delta > 0.0,
                          detBefore det1 det2]
     in map (mkMovement closeDetPairs) closeDetPairs
 

@@ -60,6 +60,7 @@ QStringList Detection::getData() const
 {
     QStringList data;
     data << "Detection" << QString::number(id)
+            << ""
             << (accepted ? "Accepted" : "Rejected")
             << score
             << QString::number(lat, 'f', 2)

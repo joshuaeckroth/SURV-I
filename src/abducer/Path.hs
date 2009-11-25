@@ -2,6 +2,7 @@ module Path
 where
 
 import Types
+import Context
 import Vocabulary
 import Text.XML.HaXml.XmlContent.Parser (List1(..))
 import Reasoner.Types (HypothesisMap(..))
@@ -135,3 +136,37 @@ detDistanceToSegment det1 det2 det3 =
             | intersectDist > segLength = (lat2, lon2)
             | otherwise = ((fst unitSeg) * intersectDist + lat1, (snd unitSeg) * intersectDist + lon1)
     in dist intersectPoint (lat3, lon3)
+
+pathIntersectsRegion :: HypothesisMap Entity -> Path -> Region -> Bool
+pathIntersectsRegion entityMap (Path _ (NonEmpty movRefs)) (Region _ (NonEmpty points)) =
+    foldl1 (||) $ map (movIntersectsRegion points) (map (\mref -> getEntity entityMap (movementRefMovId mref)) movRefs)
+
+    where movIntersectsRegion :: [RegionPoint] -> Movement -> Bool
+          movIntersectsRegion points (Movement _ detStartRef detEndRef _) =
+              let detStart = getEntity entityMap detStartRef
+                  detEnd   = getEntity entityMap detEndRef
+              in (detInsideRegion points detStart) || (detInsideRegion points detEnd) ||
+                     (detIsRegionPoint points detStart) || (detIsRegionPoint points detEnd)
+
+detInsideRegion :: [RegionPoint] -> Detection -> Bool
+detInsideRegion points det = detInsideRegion' (points ++ [head points]) det
+    where
+          -- from: http://local.wasp.uwa.edu.au/~pbourke/geometry/insidepoly/
+          detInsideRegion' :: [RegionPoint] -> Detection -> Bool
+          detInsideRegion' (_:[]) _ = False
+          detInsideRegion' (p1:p2:ps) det@(Detection {detectionLat = dlat, detectionLon = dlon}) =
+              let p1lat = regionPointLat p1
+                  p1lon = regionPointLon p1
+                  p2lat = regionPointLat p2
+                  p2lon = regionPointLon p2
+              in if (((p1lon <= dlon) && (dlon < p2lon)) ||
+                     ((p2lon <= dlon) && (dlon < p1lon))) &&
+                     (dlat < ((p2lat - p1lat) * (dlon - p1lon) / (p2lon - p1lon) + p1lat))
+              then not $ detInsideRegion' (p2:ps) det
+              else detInsideRegion' (p2:ps) det
+
+detIsRegionPoint :: [RegionPoint] -> Detection -> Bool
+detIsRegionPoint [] _ = False
+detIsRegionPoint (p:ps) det@(Detection {detectionLat = dlat, detectionLon = dlon}) =
+    ((dlat == (regionPointLat p)) && (dlon == (regionPointLon p))) ||
+    detIsRegionPoint ps det

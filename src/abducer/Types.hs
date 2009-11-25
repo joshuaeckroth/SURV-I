@@ -48,8 +48,8 @@ mkPathHypId :: [Movement] -> HypothesisID
 mkPathHypId movs = fromIntegral $ hashString $ foldl1 (++) $ map (show . movementId) movs
 
 {- hashes the hashes of constituent paths of a behavior -}
-mkBehaviorId :: [Path] -> HypothesisID
-mkBehaviorId paths = fromIntegral $ hashString $ foldl1 (++) $ map (show . (\(Path attrs _) -> pathId attrs)) paths
+mkBehaviorHypId :: [Path] -> HypothesisID
+mkBehaviorHypId paths = fromIntegral $ hashString $ foldl1 (++) $ map (show . (\(Path attrs _) -> pathId attrs)) paths
 
 mkExplainsId :: (Num a) => HypothesisID -> HypothesisID -> a
 mkExplainsId subject object = fromIntegral $ hashString $ "explains" ++ (show subject) ++ (show object)

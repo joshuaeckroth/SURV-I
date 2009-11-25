@@ -69,14 +69,14 @@ Entities::Entities(std::map<int,Detection*> _detections,
         {
             Path *p = b->paths_next();
             EntitiesTreeItem *ep = new EntitiesTreeItem(p, e);
-            rootEntitiesTreeItem->appendChild(ep);
+            e->appendChild(ep);
 
             p->movements_begin();
             while(!p->movements_end())
             {
                 Movement *m = p->movements_next();
                 EntitiesTreeItem *em = new EntitiesTreeItem(m, ep);
-                e->appendChild(em);
+                ep->appendChild(em);
 
                 EntitiesTreeItem *ed1 = new EntitiesTreeItem(m->getDet1(), em);
                 em->appendChild(ed1);

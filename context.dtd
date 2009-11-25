@@ -22,6 +22,6 @@
 <!ATTLIST Region      name     CDATA #REQUIRED>
 
 <!ELEMENT RegionPoint EMPTY>
-<!ATTLIST RegionPoint worldX   CDATA #REQUIRED
-                      worldY   CDATA #REQUIRED>
+<!ATTLIST RegionPoint lat      CDATA #REQUIRED
+                      lon      CDATA #REQUIRED>
 

@@ -63,6 +63,7 @@ QStringList Path::getData() const
 {
     QStringList data;
     data << "Path" << QString::number(id)
+            << ""
             << (accepted ? "Accepted" : "Rejected")
             << score
             << "" << ""
