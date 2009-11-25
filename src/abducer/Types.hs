@@ -131,7 +131,7 @@ mkPathRef :: HypothesisID -> PathRef
 mkPathRef hypId = PathRef hypId
 
 extractBehaviorHypId :: Behavior -> HypothesisID
-extractBehaviorHypId (Behavior (Behavior_Attrs hypId _) _) = hypId
+extractBehaviorHypId (Behavior (Behavior_Attrs hypId _ _) _) = hypId
 
 mkBehaviorRef :: HypothesisID -> BehaviorRef
 mkBehaviorRef hypId = BehaviorRef hypId
@@ -478,7 +478,7 @@ instance XmlAttributes Behavior_Attrs where
         }
     toAttrs v = catMaybes
                 [ toAttrFrStr "id" (show $ behaviorId v)
-                  toAttrFrStr "score" (behaviorScore v)
+                , toAttrFrStr "score" (behaviorScore v)
                 , toAttrFrStr "content" (behaviorContent v)
                 ]
 
