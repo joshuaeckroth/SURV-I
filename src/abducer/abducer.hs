@@ -166,5 +166,6 @@ runAbducer cameraDetections world =
 
         behaviors      = mkBehaviors (context worldWithPaths) (entityMap worldWithPaths)
                          (gatherEntities (entityMap worldWithPaths) (allHypotheses worldWithPaths))
+        newBehaviors   = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId (entityMap worldWithPaths)) behaviors
     in
-      reason $ hypothesize behaviors worldWithPaths
+      reason $ hypothesize newBehaviors worldWithPaths

@@ -47,9 +47,10 @@ mkMovHypId dets = fromIntegral $ hashString $ foldl1 (++) (map (show . detection
 mkPathHypId :: [Movement] -> HypothesisID
 mkPathHypId movs = fromIntegral $ hashString $ foldl1 (++) $ map (show . movementId) movs
 
-{- hashes the hashes of constituent paths of a behavior -}
-mkBehaviorHypId :: [Path] -> HypothesisID
-mkBehaviorHypId paths = fromIntegral $ hashString $ foldl1 (++) $ map (show . (\(Path attrs _) -> pathId attrs)) paths
+{- hashes the hashes of constituent paths of a behavior plus the behavior's content -}
+mkBehaviorHypId :: String -> [Path] -> HypothesisID
+mkBehaviorHypId content paths = fromIntegral $ hashString $
+                                content ++ (foldl1 (++) $ map (show . (\(Path attrs _) -> pathId attrs)) paths)
 
 mkExplainsId :: (Num a) => HypothesisID -> HypothesisID -> a
 mkExplainsId subject object = fromIntegral $ hashString $ "explains" ++ (show subject) ++ (show object)
