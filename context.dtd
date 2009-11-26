@@ -1,4 +1,4 @@
-<!ELEMENT Context     (Cameras,Map,Regions)>
+<!ELEMENT Context     (Cameras,Map,Regions,PointsOfInterest,Agents)>
 
 <!ELEMENT Cameras     (CameraInput*,FileInput*)>
 
@@ -24,4 +24,20 @@
 <!ELEMENT RegionPoint EMPTY>
 <!ATTLIST RegionPoint lat      CDATA #REQUIRED
                       lon      CDATA #REQUIRED>
+
+<!ELEMENT PointsOfInterest (PointOfInterest*)>
+
+<!ELEMENT PointOfInterest EMPTY>
+<!ATTLIST PointOfInterest name CDATA #REQUIRED
+                          lat  CDATA #REQUIRED
+                          lon  CDATA #REQUIRED>
+
+<!ELEMENT Agents          (Agent*)>
+
+<!ELEMENT Agent           EMPTY>
+<!ATTLIST Agent           name    CDATA #REQUIRED
+	                  areaMin CDATA #REQUIRED
+                          areaMax CDATA #REQUIRED
+                          speedMin CDATA #REQUIRED
+	                  speedMax CDATA #REQUIRED>
 

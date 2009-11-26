@@ -6,7 +6,8 @@ import Context
 import Vocabulary
 import Text.XML.HaXml.XmlContent.Parser (List1(..))
 import Reasoner.Types (HypothesisMap(..))
-import World (getEntity)
+import qualified WrappedInts.IDSet as IDSet (fromList)
+import World (getEntity, gatherEntities)
 import Data.List ((\\), sortBy, nub)
 import Debug.Trace
 
@@ -170,3 +171,24 @@ detIsRegionPoint [] _ = False
 detIsRegionPoint (p:ps) det@(Detection {detectionLat = dlat, detectionLon = dlon}) =
     ((dlat == (regionPointLat p)) && (dlon == (regionPointLon p))) ||
     detIsRegionPoint ps det
+
+pathAverageArea :: HypothesisMap Entity -> Path -> Double
+pathAverageArea entityMap (Path _ (NonEmpty movRefs)) =
+    let dets = nub $ foldl (\rest (detStart, detEnd) -> detStart:detEnd:rest) [] $
+               map (\(Movement _ detStart detEnd _) ->
+                        (getEntity entityMap detStart, getEntity entityMap detEnd)) $
+               gatherEntities entityMap (IDSet.fromList $ map movementRefMovId movRefs)
+    in (sum $ map detectionArea dets) / (fromIntegral $ length dets)
+
+pathAverageSpeed :: HypothesisMap Entity -> Path -> Double
+pathAverageSpeed entityMap (Path _ (NonEmpty movRefs)) =
+    let detPairs = map (\(Movement _ detStart detEnd _) ->
+                        (getEntity entityMap detStart, getEntity entityMap detEnd)) $
+                   gatherEntities entityMap (IDSet.fromList $ map movementRefMovId movRefs)
+    in foldl1 (+) $ map (uncurry detSpeed) detPairs
+
+pathMatchesAgent :: HypothesisMap Entity -> Path -> Agent -> Bool
+pathMatchesAgent entityMap path (Agent _ areaMin areaMax speedMin speedMax) =
+    let avgArea  = pathAverageArea entityMap path
+        avgSpeed = pathAverageSpeed entityMap path
+    in (avgArea >= areaMin) && (avgArea <= areaMax) && (avgSpeed >= speedMin) && (avgSpeed <= speedMax)
