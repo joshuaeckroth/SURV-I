@@ -47,15 +47,14 @@ data PointOfInterest = PointOfInterest
     { pointOfInterestName :: String
     , pointOfInterestLat :: Latitude
     , pointOfInterestLon :: Longitude
+    , pointOfInterestRange :: Double
     } deriving (Eq,Show)
 newtype Agents = Agents [Agent]
     deriving (Eq,Show)
 data Agent = Agent
     { agentName :: String
-    , agentAreaMin :: Double
-    , agentAreaMax :: Double
-    , agentSpeedMin :: Double
-    , agentSpeedMax :: Double
+    , agentArea :: Double
+    , agentSpeed :: Double
     } deriving (Eq,Show)
 
 
@@ -223,11 +222,13 @@ instance XmlAttributes PointOfInterest where
           { pointOfInterestName = definiteA fromAttrToStr "PointOfInterest" "name" as
           , pointOfInterestLat = read $ definiteA fromAttrToStr "PointOfInterest" "lat" as
           , pointOfInterestLon = read $ definiteA fromAttrToStr "PointOfInterest" "lon" as
+          , pointOfInterestRange = read $ definiteA fromAttrToStr "PointOfInterest" "range" as
           }
     toAttrs v = catMaybes 
         [ toAttrFrStr "name" (pointOfInterestName v)
         , toAttrFrStr "lat" (show $ pointOfInterestLat v)
         , toAttrFrStr "lon" (show $ pointOfInterestLon v)
+        , toAttrFrStr "range" (show $ pointOfInterestRange v)
         ]
 
 instance HTypeable Agents where
@@ -253,17 +254,13 @@ instance XmlAttributes Agent where
     fromAttrs as =
         Agent
           { agentName = definiteA fromAttrToStr "Agent" "name" as
-          , agentAreaMin = read $ definiteA fromAttrToStr "Agent" "areaMin" as
-          , agentAreaMax = read $ definiteA fromAttrToStr "Agent" "areaMax" as
-          , agentSpeedMin = read $ definiteA fromAttrToStr "Agent" "speedMin" as
-          , agentSpeedMax = read $ definiteA fromAttrToStr "Agent" "speedMax" as
+          , agentArea = read $ definiteA fromAttrToStr "Agent" "area" as
+          , agentSpeed = read $ definiteA fromAttrToStr "Agent" "speed" as
           }
     toAttrs v = catMaybes 
         [ toAttrFrStr "name" (agentName v)
-        , toAttrFrStr "areaMin" (show $ agentAreaMin v)
-        , toAttrFrStr "areaMax" (show $ agentAreaMax v)
-        , toAttrFrStr "speedMin" (show $ agentSpeedMin v)
-        , toAttrFrStr "speedMax" (show $ agentSpeedMax v)
+        , toAttrFrStr "area" (show $ agentArea v)
+        , toAttrFrStr "speed" (show $ agentSpeed v)
         ]
 
 

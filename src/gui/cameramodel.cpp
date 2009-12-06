@@ -67,6 +67,23 @@ QPair<double,double> CameraModel::warpToGround(int camera, QPair<int,int> p)
   return QPair<double,double>(cvGetReal1D(rmat, 0) / z, cvGetReal1D(rmat, 1) / z);
 }
 
+QPair<double,double> CameraModel::mapToGround(QPair<int,int> p)
+{
+    CvMat *mapWarp = instance()->mapWarp;
+
+    CvMat *pmat = cvCreateMat(3, 1, CV_32FC1);
+    CvMat *rmat = cvCreateMat(3, 1, CV_32FC1);
+
+    cvSetReal1D(pmat, 0, p.first);
+    cvSetReal1D(pmat, 1, p.second);
+    cvSetReal1D(pmat, 2, 1);
+
+    cvMatMul(mapWarp, pmat, rmat);
+
+    double z = cvGetReal1D(rmat, 2);
+    return QPair<double,double>(cvGetReal1D(rmat, 0) / z, cvGetReal1D(rmat, 1) / z);
+}
+
 QPair<int,int> CameraModel::warpToImage(int camera, QPair<double,double> p)
 {
   CvMat* warp = instance()->warp[camera];

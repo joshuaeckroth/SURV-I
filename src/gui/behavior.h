@@ -23,6 +23,7 @@ public:
     bool isAccepted() const;
     QString getScore() const;
     QStringList getData() const;
+    QString getContent() const;
     void setHighlighted(bool h);
     bool isHighlighted() const;
 

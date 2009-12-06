@@ -14,18 +14,18 @@ import Debug.Trace
 mkBehaviors :: Context -> HypothesisMap Entity -> [Path] -> [Hypothesis Behavior]
 mkBehaviors context entityMap paths =
     let pathsAndContext = concatMap (\(path, regions, agents) ->
-                                     concatMap (\region -> map (\agent -> (path, region, agent))
+                                     concatMap (\region -> map (\(agent, score) -> (path, region, agent, score))
                                                            agents)
                                      regions) $
                           associatePathsAndContext context entityMap paths
     in map (mkBehavior entityMap) pathsAndContext
 
-mkBehavior :: HypothesisMap Entity -> (Path, String, String) -> Hypothesis Behavior
-mkBehavior entityMap (path, region, agent) =
+mkBehavior :: HypothesisMap Entity -> (Path, String, String, Level) -> Hypothesis Behavior
+mkBehavior entityMap (path, region, agent, s) =
     let content   = agent ++ " in " ++ region
         hypId     = mkBehaviorHypId content [path]
         pathRef   = extractPathHypId path
-        score     = \_ -> High
+        score     = \_ -> s
         behavior  = Behavior (Behavior_Attrs hypId (show $ score Medium) content)
                     (NonEmpty $ map mkPathRef [pathRef])
         aPriori   = score
@@ -37,11 +37,12 @@ mkBehavior entityMap (path, region, agent) =
 associatePathsAndContext :: Context
                          -> HypothesisMap Entity
                          -> [Path]
-                         -> [(Path, [String], [String])] -- ^ (path, [region], [agent])
+                         -> [(Path, [String], [(String, Level)])] -- ^ (path, [region], [(agent, score)])
 associatePathsAndContext _ _ [] = []
 associatePathsAndContext context@(Context _ _ (Regions regions) _ (Agents agents)) entityMap (path:paths) =
-    [(path, findRegionIntersections entityMap regions path, findPossibleAgents entityMap agents path)] ++
-    associatePathsAndContext context entityMap paths
+    let assocRegions = findRegionIntersections entityMap regions path
+        assocAgents  = findPossibleAgents entityMap agents path
+    in [(path, assocRegions, assocAgents)] ++ associatePathsAndContext context entityMap paths
 
 findRegionIntersections :: HypothesisMap Entity -> [Region] -> Path -> [String]
 findRegionIntersections _ [] _ = []
@@ -50,9 +51,8 @@ findRegionIntersections entityMap (region@(Region (Region_Attrs regionName) _):r
     then [regionName] ++ (findRegionIntersections entityMap regions path)
     else findRegionIntersections entityMap regions path
 
-findPossibleAgents :: HypothesisMap Entity -> [Agent] -> Path -> [String]
+findPossibleAgents :: HypothesisMap Entity -> [Agent] -> Path -> [(String, Level)]
 findPossibleAgents _ [] _ = []
-findPossibleAgents entityMap (agent@(Agent agentName _ _ _ _):agents) path =
-    if pathMatchesAgent entityMap path agent
-    then [agentName] ++ (findPossibleAgents entityMap agents path)
-    else findPossibleAgents entityMap agents path
+findPossibleAgents entityMap (agent@(Agent agentName _ _):agents) path =
+    let score = pathMatchesAgent entityMap path agent
+    in [(agentName, score)] ++ (findPossibleAgents entityMap agents path)

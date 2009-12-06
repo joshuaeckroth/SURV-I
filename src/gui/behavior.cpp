@@ -29,6 +29,11 @@ Path *Behavior::paths_next()
     return *(paths_iter++);
 }
 
+QString Behavior::getContent() const
+{
+    return content;
+}
+
 void Behavior::setAccepted(bool _accepted)
 {
     accepted = _accepted;

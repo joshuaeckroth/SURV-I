@@ -187,8 +187,11 @@ pathAverageSpeed entityMap (Path _ (NonEmpty movRefs)) =
                    gatherEntities entityMap (IDSet.fromList $ map movementRefMovId movRefs)
     in foldl1 (+) $ map (uncurry detSpeed) detPairs
 
-pathMatchesAgent :: HypothesisMap Entity -> Path -> Agent -> Bool
-pathMatchesAgent entityMap path (Agent _ areaMin areaMax speedMin speedMax) =
-    let avgArea  = pathAverageArea entityMap path
-        avgSpeed = pathAverageSpeed entityMap path
-    in (avgArea >= areaMin) && (avgArea <= areaMax) && (avgSpeed >= speedMin) && (avgSpeed <= speedMax)
+pathMatchesAgent :: HypothesisMap Entity -> Path -> Agent -> Level
+pathMatchesAgent entityMap path (Agent _ area speed)
+    | ratio >= 0.5  && ratio <= 2.0 = High
+    | ratio >= 0.25 && ratio <= 4.0 = Medium
+    | otherwise                     = Low
+    where areaRatio  = area / pathAverageArea entityMap path
+          speedRatio = speed / pathAverageSpeed entityMap path
+          ratio      = (areaRatio + speedRatio) / 2.0

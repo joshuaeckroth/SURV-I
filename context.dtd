@@ -30,14 +30,13 @@
 <!ELEMENT PointOfInterest EMPTY>
 <!ATTLIST PointOfInterest name CDATA #REQUIRED
                           lat  CDATA #REQUIRED
-                          lon  CDATA #REQUIRED>
+                          lon  CDATA #REQUIRED
+	                  range CDATA #REQUIRED>
 
 <!ELEMENT Agents          (Agent*)>
 
 <!ELEMENT Agent           EMPTY>
 <!ATTLIST Agent           name    CDATA #REQUIRED
-	                  areaMin CDATA #REQUIRED
-                          areaMax CDATA #REQUIRED
-                          speedMin CDATA #REQUIRED
-	                  speedMax CDATA #REQUIRED>
+                          area    CDATA #REQUIRED
+	                  speed   CDATA #REQUIRED>
 

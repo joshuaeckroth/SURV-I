@@ -8,6 +8,7 @@ class CameraModel
 public:
   static void setNumCameras(int n);
   static QPair<double,double> warpToGround(int camera, QPair<int,int> p);
+  static QPair<double,double> mapToGround(QPair<int,int> p);
   static QPair<int,int> warpToImage(int camera, QPair<double,double> p);
   static QPair<int,int> warpToMap(QPair<double,double> p);
 

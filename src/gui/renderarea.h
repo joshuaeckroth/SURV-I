@@ -9,6 +9,7 @@
 #include <QPen>
 #include <QMutex>
 #include <QPoint>
+#include <QFont>
 
 #include "highgui.h"
 
@@ -54,7 +55,8 @@ private:
   QMutex mutex;
   QPen detectionPen, detectionUnacceptedPen,
     movementPen, movementUnacceptedPen,
-    pathPen, pathUnacceptedPen, highlightedPen;
+    pathPen, pathUnacceptedPen, highlightedPen, behaviorTextPen;
+  QFont behaviorTextFont;
   int maxHeight, mapTopLeftX, mapTopLeftY;
   QPoint warpToCameraRegion(int camera, double lat, double lon);
   QPoint warpToMapRegion(double lat, double lon);
