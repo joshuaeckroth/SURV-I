@@ -143,17 +143,18 @@ runAbducer cameraDetections world =
         existingDets   = gatherEntities emap allHyps :: [Detection]
         existingMovs   = gatherEntities emap allHyps :: [Movement]
         existingPaths  = gatherEntities emap allHyps :: [Path]
-        existingBehavs = gatherEntities emap allHyps :: [Behavior]
+
         dets           = mkDetections cameraDetections
+        newDets        = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) dets
         emap'          = foldl addToEntityMap emap (map (\(Hyp {entity = det}) ->
-                                                         (extractDetHypId det, det)) dets)
-        movs           = mkMovements $ nub (existingDets ++ (extractEntities dets))
+                                                         (extractDetHypId det, det)) newDets)
+        movs           = mkMovements (existingDets ++ (extractEntities newDets))
         -- filter out movement hyps that have already been posed
         -- (note that a hyp's ID hash uniquely identifies the hyp by hashing its components)
         newMovs        = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) movs
         emap''         = foldl addToEntityMap emap' (map (\(Hyp {entity = mov}) ->
                                                           (extractMovHypId mov, mov)) newMovs)
-        paths          = mkPaths emap'' existingPaths $ nub (existingMovs ++ (extractEntities movs))
+        paths          = mkPaths emap'' existingPaths (existingMovs ++ (extractEntities newMovs))
         -- filter out duplicate paths
         newPaths       = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) paths
         -- filter out subpaths among newPaths and existing paths
@@ -162,7 +163,7 @@ runAbducer cameraDetections world =
                          in filter (\(Hyp {entity = path}) -> not $ elem path subPaths) newPaths
 
         worldWithPaths = updateConflictingPaths $ removeSubPaths $ hypothesize nonSubPaths $
-                         hypothesize newMovs $ hypothesize dets cleanedWorld
+                         hypothesize newMovs $ hypothesize newDets cleanedWorld
 
         behaviors      = mkBehaviors (context worldWithPaths) (entityMap worldWithPaths)
                          (gatherEntities (entityMap worldWithPaths) (allHypotheses worldWithPaths))
