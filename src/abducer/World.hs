@@ -116,8 +116,7 @@ isSubPath (Path (Path_Attrs hypId1 _ _) (NonEmpty movRefs1))
 -- | Look at all paths and determine which subsets conflict (are \"rivals\"); add
 --   these conflicts into the path hypotheses.
 -- 
--- Two paths conflict or are rivals if they share a significant (> 80%) number
--- of movements.
+-- Two paths conflict or are rivals if they do not differ by at least four movements.
 updateConflictingPaths :: World -> World
 updateConflictingPaths world = mergeIntoWorld world $ findConflictingPaths paths paths
     where
@@ -131,7 +130,7 @@ updateConflictingPaths world = mergeIntoWorld world $ findConflictingPaths paths
               world1 = foldl (\w (subject, objects) ->
                               foldl (\w' object ->
                                      addConflicts subject object w') w objects)
-                       (removePathConflicts world (map fst conflicts)) conflicts
+                       (removePathConflicts world (map extractPathHypId paths)) conflicts
               -- then update the path entities to record their conflicts
               world2 = foldl (\w (subject, objects) ->
                               let (Path (Path_Attrs hypId score _) movs) = getEntity (entityMap w) subject in
@@ -158,17 +157,14 @@ pathsConflict :: Path -> Path -> Bool
 pathsConflict (Path (Path_Attrs hypId1 _ _) (NonEmpty movRefs1))
                   (Path (Path_Attrs hypId2 _ _) (NonEmpty movRefs2))
     -- a path does not conflict with itself
-    | hypId1 == hypId2       = False
-    -- a path conflicts with another path if the one shares at least 50% of
-    -- the same movements with the other
-    | movsNotShared12 <= 0.5 = True
-    | movsNotShared21 <= 0.5 = True
+    | hypId1 == hypId2    = False
+    -- a path conflicts with another path if they do not differ by at least four movements
+    | movsNotShared12 < 4 = True
+    | movsNotShared21 < 4 = True
     -- otherwise there is no conflict
-    | otherwise              = False
-    where movsNotShared12 = (fromIntegral $ length $ movRefs1 \\ movRefs2) /
-                            (fromIntegral $ length movRefs1)
-          movsNotShared21 = (fromIntegral $ length $ movRefs2 \\ movRefs1) /
-                            (fromIntegral $ length movRefs2)
+    | otherwise           = False
+    where movsNotShared12 = length $ movRefs1 \\ movRefs2
+          movsNotShared21 = length $ movRefs2 \\ movRefs1
 
 hypothesize :: (Typeable a) => [Hypothesis a] -> World -> World
 hypothesize hs world =
