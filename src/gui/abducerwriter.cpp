@@ -55,8 +55,9 @@ void AbducerWriter::run()
 void AbducerWriter::sendDetections(QString d)
 {
     mutex.lock();
-    detections.enqueue(QString("<?xml version=\"1.0\" ?>\n"
-                               "<CameraDetections>\n%1</CameraDetections>\n").arg(d));
+    detections.enqueue(d);
+    //detections.enqueue(QString("<?xml version=\"1.0\" ?>\n"
+    //                           "<CameraDetections>\n%1</CameraDetections>\n").arg(d));
     detectionsBuffer.wakeAll();
     mutex.unlock();
 }

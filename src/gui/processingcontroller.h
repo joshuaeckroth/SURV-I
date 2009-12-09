@@ -46,6 +46,7 @@ private:
   QTimer* abducerTimer;
   Frame** curFrame;
   QString detections;
+  int detectionsCount;
 };
 
 #endif

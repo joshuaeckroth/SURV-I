@@ -3,6 +3,7 @@
 #include <QMap>
 #include <QPair>
 #include <QThread>
+#include <QFile>
 
 #include <iostream>
 
@@ -13,7 +14,7 @@
 #include "cameramodel.h"
 
 ProcessingController::ProcessingController(int n)
-        : QThread(), numCameras(n)
+        : QThread(), numCameras(n), detectionsCount(1)
 {
     CameraModel::setNumCameras(numCameras);
     curFrame = new Frame*[numCameras];
@@ -175,6 +176,13 @@ void ProcessingController::timeoutDetections()
     isProcessing = false;
     abducerTimer->stop();
     */
+
+    QFile detFile(QString("detections/detections-chunk-%1.xml").arg(detectionsCount));
+    detFile.open(QFile::ReadOnly);
+
+    detections = detFile.readAll();
+
+    detectionsCount++;
 
     emit sendDetections(detections);
     detections.clear();

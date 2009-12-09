@@ -59,7 +59,9 @@ void CaptureThread::run()
             frame = new Frame(frameNum, frameTime, camera);
             frame->setImage(image);
 
-            detections = decoder->decodeFrame(frame);
+            //detections = decoder->decodeFrame(frame);
+            msleep(350);
+            detections = QString();
             emit newDetections(detections, frame);
         }
         updateFPS(time.elapsed());
