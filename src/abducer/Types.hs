@@ -132,7 +132,7 @@ mkPathRef :: HypothesisID -> PathRef
 mkPathRef hypId = PathRef hypId
 
 extractBehaviorHypId :: Behavior -> HypothesisID
-extractBehaviorHypId (Behavior (Behavior_Attrs hypId _ _) _) = hypId
+extractBehaviorHypId (Behavior (Behavior_Attrs hypId _ _ _) _) = hypId
 
 mkBehaviorRef :: HypothesisID -> BehaviorRef
 mkBehaviorRef hypId = BehaviorRef hypId
@@ -255,6 +255,7 @@ data Behavior_Attrs = Behavior_Attrs
     { behaviorId      :: HypothesisID
     , behaviorScore   :: String
     , behaviorContent :: String
+    , behaviorConflicts :: String
     } deriving (Eq,Show)
 data BehaviorRef = BehaviorRef
     { behaviorRefBehavId :: HypothesisID
@@ -476,11 +477,13 @@ instance XmlAttributes Behavior_Attrs where
         { behaviorId = HasInt $ read $ definiteA fromAttrToStr "Behavior" "id" as
         , behaviorScore = definiteA fromAttrToStr "Behavior" "score" as
         , behaviorContent = definiteA fromAttrToStr "Behavior" "content" as
+        , behaviorConflicts = definiteA fromAttrToStr "Behavior" "conflicts" as
         }
     toAttrs v = catMaybes
                 [ toAttrFrStr "id" (show $ behaviorId v)
                 , toAttrFrStr "score" (behaviorScore v)
                 , toAttrFrStr "content" (behaviorContent v)
+                , toAttrFrStr "conflicts" (behaviorConflicts v)
                 ]
 
 instance HTypeable BehaviorRef where

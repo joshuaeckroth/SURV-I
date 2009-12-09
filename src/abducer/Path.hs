@@ -189,9 +189,9 @@ pathAverageSpeed entityMap (Path _ (NonEmpty movRefs)) =
 
 pathMatchesAgent :: HypothesisMap Entity -> Path -> Agent -> Level
 pathMatchesAgent entityMap path (Agent _ area speed)
-    | ratio >= 0.5  && ratio <= 2.0 = High
-    | ratio >= 0.25 && ratio <= 4.0 = Medium
-    | otherwise                     = Low
+    | ratio >= 0.5  && ratio <= 2.0 = VeryHigh
+    | ratio >= 0.25 && ratio <= 4.0 = High
+    | otherwise                     = Medium
     where areaRatio  = area / pathAverageArea entityMap path
           speedRatio = speed / pathAverageSpeed entityMap path
           ratio      = (areaRatio + speedRatio) / 2.0

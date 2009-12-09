@@ -18,7 +18,7 @@ mkBehaviors context entityMap paths =
                                                            agents)
                                      regions) $
                           associatePathsAndContext context entityMap paths
-    in map (mkBehavior entityMap) pathsAndContext
+    in updateConflicts $ map (mkBehavior entityMap) pathsAndContext
 
 mkBehavior :: HypothesisMap Entity -> (Path, String, String, Level) -> Hypothesis Behavior
 mkBehavior entityMap (path, region, agent, s) =
@@ -26,13 +26,22 @@ mkBehavior entityMap (path, region, agent, s) =
         hypId     = mkBehaviorHypId content [path]
         pathRef   = extractPathHypId path
         score     = \_ -> s
-        behavior  = Behavior (Behavior_Attrs hypId (show $ score Medium) content)
+        behavior  = Behavior (Behavior_Attrs hypId (show $ score Medium) content "")
                     (NonEmpty $ map mkPathRef [pathRef])
         aPriori   = score
         explains  = [pathRef]
         implies   = [pathRef]
         conflicts = []
     in Hyp behavior hypId aPriori explains implies conflicts
+
+updateConflicts :: [Hypothesis Behavior] -> [Hypothesis Behavior]
+updateConflicts hBehaviors = map (updateConflicts' hBehaviors) hBehaviors
+    where
+      updateConflicts' :: [Hypothesis Behavior] -> Hypothesis Behavior -> Hypothesis Behavior
+      updateConflicts' hBehaviors hBehavior@(Hyp (Behavior battrs pathRefs) hypId _ (pathRef:[]) _ _) =
+          let cs = map (\(Hyp {hypId = hypId}) -> hypId) $
+                   filter (\(Hyp _ hypId' _ (pathRef':[]) _ _) -> hypId /= hypId' && pathRef == pathRef') hBehaviors
+          in hBehavior { entity = (Behavior (battrs { behaviorConflicts = intercalate "," (map show cs) }) pathRefs), conflicts = cs }
 
 associatePathsAndContext :: Context
                          -> HypothesisMap Entity

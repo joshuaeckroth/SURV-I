@@ -21,6 +21,7 @@ bool ResultsReader::startElement(const QString&, const QString&,
         detections.clear();
         movements.clear();
         paths.clear();
+        behaviors.clear();
     }
     else if(qName == "Entities")
     { }
@@ -70,6 +71,7 @@ bool ResultsReader::startElement(const QString&, const QString&,
         behaviorId = attributes.value("id").toInt();
         behaviorScore = attributes.value("score");
         behaviorContent = attributes.value("content");
+        behaviorConflicts = attributes.value("conflicts");
         inBehavior = true;
         behaviorPaths.clear();
     }
@@ -115,7 +117,7 @@ bool ResultsReader::endElement(const QString&, const QString&, const QString& qN
     }
     else if(qName == "Behavior")
     {
-        behaviors[behaviorId] = new Behavior(behaviorId, behaviorPaths, behaviorScore, behaviorContent);
+        behaviors[behaviorId] = new Behavior(behaviorId, behaviorPaths, behaviorScore, behaviorContent, behaviorConflicts);
         inBehavior = false;
     }
     return true;

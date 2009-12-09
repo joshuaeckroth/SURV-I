@@ -37,6 +37,9 @@ allHypotheses world = R.acceptedHypotheses (mind world)
 rejectedHypotheses :: World -> HypothesisIDs
 rejectedHypotheses world = R.refutedHypotheses (mind world)
 
+acceptedHypotheses :: World -> HypothesisIDs
+acceptedHypotheses world = R.acceptedHypotheses (mind world)
+
 cleanWorld :: World -> World
 cleanWorld world = 
     let allDetHypIds       = map extractDetHypId $ gatherEntities (entityMap world) (allHypotheses world)
@@ -46,8 +49,11 @@ cleanWorld world =
         allRejPathHypIds   = map extractPathHypId $ gatherEntities (entityMap world) (rejectedHypotheses world)
         newerRejPathHypIds = newerPaths (entityMap world) (rejectedHypotheses world)
         oldRejPathHypIds   = allRejPathHypIds \\ newerRejPathHypIds
-        rejBehaviorHypIds  = map extractBehaviorHypId $ gatherEntities (entityMap world) (rejectedHypotheses world)
-        removable          = oldDetHypIds ++ invalidMovHypIds ++ oldRejPathHypIds ++ rejBehaviorHypIds
+--        -- find behaviors that reference paths that no longer exist or are rejected
+--        invalidBehavHypIds = invalidBehaviors (gatherEntities (entityMap world) (allHypotheses world))
+--                             (gatherEntities (entityMap world) (acceptedHypotheses world))
+        invalidBehavHypIds = map extractBehaviorHypId $ gatherEntities (entityMap world) (allHypotheses world)
+        removable          = oldDetHypIds ++ invalidMovHypIds ++ oldRejPathHypIds ++ invalidBehavHypIds
     in foldr removeHypothesis world removable
 
 newerDetections :: HypothesisMap Entity
@@ -93,6 +99,13 @@ invalidPaths movHypIds entityMap hypIds =
     filter (\(Path _ (NonEmpty movRefs)) ->
         (not $ null $ intersect (map (\(MovementRef movId) -> movId) movRefs) movHypIds))
     (gatherEntities entityMap hypIds :: [Path])
+
+-- | Find behaviors that reference paths that no longer exist or are rejected
+invalidBehaviors :: [Behavior] -> [Path] -> [HypothesisID]
+invalidBehaviors [] _ = []
+invalidBehaviors ((Behavior (Behavior_Attrs hypId _ _ _) (NonEmpty ((PathRef pathRef):[]))):behaviors) paths =
+    let pathExists = elem pathRef (map extractPathHypId paths)
+    in if pathExists then invalidBehaviors behaviors paths else [hypId] ++ (invalidBehaviors behaviors paths)
 
 -- | Remove paths that are entirely contained in other paths.
 -- 

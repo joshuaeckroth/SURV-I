@@ -2,8 +2,8 @@
 #include "path.h"
 #include "entity.h"
 
-Behavior::Behavior(int _id, std::vector<Path*> _paths, QString _score, QString _content)
-        : Entity(), id(_id), paths(_paths), score(_score), content(_content), highlighted(false)
+Behavior::Behavior(int _id, std::vector<Path*> _paths, QString _score, QString _content, QString _conflicts)
+        : Entity(), id(_id), paths(_paths), score(_score), content(_content), conflicts(_conflicts), highlighted(false)
 { }
 
 Behavior::~Behavior()
@@ -64,7 +64,7 @@ QStringList Behavior::getData() const
             << ""
             << ""
             << ""
-            << "";
+            << conflicts;
     return data;
 }
 

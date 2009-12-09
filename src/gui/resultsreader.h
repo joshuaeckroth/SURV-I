@@ -38,6 +38,7 @@ private:
   bool inBehavior;
   QString behaviorScore;
   QString behaviorContent;
+  QString behaviorConflicts;
   std::map<int,Detection*> detections;
   std::map<int,Movement*> movements;
   std::map<int,Path*> paths;
