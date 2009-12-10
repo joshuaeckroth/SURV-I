@@ -177,7 +177,7 @@ void ProcessingController::timeoutDetections()
     abducerTimer->stop();
     */
 
-    QFile detFile(QString("detections/detections-chunk-%1.xml").arg(detectionsCount));
+    QFile detFile(QString("detections/detection-chunk-%1.xml").arg(detectionsCount));
     detFile.open(QFile::ReadOnly);
 
     detections = detFile.readAll();

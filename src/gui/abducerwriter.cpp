@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QTcpSocket>
 #include <QHostAddress>
+#include <QFile>
 
 #include "abducerwriter.h"
 
@@ -33,7 +34,7 @@ void AbducerWriter::run()
         outSocket->write("NEW DETECTIONS\n");
         outSocket->write(QString::number(detections.head().length()).toAscii());
         outSocket->write("\n");
-        qint64 size = detections.back().length();
+        qint64 size = detections.head().length();
         QString output = detections.dequeue();;
         qint64 pos = 0;
         while(pos < size)

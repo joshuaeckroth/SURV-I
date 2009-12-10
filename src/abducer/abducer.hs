@@ -167,6 +167,9 @@ runAbducer cameraDetections world =
 
         behaviors      = mkBehaviors (context worldWithPaths) (entityMap worldWithPaths)
                          (gatherEntities (entityMap worldWithPaths) (allHypotheses worldWithPaths))
-        -- newBehaviors   = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId (entityMap worldWithPaths)) behaviors
+        newBehaviors   = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId (entityMap worldWithPaths)) behaviors
+
+        -- hypothesize behaviors; then remove behaviors that reference paths that have been removed (by removeSubPaths)
+        newWorld       = removeInvalidBehaviors $ hypothesize newBehaviors worldWithPaths
     in
-      reason $ hypothesize behaviors worldWithPaths
+      reason newWorld

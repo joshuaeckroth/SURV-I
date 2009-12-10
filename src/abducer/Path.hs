@@ -14,22 +14,27 @@ import Debug.Trace
 mkPaths :: HypothesisMap Entity -> [Path] -> [Movement] -> [Hypothesis Path]
 mkPaths entityMap paths movs =
     let -- extract detections of movements for efficiency
-        extractDets movs = map (\mov@(Movement _ detStart detEnd _) ->
-                                (mov, (getEntity entityMap detStart, getEntity entityMap detEnd))) movs
-        movsAndDets      = extractDets movs
-        movChains        = genMovChains movsAndDets
-        existingPaths    = map (\(Path _ (NonEmpty pmovs)) -> extractDets $
-                                map (\mref -> getEntity entityMap (movementRefMovId mref)) pmovs) paths
-        newPaths         = map mkPath movChains
-        extendedPaths    = map mkPath $ nub $ concat $ map (extendPaths movChains) existingPaths
+        extractDets movs     = map (\mov@(Movement _ detStart detEnd _) ->
+                                    (mov, (getEntity entityMap detStart, getEntity entityMap detEnd))) movs
+        movsAndDets          = extractDets movs
+        movChains            = genMovChains movsAndDets
+        existingPaths        = map (\(Path _ (NonEmpty pmovs)) -> extractDets $
+                                    map (\mref -> getEntity entityMap (movementRefMovId mref)) pmovs) paths
+
+        newPaths             = map mkPath $ filter (\(_, score) -> (score Medium) /= Low) $
+                               map (\chain -> (chain, mkPathScore chain)) movChains
+
+        extendedPaths        = map mkPath $ filter (\(_, score) -> (score Medium) /= Low) $
+                               map (\chain -> (chain, mkPathScore chain)) $
+                               nub $ concat $ map (extendPaths movChains) existingPaths
+
     in nub $ newPaths ++ extendedPaths
 
-mkPath :: [(Movement, (Detection, Detection))]
+mkPath :: ([(Movement, (Detection, Detection))], (Level -> Level))
        -> Hypothesis Path
-mkPath movs =
+mkPath (movs, score) =
     let hypId     = mkPathHypId (map fst movs)
         movRefs   = map extractMovHypId (map fst movs)
-        score     = mkPathScore movs
         path      = Path (Path_Attrs hypId (show $ score Medium) "") (NonEmpty $ map mkMovementRef movRefs)
         aPriori   = score
         explains  = movRefs
@@ -46,11 +51,9 @@ extendPaths movChains pmovs =
 
 mkPathScore :: [(Movement, (Detection, Detection))] -> (Level -> Level)
 mkPathScore movs
-    | duration > 5.0 = (\s -> VeryHigh)
-    | duration > 4.0 = (\s -> High)
-    | duration > 3.0 = (\s -> SlightlyHigh)
-    | duration > 2.0 = (\s -> Medium)
-    | otherwise = (\s -> VeryLow)
+    | duration > 5.0 || sumSpeedDiffs < 15.0 = (\s -> VeryHigh)
+    | duration > 4.0 || sumSpeedDiffs < 30.0 = (\s -> High)
+    | otherwise = (\s -> Low)
     where sumSpeedDiffs = sumChainSpeedDifferences movs
           duration      = let detStart = (fst . snd) $ head movs
                               detEnd   = (snd . snd) $ last movs
@@ -75,14 +78,14 @@ movChainSpeeds [] = []
 movChainSpeeds ((_, (detStart, detEnd)):movs) =
     [(detDist detEnd detStart) / (detDelta detEnd detStart)] ++ (movChainSpeeds movs)
 
--- | Find movement sequences that are four movements or longer and whose
+-- | Find movement sequences that are five movements or longer and whose
 --   movements \"connect\" to each other.
 -- 
 -- \"Connection\" is defined as a closeness of the end point of
 -- the earlier movement to the start point of the later movement.
 -- This connection property is implemented in 'movsConnected'.
 genMovChains :: [(Movement, (Detection, Detection))] -> [[(Movement, (Detection, Detection))]]
-genMovChains movs = filter (\movs -> (length movs) >= 4) $ nonEmptySubMovChains (sortBy movStartTimeCompare movs)
+genMovChains movs = filter (\movs -> (length movs) >= 5) $ nonEmptySubMovChains (sortBy movStartTimeCompare movs)
 
 nonEmptySubMovChains :: [(Movement, (Detection, Detection))]
                      -> [[(Movement, (Detection, Detection))]]
@@ -105,18 +108,18 @@ movStartTimeCompare (_, (detStart1, _)) (_, (detStart2, _)) =
 -- | Determine if two movements are \"connected\".
 -- 
 -- Two movements are connected if the end point of the earlier movement
--- is within 20.0 units of the start point of the later movement.
+-- is within 25.0 units of the start point of the later movement.
 movsConnected :: (Movement, (Detection, Detection))
               -> (Movement, (Detection, Detection))
               -> Bool
 movsConnected (_, (detStart1, detEnd1)) (_, (detStart2, detEnd2)) =
-    (detDist detEnd1 detStart2 <= 30.0)
-    && (detDistanceToSegment detStart1 detEnd1 detEnd2 < 30.0)
+    (detDist detEnd1 detStart2 <= 25.0)
+    && (detDistanceToSegment detStart1 detEnd1 detEnd2 < 25.0)
            -- require that traveling from point 1 to 2 to 3 require less than 175% of 
            -- the distance than traveling from point 1 to 3 (take the most efficient route;
            -- may not always be the true route if the route was a short loop)
            && ((((detDist detStart1 detEnd1) + (detDist detStart2 detEnd2))) <= (1.75 * (detDist detStart1 detEnd2)))
-                  && (35.0 > (abs $ (detSpeed detStart1 detEnd1) - (detSpeed detStart2 detEnd2)))
+                  && (50.0 > (abs $ (detSpeed detStart1 detEnd1) - (detSpeed detStart2 detEnd2)))
 
 -- from http://www.gamedev.net/community/forums/viewreply.asp?ID=1250842
 detDistanceToSegment :: Detection -> Detection -> Detection -> Double

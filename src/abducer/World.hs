@@ -18,9 +18,9 @@ import Data.Dynamic
 import Data.List (sortBy, intersect, (\\), nub, intercalate)
 import Debug.Trace
 
-data World = World { mind      :: R.Mind Level Level Level
-                   , entityMap :: HypothesisMap Entity
-                   , context   :: Context
+data World = World { mind      :: !(R.Mind Level Level Level)
+                   , entityMap :: !(HypothesisMap Entity)
+                   , context   :: !Context
                    }
 
 mkWorld :: Context -> World
@@ -49,10 +49,9 @@ cleanWorld world =
         allRejPathHypIds   = map extractPathHypId $ gatherEntities (entityMap world) (rejectedHypotheses world)
         newerRejPathHypIds = newerPaths (entityMap world) (rejectedHypotheses world)
         oldRejPathHypIds   = allRejPathHypIds \\ newerRejPathHypIds
---        -- find behaviors that reference paths that no longer exist or are rejected
---        invalidBehavHypIds = invalidBehaviors (gatherEntities (entityMap world) (allHypotheses world))
---                             (gatherEntities (entityMap world) (acceptedHypotheses world))
-        invalidBehavHypIds = map extractBehaviorHypId $ gatherEntities (entityMap world) (allHypotheses world)
+        -- find behaviors that reference paths that no longer exist or are rejected
+        invalidBehavHypIds = invalidBehaviors (gatherEntities (entityMap world) (allHypotheses world))
+                             (gatherEntities (entityMap world) (acceptedHypotheses world))
         removable          = oldDetHypIds ++ invalidMovHypIds ++ oldRejPathHypIds ++ invalidBehavHypIds
     in foldr removeHypothesis world removable
 
@@ -60,7 +59,7 @@ newerDetections :: HypothesisMap Entity
                 -> HypothesisIDs
                 -> [HypothesisID]
 newerDetections entityMap hypIds =
-    take 60 $ map extractDetHypId $
+    take 50 $ map extractDetHypId $
     reverse $ sortBy detAscOrdering $
     gatherEntities entityMap hypIds
 
@@ -75,11 +74,9 @@ newerPaths entityMap hypIds =
                            map (\path@(Path _ (NonEmpty movRefs)) ->
                                 (path, map (\movRef -> getEntity entityMap $ movementRefMovId movRef) movRefs)) $
                            gatherEntities entityMap hypIds
-    in take 20 $ map (extractPathHypId . fst) $
+    in take 10 $ map (extractPathHypId . fst) $
        reverse $ sortBy (\(path1, detStart1) (path2, detStart2) -> detAscOrdering detStart1 detStart2)
        pathAndDetStarts
-                                       
-
 
 invalidMovements :: [HypothesisID]
                  -> HypothesisMap Entity
@@ -100,14 +97,20 @@ invalidPaths movHypIds entityMap hypIds =
         (not $ null $ intersect (map (\(MovementRef movId) -> movId) movRefs) movHypIds))
     (gatherEntities entityMap hypIds :: [Path])
 
--- | Find behaviors that reference paths that no longer exist or are rejected
+-- | Find behaviors that reference paths that no longer exist
 invalidBehaviors :: [Behavior] -> [Path] -> [HypothesisID]
 invalidBehaviors [] _ = []
 invalidBehaviors ((Behavior (Behavior_Attrs hypId _ _ _) (NonEmpty ((PathRef pathRef):[]))):behaviors) paths =
     let pathExists = elem pathRef (map extractPathHypId paths)
     in if pathExists then invalidBehaviors behaviors paths else [hypId] ++ (invalidBehaviors behaviors paths)
 
--- | Remove paths that are entirely contained in other paths.
+removeInvalidBehaviors :: World -> World
+removeInvalidBehaviors world = foldr removeHypothesis world invalid
+    where behaviors = gatherEntities (entityMap world) (allHypotheses world)
+          paths     = gatherEntities (entityMap world) (allHypotheses world)
+          invalid   = invalidBehaviors behaviors paths
+
+-- | Remove paths that are nearly entirely contained in other paths.
 -- 
 -- Such \"subpaths\" are completely irrelevant to decision making; that is,
 -- since paths must continually grow to stay relevant, there is not benefit
@@ -129,9 +132,9 @@ isSubPath (Path (Path_Attrs hypId1 _ _) (NonEmpty movRefs1))
 -- | Look at all paths and determine which subsets conflict (are \"rivals\"); add
 --   these conflicts into the path hypotheses.
 -- 
--- Two paths conflict or are rivals if they do not differ by at least four movements.
+-- See 'pathsConflict' for the determination of which paths are rivals.
 updateConflictingPaths :: World -> World
-updateConflictingPaths world = mergeIntoWorld world $ findConflictingPaths paths paths
+updateConflictingPaths world = mergeIntoWorld world $ findConflictingPaths (entityMap world) paths paths
     where
       paths = gatherEntities (entityMap world) (allHypotheses world)
 
@@ -160,24 +163,28 @@ updateConflictingPaths world = mergeIntoWorld world $ findConflictingPaths paths
                  w {mind = R.removeAdjuster (mkConflictsId subject object) (mind w)})
                     world [(subject, object) | subject <- hypIds, object <- hypIds]
 
-findConflictingPaths :: [Path] -> [Path] -> [(HypothesisID, [HypothesisID])]
-findConflictingPaths [] _ = []
-findConflictingPaths (path@(Path (Path_Attrs hypId _ _) _):paths) paths' =
-    [(hypId, map extractPathHypId $ filter (pathsConflict path) paths')]
-    ++ (findConflictingPaths paths paths')
+findConflictingPaths :: HypothesisMap Entity -> [Path] -> [Path] -> [(HypothesisID, [HypothesisID])]
+findConflictingPaths _ [] _ = []
+findConflictingPaths emap (path@(Path (Path_Attrs hypId _ _) _):paths) paths' =
+    [(hypId, map extractPathHypId $ filter (pathsConflict emap path) paths')]
+    ++ (findConflictingPaths emap paths paths')
 
-pathsConflict :: Path -> Path -> Bool
-pathsConflict (Path (Path_Attrs hypId1 _ _) (NonEmpty movRefs1))
-                  (Path (Path_Attrs hypId2 _ _) (NonEmpty movRefs2))
+pathsConflict :: HypothesisMap Entity -> Path -> Path -> Bool
+pathsConflict emap (Path (Path_Attrs hypId1 _ _) (NonEmpty movRefs1))
+                   (Path (Path_Attrs hypId2 _ _) (NonEmpty movRefs2))
     -- a path does not conflict with itself
-    | hypId1 == hypId2    = False
-    -- a path conflicts with another path if they do not differ by at least four movements
-    | movsNotShared12 < 4 = True
-    | movsNotShared21 < 4 = True
+    | hypId1 == hypId2     = False
+    -- a path conflicts with another path if they do not differ by at least five movements
+    -- or if their heads are the same detection
+    | detHead1 == detHead2 = True
+    | movsNotShared12 < 5  = True
+    | movsNotShared21 < 5  = True
     -- otherwise there is no conflict
-    | otherwise           = False
+    | otherwise            = False
     where movsNotShared12 = length $ movRefs1 \\ movRefs2
           movsNotShared21 = length $ movRefs2 \\ movRefs1
+          (Movement _ _ detHead1 _) = getEntity emap (let (MovementRef hypId) = head movRefs1 in hypId)
+          (Movement _ _ detHead2 _) = getEntity emap (let (MovementRef hypId) = head movRefs2 in hypId)
 
 hypothesize :: (Typeable a) => [Hypothesis a] -> World -> World
 hypothesize hs world =

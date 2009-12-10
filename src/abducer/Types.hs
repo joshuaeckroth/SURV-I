@@ -18,12 +18,12 @@ category = HasInt 0 :: CategoryID
 
 data Hypothesis a =
     Hyp
-    { entity    :: a
-    , hypId     :: HypothesisID
-    , aPriori   :: Level -> Level
-    , explains  :: [HypothesisID]
-    , implies   :: [HypothesisID]
-    , conflicts :: [HypothesisID]
+    { entity    :: !a
+    , hypId     :: !HypothesisID
+    , aPriori   :: !(Level -> Level)
+    , explains  :: ![HypothesisID]
+    , implies   :: ![HypothesisID]
+    , conflicts :: ![HypothesisID]
     }
 
 instance Eq (Hypothesis a) where
@@ -147,15 +147,15 @@ extractEntities = map extractEntity
 
 {-Type decls-}
 
-data CameraDetections = CameraDetections [CameraDetection]
+data CameraDetections = CameraDetections ![CameraDetection]
                       deriving (Eq,Show)
 data CameraDetection = CameraDetection
-    { cameraDetectionCamera :: String
-    , cameraDetectionLat :: Latitude
-    , cameraDetectionLon :: Longitude
-    , cameraDetectionArea :: Double
-    , cameraDetectionStartTime :: Time
-    , cameraDetectionEndTime :: Time
+    { cameraDetectionCamera :: !String
+    , cameraDetectionLat :: !Latitude
+    , cameraDetectionLon :: !Longitude
+    , cameraDetectionArea :: !Double
+    , cameraDetectionStartTime :: !Time
+    , cameraDetectionEndTime :: !Time
     } deriving (Eq,Show)
 
 
@@ -209,56 +209,56 @@ instance XmlAttributes CameraDetection where
 
 {-Type decls-}
 
-data Results  = Results Entities Accepted Rejected
+data Results  = Results !Entities !Accepted !Rejected
                 deriving (Eq,Show)
-data Entities = Entities [Detection] [Movement] [Path] [Behavior]
+data Entities = Entities ![Detection] ![Movement] ![Path] ![Behavior]
                 deriving (Eq,Show)
-data Accepted = Accepted [DetectionRef] [MovementRef] [PathRef] [BehaviorRef]
+data Accepted = Accepted ![DetectionRef] ![MovementRef] ![PathRef] ![BehaviorRef]
                 deriving (Eq,Show)
-data Rejected = Rejected [DetectionRef] [MovementRef] [PathRef] [BehaviorRef]
+data Rejected = Rejected ![DetectionRef] ![MovementRef] ![PathRef] ![BehaviorRef]
                 deriving (Eq,Show)
 data Detection = Detection
-    { detectionId        :: HypothesisID
-    , detectionLat       :: Latitude
-    , detectionLon       :: Longitude
-    , detectionStartTime :: Time
-    , detectionEndTime   :: Time
-    , detectionArea      :: Double
-    , detectionScore     :: String
-    , detectionCamera    :: Maybe CameraDetection
+    { detectionId        :: !HypothesisID
+    , detectionLat       :: !Latitude
+    , detectionLon       :: !Longitude
+    , detectionStartTime :: !Time
+    , detectionEndTime   :: !Time
+    , detectionArea      :: !Double
+    , detectionScore     :: !String
+    , detectionCamera    :: !(Maybe CameraDetection)
     } deriving (Eq,Show,Typeable)
 data DetectionRef = DetectionRef
-    { detectionRefDetId :: HypothesisID
+    { detectionRefDetId :: !HypothesisID
     } deriving (Eq,Show)
 data Movement = Movement
-    { movementId     :: HypothesisID
-    , movementDetId1 :: HypothesisID
-    , movementDetId2 :: HypothesisID
-    , movementScore  :: String
+    { movementId     :: !HypothesisID
+    , movementDetId1 :: !HypothesisID
+    , movementDetId2 :: !HypothesisID
+    , movementScore  :: !String
     } deriving (Eq,Show,Typeable)
 data MovementRef = MovementRef
-    { movementRefMovId :: HypothesisID
+    { movementRefMovId :: !HypothesisID
     } deriving (Eq,Show)
-data Path = Path Path_Attrs (List1 MovementRef)
+data Path = Path !Path_Attrs !(List1 MovementRef)
           deriving (Eq,Show,Typeable)
 data Path_Attrs = Path_Attrs
-    { pathId    :: HypothesisID
-    , pathScore :: String
-    , pathConflicts :: String
+    { pathId    :: !HypothesisID
+    , pathScore :: !String
+    , pathConflicts :: !String
     } deriving (Eq,Show)
 data PathRef = PathRef
-    { pathRefPathId :: HypothesisID
+    { pathRefPathId :: !HypothesisID
     } deriving (Eq,Show)
-data Behavior = Behavior Behavior_Attrs (List1 PathRef)
+data Behavior = Behavior !Behavior_Attrs !(List1 PathRef)
               deriving (Eq,Show,Typeable)
 data Behavior_Attrs = Behavior_Attrs
-    { behaviorId      :: HypothesisID
-    , behaviorScore   :: String
-    , behaviorContent :: String
-    , behaviorConflicts :: String
+    { behaviorId      :: !HypothesisID
+    , behaviorScore   :: !String
+    , behaviorContent :: !String
+    , behaviorConflicts :: !String
     } deriving (Eq,Show)
 data BehaviorRef = BehaviorRef
-    { behaviorRefBehavId :: HypothesisID
+    { behaviorRefBehavId :: !HypothesisID
     } deriving (Eq,Show)
 
 
