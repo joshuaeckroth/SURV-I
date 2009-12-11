@@ -53,8 +53,6 @@ void CaptureThread::run()
         {
             frameNum++;
 
-            if(frameNum == 453) break;
-
             frameTime = frameNum / fps;
             frame = new Frame(frameNum, frameTime, camera);
             frame->setImage(image);
