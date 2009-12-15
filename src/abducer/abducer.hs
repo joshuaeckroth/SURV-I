@@ -145,9 +145,15 @@ runAbducer cameraDetections world =
         existingPaths  = gatherEntities emap allHyps :: [Path]
 
         dets           = mkDetections cameraDetections
-        newDets        = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) dets
+        -- keep only new dets that are not identical to existing ones and are not likely
+        -- the same detection (close in time and space) as existing ones
+        newDets        = filter (\(Hyp {hypId = hypId, entity = det}) ->
+                                 (not $ IDMap.member hypId emap)
+                                 && (not $ or $ map (likelySameDet det) existingDets)) dets
+
         emap'          = foldl addToEntityMap emap (map (\(Hyp {entity = det}) ->
                                                          (extractDetHypId det, det)) newDets)
+
         movs           = mkMovements (existingDets ++ (extractEntities newDets))
         -- filter out movement hyps that have already been posed
         -- (note that a hyp's ID hash uniquely identifies the hyp by hashing its components)

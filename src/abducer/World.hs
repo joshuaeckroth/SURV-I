@@ -52,14 +52,22 @@ cleanWorld world =
         -- find behaviors that reference paths that no longer exist or are rejected
         invalidBehavHypIds = invalidBehaviors (gatherEntities (entityMap world) (allHypotheses world))
                              (gatherEntities (entityMap world) (acceptedHypotheses world))
-        removable          = oldDetHypIds ++ invalidMovHypIds ++ oldRejPathHypIds ++ invalidBehavHypIds
+
+        -- find movements that "kept paths" refer to
+        pathMovHypIds      = nub $ gatherPathMovHypIds (entityMap world) $
+                             -- all paths minus old rejected paths
+                             (map extractPathHypId $ gatherEntities (entityMap world) (allHypotheses world))
+                             \\ oldRejPathHypIds
+        removableMovHypIds = invalidMovHypIds \\ pathMovHypIds
+
+        removable          = oldDetHypIds ++ removableMovHypIds ++ oldRejPathHypIds ++ invalidBehavHypIds
     in foldr removeHypothesis world removable
 
 newerDetections :: HypothesisMap Entity
                 -> HypothesisIDs
                 -> [HypothesisID]
 newerDetections entityMap hypIds =
-    take 50 $ map extractDetHypId $
+    take 60 $ map extractDetHypId $
     reverse $ sortBy detAscOrdering $
     gatherEntities entityMap hypIds
 
@@ -74,9 +82,16 @@ newerPaths entityMap hypIds =
                            map (\path@(Path _ (NonEmpty movRefs)) ->
                                 (path, map (\movRef -> getEntity entityMap $ movementRefMovId movRef) movRefs)) $
                            gatherEntities entityMap hypIds
-    in take 10 $ map (extractPathHypId . fst) $
+    in take 7 $ map (extractPathHypId . fst) $
        reverse $ sortBy (\(path1, detStart1) (path2, detStart2) -> detAscOrdering detStart1 detStart2)
        pathAndDetStarts
+
+gatherPathMovHypIds :: HypothesisMap Entity -> [HypothesisID] -> [HypothesisID]
+gatherPathMovHypIds emap [] = []
+gatherPathMovHypIds emap (hpath:hpaths) =
+    case getEntity emap hpath of
+      (Path _ (NonEmpty movRefs)) -> map (\(MovementRef movRefHypId) -> movRefHypId) movRefs
+    ++ (gatherPathMovHypIds emap hpaths)
 
 invalidMovements :: [HypothesisID]
                  -> HypothesisMap Entity
@@ -174,11 +189,11 @@ pathsConflict emap (Path (Path_Attrs hypId1 _ _) (NonEmpty movRefs1))
                    (Path (Path_Attrs hypId2 _ _) (NonEmpty movRefs2))
     -- a path does not conflict with itself
     | hypId1 == hypId2     = False
-    -- a path conflicts with another path if they do not differ by at least five movements
+    -- a path conflicts with another path if they do not differ by at least six movements
     -- or if their heads are the same detection
     | detHead1 == detHead2 = True
-    | movsNotShared12 < 5  = True
-    | movsNotShared21 < 5  = True
+    | movsNotShared12 < 6  = True
+    | movsNotShared21 < 6  = True
     -- otherwise there is no conflict
     | otherwise            = False
     where movsNotShared12 = length $ movRefs1 \\ movRefs2
@@ -296,6 +311,12 @@ buildResults world =
     let accepted = R.acceptedHypotheses (mind world)
         rejected = R.refutedHypotheses (mind world)
 
+        -- include detections referred to by current movements but have been removed
+        -- from the known hypotheses (because they are old)
+        movDets  = gatherEntities (entityMap world) $ IDSet.fromList $
+                   nub $ concat $ map (\(Movement _ hdet1 hdet2 _) -> [hdet1, hdet2])
+                   (gatherEntities (entityMap world) (allHypotheses world))
+
         -- include movements and detections referred to by current paths but that have been
         -- removed from the known hypotheses (because they are old)
         pathMovs = gatherEntities (entityMap world) $ IDSet.fromList $
@@ -317,7 +338,7 @@ buildResults world =
         behaviorDets  = gatherEntities (entityMap world) $ IDSet.fromList $
                         nub $ concat $ map (\(Movement _ det1 det2 _) -> [det1, det2]) behaviorMovs
     in
-      Results (Entities (nub $ behaviorDets ++ pathDets ++ (gatherEntities (entityMap world) (allHypotheses world)))
+      Results (Entities (nub $ behaviorDets ++ pathDets ++ movDets ++ (gatherEntities (entityMap world) (allHypotheses world)))
                         (nub $ behaviorMovs ++ pathMovs ++ (gatherEntities (entityMap world) (allHypotheses world)))
                         (nub $ behaviorPaths ++ (gatherEntities (entityMap world) (allHypotheses world)))
                         (gatherEntities (entityMap world) (allHypotheses world)))

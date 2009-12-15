@@ -8,7 +8,7 @@ import Text.XML.HaXml.XmlContent.Parser (List1(..))
 import Reasoner.Types (HypothesisMap(..))
 import qualified WrappedInts.IDSet as IDSet (fromList)
 import World (getEntity, gatherEntities)
-import Data.List ((\\), sortBy, nub)
+import Data.List ((\\), sortBy, nub,intercalate)
 import Debug.Trace
 
 mkPaths :: HypothesisMap Entity -> [Path] -> [Movement] -> [Hypothesis Path]
@@ -51,8 +51,10 @@ extendPaths movChains pmovs =
 
 mkPathScore :: [(Movement, (Detection, Detection))] -> (Level -> Level)
 mkPathScore movs
-    | duration > 5.0 || sumSpeedDiffs < 15.0 = (\s -> VeryHigh)
-    | duration > 4.0 || sumSpeedDiffs < 30.0 = (\s -> High)
+    | duration > 10.0                        = (\s -> Highest)
+    | duration > 7.0 && sumSpeedDiffs < 15.0 = (\s -> VeryHigh)
+    | duration > 5.0 || sumSpeedDiffs < 20.0 = (\s -> High)
+    | duration > 4.0 || sumSpeedDiffs < 50.0 = (\s -> SlightlyHigh)
     | otherwise = (\s -> Low)
     where sumSpeedDiffs = sumChainSpeedDifferences movs
           duration      = let detStart = (fst . snd) $ head movs
@@ -78,14 +80,14 @@ movChainSpeeds [] = []
 movChainSpeeds ((_, (detStart, detEnd)):movs) =
     [(detDist detEnd detStart) / (detDelta detEnd detStart)] ++ (movChainSpeeds movs)
 
--- | Find movement sequences that are five movements or longer and whose
+-- | Find movement sequences that are four movements or longer and whose
 --   movements \"connect\" to each other.
 -- 
 -- \"Connection\" is defined as a closeness of the end point of
 -- the earlier movement to the start point of the later movement.
 -- This connection property is implemented in 'movsConnected'.
 genMovChains :: [(Movement, (Detection, Detection))] -> [[(Movement, (Detection, Detection))]]
-genMovChains movs = filter (\movs -> (length movs) >= 5) $ nonEmptySubMovChains (sortBy movStartTimeCompare movs)
+genMovChains movs = filter (\movs -> (length movs) >= 4) $ nonEmptySubMovChains (sortBy movStartTimeCompare movs)
 
 nonEmptySubMovChains :: [(Movement, (Detection, Detection))]
                      -> [[(Movement, (Detection, Detection))]]
@@ -105,6 +107,29 @@ movStartTimeCompare :: (Movement, (Detection, Detection))
 movStartTimeCompare (_, (detStart1, _)) (_, (detStart2, _)) =
     compare (detectionStartTime detStart1) (detectionStartTime detStart2)
 
+-- | Calculate movement angle from latitude/longitude axis, in degrees
+movAngle :: (Movement, (Detection, Detection))
+         -> Double
+movAngle (_, (detStart, detEnd))
+    | tanPos && sinPos             = toDeg angle
+    | (not tanPos) && sinPos       = 90.0 + (toDeg $ abs angle)
+    | tanPos && (not sinPos)       = 180.0 + (toDeg angle)
+    | (not tanPos) && (not sinPos) = 270.0 + (toDeg $ abs angle)
+    where rise    = (detectionLat detEnd) - (detectionLat detStart)
+          run     = (detectionLon detEnd) - (detectionLon detStart)
+          angle   = atan $ rise / run
+          tanPos  = angle > 0
+          sinPos  = (asin $ rise / run) > 0
+          toDeg x = 180.0 * x / 3.14159
+
+movAngleDiff :: (Movement, (Detection, Detection))
+             -> (Movement, (Detection, Detection))
+             -> Double
+movAngleDiff mov1 mov2 =
+    let angle1 = movAngle mov1
+        angle2 = movAngle mov2
+    in min (abs $ angle2 - angle1) (abs $ angle1 + (360.0 - angle2))
+
 -- | Determine if two movements are \"connected\".
 -- 
 -- Two movements are connected if the end point of the earlier movement
@@ -112,14 +137,15 @@ movStartTimeCompare (_, (detStart1, _)) (_, (detStart2, _)) =
 movsConnected :: (Movement, (Detection, Detection))
               -> (Movement, (Detection, Detection))
               -> Bool
-movsConnected (_, (detStart1, detEnd1)) (_, (detStart2, detEnd2)) =
-    (detDist detEnd1 detStart2 <= 25.0)
-    && (detDistanceToSegment detStart1 detEnd1 detEnd2 < 25.0)
-           -- require that traveling from point 1 to 2 to 3 require less than 175% of 
-           -- the distance than traveling from point 1 to 3 (take the most efficient route;
-           -- may not always be the true route if the route was a short loop)
-           && ((((detDist detStart1 detEnd1) + (detDist detStart2 detEnd2))) <= (1.75 * (detDist detStart1 detEnd2)))
-                  && (50.0 > (abs $ (detSpeed detStart1 detEnd1) - (detSpeed detStart2 detEnd2)))
+movsConnected mov1@(_, (detStart1, detEnd1)) mov2@(_, (detStart2, detEnd2)) =
+    (45.0 > movAngleDiff mov1 mov2)
+    && (detDist detEnd1 detStart2 <= 5.0)
+           && (detDistanceToSegment detStart1 detEnd1 detEnd2 < 50.0)
+                  -- require that traveling from point 1 to 2 to 3 require less than 175% of 
+                  -- the distance than traveling from point 1 to 3 (take the most efficient route;
+                  -- may not always be the true route if the route was a short loop)
+                  && ((((detDist detStart1 detEnd1) + (detDist detStart2 detEnd2))) <= (1.75 * (detDist detStart1 detEnd2)))
+                         && (50.0 > (abs $ (detSpeed detStart1 detEnd1) - (detSpeed detStart2 detEnd2)))
 
 -- from http://www.gamedev.net/community/forums/viewreply.asp?ID=1250842
 detDistanceToSegment :: Detection -> Detection -> Detection -> Double
@@ -194,7 +220,7 @@ pathMatchesAgent :: HypothesisMap Entity -> Path -> Agent -> Level
 pathMatchesAgent entityMap path (Agent _ area speed)
     | ratio >= 0.5  && ratio <= 2.0 = VeryHigh
     | ratio >= 0.25 && ratio <= 4.0 = High
-    | otherwise                     = Medium
+    | otherwise                     = Low
     where areaRatio  = area / pathAverageArea entityMap path
           speedRatio = speed / pathAverageSpeed entityMap path
           ratio      = (areaRatio + speedRatio) / 2.0

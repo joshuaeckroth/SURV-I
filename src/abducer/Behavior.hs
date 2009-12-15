@@ -18,7 +18,7 @@ mkBehaviors context entityMap paths =
                                                            agents)
                                      regions) $
                           associatePathsAndContext context entityMap paths
-    in updateConflicts $ map (mkBehavior entityMap) pathsAndContext
+    in updateConflicts $ map (mkBehavior entityMap) (filter (\(_, _, _, score) -> score /= Low) pathsAndContext)
 
 mkBehavior :: HypothesisMap Entity -> (Path, String, String, Level) -> Hypothesis Behavior
 mkBehavior entityMap (path, region, agent, s) =
