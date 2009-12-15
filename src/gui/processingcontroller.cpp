@@ -1,9 +1,9 @@
-
 #include <QDebug>
 #include <QMap>
 #include <QPair>
 #include <QThread>
 #include <QFile>
+#include <QDomDocument>
 
 #include <iostream>
 
@@ -54,7 +54,7 @@ void ProcessingController::startProcessing()
     if(abducerTimer == NULL)
     {
         abducerTimer = new QTimer;
-        connect(abducerTimer, SIGNAL(timeout()), this, SLOT(timeoutDetections()));
+//        connect(abducerTimer, SIGNAL(timeout()), this, SLOT(timeoutDetections()));
     }
     abducerTimer->start(3000);
 
@@ -162,6 +162,39 @@ void ProcessingController::newDetections(QString ds, Frame* frame)
 
     emit newFrame(frame);
     mutex.unlock();
+
+    QString file_name = QString("detections/detection-chunk-%1.xml").arg(detectionsCount);
+    if(QFile::exists(file_name))
+    {
+        QDomDocument doc("mydocument");
+        QFile file(file_name);
+        if (!file.open(QIODevice::ReadOnly))
+            return;
+        if (!doc.setContent(&file)) {
+            file.close();
+            return;
+        }
+        file.close();
+        QString endTime = doc.lastChild().lastChild().attributes().namedItem("endTime").nodeValue();
+
+        bool ok = true;
+        double end_time = endTime.toDouble(&ok);
+
+        if(end_time < frame->getTime())
+        {
+            qDebug() << "Sending Chunk File: " << file_name;
+
+            QFile detFile(file_name);
+            detFile.open(QFile::ReadOnly);
+
+            detections = detFile.readAll();
+
+            detectionsCount++;
+
+            emit sendDetections(detections);
+            detections.clear();
+        }
+    }
 }
 
 void ProcessingController::timeoutDetections()
@@ -177,15 +210,36 @@ void ProcessingController::timeoutDetections()
     abducerTimer->stop();
     */
 
-    QFile detFile(QString("detections/detection-chunk-%1.xml").arg(detectionsCount));
-    detFile.open(QFile::ReadOnly);
+    QString file_name = QString("detections/detection-chunk-%1.xml").arg(detectionsCount);
+    if(QFile::exists(file_name))
+    {
+        qDebug() << "Sending Chunk File: " << file_name;
 
-    detections = detFile.readAll();
+        QDomDocument doc("mydocument");
+        QFile file(file_name);
+        if (!file.open(QIODevice::ReadOnly))
+            return;
+        if (!doc.setContent(&file)) {
+            file.close();
+            return;
+        }
+        file.close();
+        QString endTime = doc.lastChild().lastChild().attributes().namedItem("endTime").nodeValue();
 
-    detectionsCount++;
+        bool ok = true;
+        double end_time = endTime.toDouble(&ok);
+        qDebug() << "End Time: " << end_time;
 
-    emit sendDetections(detections);
-    detections.clear();
+        QFile detFile(file_name);
+        detFile.open(QFile::ReadOnly);
+
+        detections = detFile.readAll();
+
+        detectionsCount++;
+
+        emit sendDetections(detections);
+        detections.clear();
+    }
     //mutex.unlock();
 }
 

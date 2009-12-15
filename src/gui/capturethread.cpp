@@ -36,6 +36,8 @@ void CaptureThread::run()
     Frame *frame;
     double frameTime;
     QString detections;
+    double lastFrameTime = 0.0;
+
     while(true)
     {
         if(!captureActive)
@@ -53,12 +55,17 @@ void CaptureThread::run()
         {
             frameNum++;
 
+            //if(frameNum == 453) break;
+
             frameTime = frameNum / fps;
             frame = new Frame(frameNum, frameTime, camera);
             frame->setImage(image);
 
             //detections = decoder->decodeFrame(frame);
-            msleep(350);
+            double toSleep = 2.0 * (frameTime - lastFrameTime) * 1000; //convert from seconds to ms
+            lastFrameTime = frameTime;
+            //qDebug() << "frameTime: " << frameTime << " lastFrameTime: " << lastFrameTime << " toSleep: " << (int)toSleep;
+            this->msleep((int)toSleep);
             detections = QString();
             emit newDetections(detections, frame);
         }
