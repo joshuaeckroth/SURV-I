@@ -16,10 +16,10 @@ mkMovements dets =
                          let speed      = detSpeed det1 det2,
                          ((detectionLat det1) /= (detectionLat det2) ||
                           (detectionLon det1) /= (detectionLon det2)),
-                         dist < 50.0, dist > 0.0,
+                         dist < 70.0, dist > 0.0,
                          -- areaChange < 1.0,
                          speed < 100.0,
-                         delta < 3.0, delta > 0.5,
+                         delta < 6.0, delta > 0.5,
                          detBefore det1 det2]
     in map (mkMovement closeDetPairs) closeDetPairs
 
@@ -42,8 +42,8 @@ mkMovementScore :: [(Detection, Detection, Double, Time, Double, Double)]
                 -> (Detection, Detection, Double, Time, Double, Double)
                 -> (Level -> Level)
 mkMovementScore dets (det1, det2, dist, delta, areaChange, speed)
-    | dist < 20.0 && delta < 1.5 = (\s -> corroboration Low)
-    | dist < 30.0 && delta < 1.5 = (\s -> corroboration SlightlyLow)
-    | otherwise                  = (\s -> corroboration VeryLow)
+    | dist < 50.0 && delta < 2.0 = (\s -> corroboration Medium)
+    | dist < 70.0 && delta < 3.0 = (\s -> corroboration SlightlyLow)
+    | otherwise                  = (\s -> corroboration Low)
     -- corroboration depends on two camera detections appearing similar (so far, just area)
     where corroboration = if areaChange < 0.5 then increaseLevelBy 2 else id

@@ -189,17 +189,22 @@ pathsConflict emap (Path (Path_Attrs hypId1 _ _) (NonEmpty movRefs1))
                    (Path (Path_Attrs hypId2 _ _) (NonEmpty movRefs2))
     -- a path does not conflict with itself
     | hypId1 == hypId2     = False
-    -- a path conflicts with another path if they do not differ by at least six movements
-    -- or if their heads are the same detection
-    | detHead1 == detHead2 = True
-    | movsNotShared12 < 6  = True
-    | movsNotShared21 < 6  = True
+    -- a path conflicts with another path if they do not differ by at least three movements
+    -- or if their ends are the same detection or if their first detections are the same
+    -- (note: the "three" must be less than or equal to the minimal length of paths from
+    --  the genMovChains function in the Path module)
+    | detEnd1 == detEnd2     = True
+    | detStart1 == detStart2 = True
+    | movsNotShared12 < 3    = True
+    | movsNotShared21 < 3    = True
     -- otherwise there is no conflict
-    | otherwise            = False
+    | otherwise              = False
     where movsNotShared12 = length $ movRefs1 \\ movRefs2
           movsNotShared21 = length $ movRefs2 \\ movRefs1
-          (Movement _ _ detHead1 _) = getEntity emap (let (MovementRef hypId) = head movRefs1 in hypId)
-          (Movement _ _ detHead2 _) = getEntity emap (let (MovementRef hypId) = head movRefs2 in hypId)
+          (Movement _ _ detEnd1   _) = getEntity emap (let (MovementRef hypId) = last movRefs1 in hypId)
+          (Movement _ _ detEnd2   _) = getEntity emap (let (MovementRef hypId) = last movRefs2 in hypId)
+          (Movement _ detStart1 _ _) = getEntity emap (let (MovementRef hypId) = head movRefs1 in hypId)
+          (Movement _ detStart2 _ _) = getEntity emap (let (MovementRef hypId) = head movRefs2 in hypId)
 
 hypothesize :: (Typeable a) => [Hypothesis a] -> World -> World
 hypothesize hs world =

@@ -51,12 +51,13 @@ extendPaths movChains pmovs =
 
 mkPathScore :: [(Movement, (Detection, Detection))] -> (Level -> Level)
 mkPathScore movs
-    | duration > 10.0                        = (\s -> Highest)
-    | duration > 7.0 && sumSpeedDiffs < 15.0 = (\s -> VeryHigh)
-    | duration > 5.0 || sumSpeedDiffs < 20.0 = (\s -> High)
-    | duration > 4.0 || sumSpeedDiffs < 50.0 = (\s -> SlightlyHigh)
+    | maxAngleDiff < 60.0 && (duration > 10.0)                        = (\s -> Highest)
+    | maxAngleDiff < 60.0 && (duration > 7.0 && sumSpeedDiffs < 15.0) = (\s -> VeryHigh)
+    | maxAngleDiff < 60.0 && (duration > 5.0 || sumSpeedDiffs < 20.0) = (\s -> High)
+    | maxAngleDiff < 60.0 && (duration > 4.0 || sumSpeedDiffs < 50.0) = (\s -> SlightlyHigh)
     | otherwise = (\s -> Low)
     where sumSpeedDiffs = sumChainSpeedDifferences movs
+          maxAngleDiff  = findMaxAngleDiff movs
           duration      = let detStart = (fst . snd) $ head movs
                               detEnd   = (snd . snd) $ last movs
                           in detDelta detStart detEnd
@@ -87,7 +88,7 @@ movChainSpeeds ((_, (detStart, detEnd)):movs) =
 -- the earlier movement to the start point of the later movement.
 -- This connection property is implemented in 'movsConnected'.
 genMovChains :: [(Movement, (Detection, Detection))] -> [[(Movement, (Detection, Detection))]]
-genMovChains movs = filter (\movs -> (length movs) >= 4) $ nonEmptySubMovChains (sortBy movStartTimeCompare movs)
+genMovChains movs = filter (\movs -> (length movs) >= 3) $ nonEmptySubMovChains (sortBy movStartTimeCompare movs)
 
 nonEmptySubMovChains :: [(Movement, (Detection, Detection))]
                      -> [[(Movement, (Detection, Detection))]]
@@ -119,7 +120,7 @@ movAngle (_, (detStart, detEnd))
           run     = (detectionLon detEnd) - (detectionLon detStart)
           angle   = atan $ rise / run
           tanPos  = angle > 0
-          sinPos  = (asin $ rise / run) > 0
+          sinPos  = (sin angle) > 0
           toDeg x = 180.0 * x / 3.14159
 
 movAngleDiff :: (Movement, (Detection, Detection))
@@ -130,22 +131,31 @@ movAngleDiff mov1 mov2 =
         angle2 = movAngle mov2
     in min (abs $ angle2 - angle1) (abs $ angle1 + (360.0 - angle2))
 
--- | Determine if two movements are \"connected\".
+-- | Find the largest angle change across a chain of movements.
 -- 
--- Two movements are connected if the end point of the earlier movement
--- is within 25.0 units of the start point of the later movement.
+-- The idea is to find near-180 degree reversals in a path.
+findMaxAngleDiff :: [(Movement, (Detection, Detection))]
+                 -> Double
+findMaxAngleDiff []              = 0.0
+findMaxAngleDiff (mov:[])        = 0.0
+findMaxAngleDiff (mov:mov':[]) = movAngleDiff mov mov'
+findMaxAngleDiff (mov:mov':mov'':movs) =
+    maximum [movAngleDiff mov mov', movAngleDiff mov mov'', findMaxAngleDiff (mov':mov'':movs)]
+
+-- | Determine if two movements are \"connected\".
 movsConnected :: (Movement, (Detection, Detection))
               -> (Movement, (Detection, Detection))
               -> Bool
 movsConnected mov1@(_, (detStart1, detEnd1)) mov2@(_, (detStart2, detEnd2)) =
-    (45.0 > movAngleDiff mov1 mov2)
-    && (detDist detEnd1 detStart2 <= 5.0)
-           && (detDistanceToSegment detStart1 detEnd1 detEnd2 < 50.0)
-                  -- require that traveling from point 1 to 2 to 3 require less than 175% of 
-                  -- the distance than traveling from point 1 to 3 (take the most efficient route;
-                  -- may not always be the true route if the route was a short loop)
-                  && ((((detDist detStart1 detEnd1) + (detDist detStart2 detEnd2))) <= (1.75 * (detDist detStart1 detEnd2)))
-                         && (50.0 > (abs $ (detSpeed detStart1 detEnd1) - (detSpeed detStart2 detEnd2)))
+    let testAngle = 60.0 > movAngleDiff mov1 mov2
+        testDist  = detDist detEnd1 detStart2 <= 5.0
+        testSeg   = detDistanceToSegment detStart1 detEnd1 detEnd2 < 70.0
+        -- require that traveling from point 1 to 2 to 3 require less than 200% of 
+        -- the distance than traveling from point 1 to 3 (take the most efficient route;
+        -- may not always be the true route if the route was a short loop)
+        testEff   = (((detDist detStart1 detEnd1) + (detDist detStart2 detEnd2))) <= (2.0 * (detDist detStart1 detEnd2))
+        testSpeed = 100.0 > (abs $ (detSpeed detStart1 detEnd1) - (detSpeed detStart2 detEnd2))
+    in testAngle && testDist && testSeg && testEff && testSpeed
 
 -- from http://www.gamedev.net/community/forums/viewreply.asp?ID=1250842
 detDistanceToSegment :: Detection -> Detection -> Detection -> Double
@@ -167,10 +177,10 @@ detDistanceToSegment det1 det2 det3 =
             | otherwise = ((fst unitSeg) * intersectDist + lat1, (snd unitSeg) * intersectDist + lon1)
     in dist intersectPoint (lat3, lon3)
 
+-- | Test if the most recent movement of a path intersects a region
 pathIntersectsRegion :: HypothesisMap Entity -> Path -> Region -> Bool
 pathIntersectsRegion entityMap (Path _ (NonEmpty movRefs)) (Region _ (NonEmpty points)) =
-    foldl1 (||) $ map (movIntersectsRegion points) (map (\mref -> getEntity entityMap (movementRefMovId mref)) movRefs)
-
+    movIntersectsRegion points (getEntity entityMap (movementRefMovId $ last movRefs))
     where movIntersectsRegion :: [RegionPoint] -> Movement -> Bool
           movIntersectsRegion points (Movement _ detStartRef detEndRef _) =
               let detStart = getEntity entityMap detStartRef
@@ -200,6 +210,17 @@ detIsRegionPoint [] _ = False
 detIsRegionPoint (p:ps) det@(Detection {detectionLat = dlat, detectionLon = dlon}) =
     ((dlat == (regionPointLat p)) && (dlon == (regionPointLon p))) ||
     detIsRegionPoint ps det
+
+pathHeadNearPointOfInterest :: HypothesisMap Entity -> PointOfInterest -> Path -> (Bool, String)
+pathHeadNearPointOfInterest entityMap (PointOfInterest name lat lon range) (Path _ (NonEmpty movRefs)) =
+    let mov       = getEntity entityMap (movementRefMovId $ last movRefs)
+        det1      = getEntity entityMap (movementDetId1 mov)
+        det2      = getEntity entityMap (movementDetId2 mov)
+        det1dist  = distance (lat, detectionLat det1) (lon, detectionLon det1)
+        det2dist  = distance (lat, detectionLat det2) (lon, detectionLon det2)
+        near      = range >= det2dist
+        direction = if det2dist < det1dist then "away from" else "towards"
+    in (near, direction)
 
 pathAverageArea :: HypothesisMap Entity -> Path -> Double
 pathAverageArea entityMap (Path _ (NonEmpty movRefs)) =

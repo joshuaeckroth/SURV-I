@@ -14,24 +14,27 @@ import Debug.Trace
 mkBehaviors :: Context -> HypothesisMap Entity -> [Path] -> [Hypothesis Behavior]
 mkBehaviors context entityMap paths =
     let pathsAndContext = concatMap (\(path, regions, agents) ->
-                                     concatMap (\region -> map (\(agent, score) -> (path, region, agent, score))
-                                                           agents)
+                                     concatMap (\region ->
+                                                map (\(agent, score) ->
+                                                     (path, region, agent, score))
+                                                agents)
                                      regions) $
                           associatePathsAndContext context entityMap paths
-    in updateConflicts $ map (mkBehavior entityMap) (filter (\(_, _, _, score) -> score /= Low) pathsAndContext)
+    in updateConflicts $ map (mkBehavior context entityMap) (filter (\(_, _, _, score) -> score /= Low) pathsAndContext)
 
-mkBehavior :: HypothesisMap Entity -> (Path, String, String, Level) -> Hypothesis Behavior
-mkBehavior entityMap (path, region, agent, s) =
-    let content   = agent ++ " in " ++ region
-        hypId     = mkBehaviorHypId content [path]
-        pathRef   = extractPathHypId path
-        score     = \_ -> s
-        behavior  = Behavior (Behavior_Attrs hypId (show $ score Medium) content "")
-                    (NonEmpty $ map mkPathRef [pathRef])
-        aPriori   = score
-        explains  = [pathRef]
-        implies   = [pathRef]
-        conflicts = []
+mkBehavior :: Context -> HypothesisMap Entity -> (Path, String, String, Level) -> Hypothesis Behavior
+mkBehavior (Context _ _ _ (PointsOfInterest pois) _) entityMap (path, region, agent, s) =
+    let content         = agent ++ " in " ++ region
+        contentWithPois = content ++ (concat $ findPointsOfInterest entityMap pois path)
+        hypId           = mkBehaviorHypId content [path]
+        pathRef         = extractPathHypId path
+        score           = \_ -> s
+        behavior        = Behavior (Behavior_Attrs hypId (show $ score Medium) contentWithPois "")
+                          (NonEmpty $ map mkPathRef [pathRef])
+        aPriori         = score
+        explains        = [pathRef]
+        implies         = [pathRef]
+        conflicts       = []
     in Hyp behavior hypId aPriori explains implies conflicts
 
 updateConflicts :: [Hypothesis Behavior] -> [Hypothesis Behavior]
@@ -59,6 +62,13 @@ findRegionIntersections entityMap (region@(Region (Region_Attrs regionName) _):r
     if pathIntersectsRegion entityMap path region
     then [regionName] ++ (findRegionIntersections entityMap regions path)
     else findRegionIntersections entityMap regions path
+
+findPointsOfInterest :: HypothesisMap Entity -> [PointOfInterest] -> Path -> [String]
+findPointsOfInterest _ [] _ = []
+findPointsOfInterest entityMap (poi@(PointOfInterest name _ _ _):pois) path =
+    let (inRange, qualifier) = pathHeadNearPointOfInterest entityMap poi path in
+    if inRange then [" moving " ++ qualifier ++ " " ++ name] ++ (findPointsOfInterest entityMap pois path)
+    else findPointsOfInterest entityMap pois path
 
 findPossibleAgents :: HypothesisMap Entity -> [Agent] -> Path -> [(String, Level)]
 findPossibleAgents _ [] _ = []

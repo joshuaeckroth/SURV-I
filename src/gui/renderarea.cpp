@@ -8,6 +8,7 @@
 #include <QImage>
 #include <QWidget>
 #include <QMouseEvent>
+#include <QMessageBox>
 
 #include <cmath>
 
@@ -20,6 +21,7 @@
 #include "behavior.h"
 #include "frame.h"
 #include "cameramodel.h"
+#include "infobox.h"
 
 RenderArea::RenderArea(QWidget* parent)
         : QWidget(parent), clear(true), entities(NULL)
@@ -63,9 +65,7 @@ RenderArea::RenderArea(QWidget* parent)
     highlightedPen.setWidth(3);
     highlighted = NULL;
 
-    behaviorTextPen.setColor(Qt::yellow);
-    behaviorTextFont = QFont();
-    behaviorTextFont.setPointSize(8);
+    behaviorIcon = QImage("src\\gui\\images\\info.png");
 }
 
 void RenderArea::setNumCameras(int n)
@@ -342,11 +342,9 @@ void RenderArea::paintEvent(QPaintEvent*)
                 QPair<double,double> point(m->getDet2()->getLat(), m->getDet2()->getLon());
                 for(int i = 0; i < numCameras; i++)
                 {
-                    painter.setFont(behaviorTextFont);
-                    painter.setPen(behaviorTextPen);
                     painter.setClipRegion(cameraRegion[i]);
                     QPoint p = warpToCameraRegion(i, point.first, point.second);
-                    painter.drawText(p, b->getContent());
+                    painter.drawImage(QPoint(p.x() + 3, p.y() + 3), behaviorIcon);
                 }
             }
         }
@@ -464,8 +462,49 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
         }
     }
 
-    // check for paths under the mouse
     bool found = false;
+
+    if(camera != -1) // behavior icons are not shown in map
+    {
+        entities->behaviors_begin();
+        while(!entities->behaviors_end() && !found)
+        {
+            Behavior *b = entities->behaviors_next();
+            if(!b->isAccepted())
+                continue;
+
+            b->paths_begin();
+            Path *p = b->paths_next();
+
+            if(!p->isAccepted())
+                continue;
+
+            // get last movement
+            p->movements_begin();
+            Movement *m = NULL;
+            while(!p->movements_end())
+                m = p->movements_next();
+
+            QPair<double,double> point(m->getDet2()->getLat(), m->getDet2()->getLon());
+            QPoint iconOrigin = warpToCameraRegion(camera, point.first, point.second);
+
+            QRegion iconRegion(iconOrigin.x() + 3, iconOrigin.y() + 3, behaviorIcon.width(), behaviorIcon.height());
+            if(iconRegion.contains(e->pos()))
+            {
+                // someday, need a way to delete these boxes
+                InfoBox *infobox = new InfoBox;
+                infobox->setWindowTitle(QString("Behavior %1").arg(b->getId()));
+                infobox->setText(b->getContent());
+                infobox->show();
+                p->setHighlighted(true);
+                highlighted = p;
+                found = true;
+                break;
+            }
+        }
+    }
+
+    // check for paths under the mouse
     entities->paths_begin();
     while(!entities->paths_end() && !found)
     {

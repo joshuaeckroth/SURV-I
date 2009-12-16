@@ -55,8 +55,8 @@ private:
   QMutex mutex;
   QPen detectionPen, detectionUnacceptedPen,
     movementPen, movementUnacceptedPen,
-    pathPen, pathUnacceptedPen, highlightedPen, behaviorTextPen;
-  QFont behaviorTextFont;
+    pathPen, pathUnacceptedPen, highlightedPen;
+  QImage behaviorIcon;
   int maxHeight, mapTopLeftX, mapTopLeftY;
   QPoint warpToCameraRegion(int camera, double lat, double lon);
   QPoint warpToMapRegion(double lat, double lon);

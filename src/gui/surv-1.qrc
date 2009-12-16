@@ -4,5 +4,6 @@
         <file>images/entities.png</file>
         <file>images/start.png</file>
         <file>images/stop.png</file>
+        <file>images/info.png</file>
     </qresource>
 </RCC>

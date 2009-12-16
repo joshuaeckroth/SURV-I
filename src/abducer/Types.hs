@@ -70,8 +70,10 @@ cameraDetDist (CameraDetection { cameraDetectionLat = x1, cameraDetectionLon = y
 -- | Calculate Euclidean distance between two detections
 detDist :: Detection -> Detection -> Double
 detDist (Detection { detectionLat = x1, detectionLon = y1 })
-        (Detection { detectionLat = x2, detectionLon = y2 }) =
-            sqrt ((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1))
+        (Detection { detectionLat = x2, detectionLon = y2 }) = distance (x1, y1) (x2, y2)
+
+distance :: (Double, Double) -> (Double, Double) -> Double
+distance (x1, y1) (x2, y2) = sqrt ((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1))
 
 -- | Calculate time span between two detections
 detDelta :: Detection -> Detection -> Time
