@@ -9,6 +9,7 @@
 class Detection;
 class Movement;
 class Path;
+class Agent;
 class Behavior;
 class Entities;
 
@@ -34,6 +35,11 @@ private:
   bool inPath;
   QString pathScore;
   QString pathConflicts;
+  int agentId;
+  bool inAgent;
+  QString agentScore;
+  QString agentContent;
+  QString agentConflicts;
   int behaviorId;
   bool inBehavior;
   QString behaviorScore;
@@ -43,8 +49,10 @@ private:
   std::map<int,Movement*> movements;
   std::map<int,Path*> paths;
   std::vector<Movement*> pathMovements;
+  std::map<int,Agent*> agents;
+  std::vector<Path*> agentPaths;
   std::map<int,Behavior*> behaviors;
-  std::vector<Path*>behaviorPaths;
+  std::vector<Agent*> behaviorAgents;
 };
 
 #endif

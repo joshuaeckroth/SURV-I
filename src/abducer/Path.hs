@@ -51,10 +51,9 @@ extendPaths movChains pmovs =
 
 mkPathScore :: [(Movement, (Detection, Detection))] -> (Level -> Level)
 mkPathScore movs
-    | maxAngleDiff < 60.0 && (duration > 10.0)                        = (\s -> Highest)
-    | maxAngleDiff < 60.0 && (duration > 7.0 && sumSpeedDiffs < 15.0) = (\s -> VeryHigh)
-    | maxAngleDiff < 60.0 && (duration > 5.0 || sumSpeedDiffs < 20.0) = (\s -> High)
-    | maxAngleDiff < 60.0 && (duration > 4.0 || sumSpeedDiffs < 50.0) = (\s -> SlightlyHigh)
+    | maxAngleDiff < 60.0 && (duration > 10.0)                        = (\s -> SlightlyHigh)
+    | maxAngleDiff < 60.0 && (duration > 7.0 && sumSpeedDiffs < 15.0) = (\s -> Medium)
+    | maxAngleDiff < 60.0 && (duration > 5.0 || sumSpeedDiffs < 20.0) = (\s -> SlightlyLow)
     | otherwise = (\s -> Low)
     where sumSpeedDiffs = sumChainSpeedDifferences movs
           maxAngleDiff  = findMaxAngleDiff movs
@@ -236,12 +235,3 @@ pathAverageSpeed entityMap (Path _ (NonEmpty movRefs)) =
                         (getEntity entityMap detStart, getEntity entityMap detEnd)) $
                    gatherEntities entityMap (IDSet.fromList $ map movementRefMovId movRefs)
     in foldl1 (+) $ map (uncurry detSpeed) detPairs
-
-pathMatchesAgent :: HypothesisMap Entity -> Path -> Agent -> Level
-pathMatchesAgent entityMap path (Agent _ area speed)
-    | ratio >= 0.5  && ratio <= 2.0 = VeryHigh
-    | ratio >= 0.25 && ratio <= 4.0 = High
-    | otherwise                     = Low
-    where areaRatio  = area / pathAverageArea entityMap path
-          speedRatio = speed / pathAverageSpeed entityMap path
-          ratio      = (areaRatio + speedRatio) / 2.0

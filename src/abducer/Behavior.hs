@@ -5,73 +5,53 @@ import Types
 import Context
 import Vocabulary
 import Path
+import Agent
 import Text.XML.HaXml.XmlContent.Parser (List1(..))
 import Reasoner.Types (HypothesisMap(..))
 import World (getEntity)
-import Data.List (intercalate)
+import Data.List (intercalate, sort)
 import Debug.Trace
 
-mkBehaviors :: Context -> HypothesisMap Entity -> [Path] -> [Hypothesis Behavior]
-mkBehaviors context entityMap paths =
-    let pathsAndContext = concatMap (\(path, regions, agents) ->
-                                     concatMap (\region ->
-                                                map (\(agent, score) ->
-                                                     (path, region, agent, score))
-                                                agents)
-                                     regions) $
-                          associatePathsAndContext context entityMap paths
-    in updateConflicts $ map (mkBehavior context entityMap) (filter (\(_, _, _, score) -> score /= Low) pathsAndContext)
+mkBehaviors :: Context -> HypothesisMap Entity -> [Agent] -> [Hypothesis Behavior]
+mkBehaviors context entityMap agents =
+    map (mkBehavior context entityMap) $ associateAgentsAndContext context entityMap agents
 
-mkBehavior :: Context -> HypothesisMap Entity -> (Path, String, String, Level) -> Hypothesis Behavior
-mkBehavior (Context _ _ _ (PointsOfInterest pois) _) entityMap (path, region, agent, s) =
-    let content         = agent ++ " in " ++ region
-        contentWithPois = content ++ (concat $ findPointsOfInterest entityMap pois path)
-        hypId           = mkBehaviorHypId content [path]
-        pathRef         = extractPathHypId path
-        score           = \_ -> s
+mkBehavior :: Context -> HypothesisMap Entity -> (Agent, [String]) -> Hypothesis Behavior
+mkBehavior (Context _ _ _ (PointsOfInterest pois) _) entityMap (agent@(Agent agentAttrs _), regions) =
+    let content         = (agentContent agentAttrs) ++ " in " ++ (intercalate "/" $ sort regions)
+        contentWithPois = content ++ (concat $ findPointsOfInterest entityMap pois agent)
+        hypId           = mkBehaviorHypId content [agent]
+        agentRef        = extractAgentHypId agent
+        score           = \_ -> High
         behavior        = Behavior (Behavior_Attrs hypId (show $ score Medium) contentWithPois "")
-                          (NonEmpty $ map mkPathRef [pathRef])
+                          (NonEmpty $ map mkAgentRef [agentRef])
         aPriori         = score
-        explains        = [pathRef]
-        implies         = [pathRef]
+        explains        = [agentRef]
+        implies         = [agentRef]
         conflicts       = []
     in Hyp behavior hypId aPriori explains implies conflicts
 
-updateConflicts :: [Hypothesis Behavior] -> [Hypothesis Behavior]
-updateConflicts hBehaviors = map (updateConflicts' hBehaviors) hBehaviors
-    where
-      updateConflicts' :: [Hypothesis Behavior] -> Hypothesis Behavior -> Hypothesis Behavior
-      updateConflicts' hBehaviors hBehavior@(Hyp (Behavior battrs pathRefs) hypId _ (pathRef:[]) _ _) =
-          let cs = map (\(Hyp {hypId = hypId}) -> hypId) $
-                   filter (\(Hyp _ hypId' _ (pathRef':[]) _ _) -> hypId /= hypId' && pathRef == pathRef') hBehaviors
-          in hBehavior { entity = (Behavior (battrs { behaviorConflicts = intercalate "," (map show cs) }) pathRefs), conflicts = cs }
-
-associatePathsAndContext :: Context
+associateAgentsAndContext :: Context
                          -> HypothesisMap Entity
-                         -> [Path]
-                         -> [(Path, [String], [(String, Level)])] -- ^ (path, [region], [(agent, score)])
-associatePathsAndContext _ _ [] = []
-associatePathsAndContext context@(Context _ _ (Regions regions) _ (Agents agents)) entityMap (path:paths) =
-    let assocRegions = findRegionIntersections entityMap regions path
-        assocAgents  = findPossibleAgents entityMap agents path
-    in [(path, assocRegions, assocAgents)] ++ associatePathsAndContext context entityMap paths
+                         -> [Agent]
+                         -> [(Agent, [String])] -- ^ (agent, [region])
+associateAgentsAndContext _ _ [] = []
+associateAgentsAndContext context@(Context _ _ (Regions regions) _ _) entityMap (agent:agents) =
+    let assocRegions = findRegionIntersections entityMap regions agent
+    in [(agent, assocRegions)] ++ associateAgentsAndContext context entityMap agents
 
-findRegionIntersections :: HypothesisMap Entity -> [Region] -> Path -> [String]
+findRegionIntersections :: HypothesisMap Entity -> [Region] -> Agent -> [String]
 findRegionIntersections _ [] _ = []
-findRegionIntersections entityMap (region@(Region (Region_Attrs regionName) _):regions) path =
+findRegionIntersections entityMap (region@(Region (Region_Attrs regionName) _):regions) agent@(Agent _ (NonEmpty (pathRef:[]))) =
+    let path = getEntity entityMap (pathRefPathId pathRef) in
     if pathIntersectsRegion entityMap path region
-    then [regionName] ++ (findRegionIntersections entityMap regions path)
-    else findRegionIntersections entityMap regions path
+    then [regionName] ++ (findRegionIntersections entityMap regions agent)
+    else findRegionIntersections entityMap regions agent
 
-findPointsOfInterest :: HypothesisMap Entity -> [PointOfInterest] -> Path -> [String]
+findPointsOfInterest :: HypothesisMap Entity -> [PointOfInterest] -> Agent -> [String]
 findPointsOfInterest _ [] _ = []
-findPointsOfInterest entityMap (poi@(PointOfInterest name _ _ _):pois) path =
-    let (inRange, qualifier) = pathHeadNearPointOfInterest entityMap poi path in
-    if inRange then [" moving " ++ qualifier ++ " " ++ name] ++ (findPointsOfInterest entityMap pois path)
-    else findPointsOfInterest entityMap pois path
-
-findPossibleAgents :: HypothesisMap Entity -> [Agent] -> Path -> [(String, Level)]
-findPossibleAgents _ [] _ = []
-findPossibleAgents entityMap (agent@(Agent agentName _ _):agents) path =
-    let score = pathMatchesAgent entityMap path agent
-    in [(agentName, score)] ++ (findPossibleAgents entityMap agents path)
+findPointsOfInterest entityMap (poi@(PointOfInterest name _ _ _):pois) agent@(Agent _ (NonEmpty (pathRef:[]))) =
+    let path                 = getEntity entityMap (pathRefPathId pathRef)
+        (inRange, qualifier) = pathHeadNearPointOfInterest entityMap poi path in
+    if inRange then [qualifier ++ " " ++ name] ++ (findPointsOfInterest entityMap pois agent)
+    else findPointsOfInterest entityMap pois agent

@@ -18,6 +18,7 @@
 #include "detection.h"
 #include "movement.h"
 #include "path.h"
+#include "agent.h"
 #include "behavior.h"
 #include "frame.h"
 #include "cameramodel.h"
@@ -327,8 +328,13 @@ void RenderArea::paintEvent(QPaintEvent*)
                 if(!b->isAccepted())
                     continue;
 
-                b->paths_begin();
-                Path *p = b->paths_next();
+                b->agents_begin();
+                Agent *a = b->agents_next();
+                if(!a->isAccepted())
+                    continue;
+
+                a->paths_begin();
+                Path *p = a->paths_next();
 
                 if(!p->isAccepted())
                     continue;
@@ -473,8 +479,14 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
             if(!b->isAccepted())
                 continue;
 
-            b->paths_begin();
-            Path *p = b->paths_next();
+            b->agents_begin();
+            Agent *a = b->agents_next();
+
+            if(!a->isAccepted())
+                continue;
+
+            a->paths_begin();
+            Path *p = a->paths_next();
 
             if(!p->isAccepted())
                 continue;

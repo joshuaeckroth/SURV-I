@@ -6,11 +6,12 @@
 #include "detection.h"
 #include "movement.h"
 #include "path.h"
+#include "agent.h"
 #include "behavior.h"
 #include "entities.h"
 
 ResultsReader::ResultsReader()
-        : entities(NULL), inPath(false), inBehavior(false)
+        : entities(NULL), inPath(false), inAgent(false), inBehavior(false)
 { }
 
 bool ResultsReader::startElement(const QString&, const QString&,
@@ -21,10 +22,19 @@ bool ResultsReader::startElement(const QString&, const QString&,
         detections.clear();
         movements.clear();
         paths.clear();
+        agents.clear();
         behaviors.clear();
     }
     else if(qName == "Entities")
     { }
+    else if(qName == "Accepted")
+    {
+        accepted = true;
+    }
+    else if(qName == "Rejected")
+    {
+        accepted = false;
+    }
     else if(qName == "Detection")
     {
         int id = attributes.value("id").toInt();
@@ -36,14 +46,6 @@ bool ResultsReader::startElement(const QString&, const QString&,
         QString score = attributes.value("score");
 
         detections[id] = new Detection(id, lat, lon, startTime, endTime, area, score);
-    }
-    if(qName == "Accepted")
-    {
-        accepted = true;
-    }
-    else if(qName == "Rejected")
-    {
-        accepted = false;
     }
     else if(qName == "DetectionRef")
     {
@@ -66,6 +68,15 @@ bool ResultsReader::startElement(const QString&, const QString&,
         inPath = true;
         pathMovements.clear();
     }
+    else if(qName == "Agent")
+    {
+        agentId = attributes.value("id").toInt();
+        agentScore = attributes.value("score");
+        agentContent = attributes.value("content");
+        agentConflicts = attributes.value("conflicts");
+        inAgent = true;
+        agentPaths.clear();
+    }
     else if(qName == "Behavior")
     {
         behaviorId = attributes.value("id").toInt();
@@ -73,7 +84,7 @@ bool ResultsReader::startElement(const QString&, const QString&,
         behaviorContent = attributes.value("content");
         behaviorConflicts = attributes.value("conflicts");
         inBehavior = true;
-        behaviorPaths.clear();
+        behaviorAgents.clear();
     }
     else if(qName == "MovementRef" && inPath)
     {
@@ -85,15 +96,25 @@ bool ResultsReader::startElement(const QString&, const QString&,
         int id = attributes.value("movId").toInt();
         movements[id]->setAccepted(accepted);
     }
-    else if(qName == "PathRef" && inBehavior)
+    else if(qName == "PathRef" && inAgent)
     {
         int pathId = attributes.value("pathId").toInt();
-        behaviorPaths.push_back(paths[pathId]);
+        agentPaths.push_back(paths[pathId]);
     }
-    else if(qName == "PathRef" && !inBehavior)
+    else if(qName == "PathRef" && !inAgent)
     {
         int id = attributes.value("pathId").toInt();
         paths[id]->setAccepted(accepted);
+    }
+    else if(qName == "AgentRef" && inBehavior)
+    {
+        int agentId = attributes.value("agentId").toInt();
+        behaviorAgents.push_back(agents[agentId]);
+    }
+    else if(qName == "AgentRef" && !inBehavior)
+    {
+        int id = attributes.value("agentId").toInt();
+        agents[id]->setAccepted(accepted);
     }
     else if(qName == "BehaviorRef")
     {
@@ -108,16 +129,21 @@ bool ResultsReader::endElement(const QString&, const QString&, const QString& qN
 {
     if(qName == "Results")
     {
-        entities = new Entities(detections, movements, paths, behaviors);
+        entities = new Entities(detections, movements, paths, agents, behaviors);
     }
     else if(qName == "Path")
     {
         paths[pathId] = new Path(pathId, pathMovements, pathScore, pathConflicts);
         inPath = false;
     }
+    else if(qName == "Agent")
+    {
+        agents[agentId] = new Agent(agentId, agentPaths, agentScore, agentContent, agentConflicts);
+        inAgent = false;
+    }
     else if(qName == "Behavior")
     {
-        behaviors[behaviorId] = new Behavior(behaviorId, behaviorPaths, behaviorScore, behaviorContent, behaviorConflicts);
+        behaviors[behaviorId] = new Behavior(behaviorId, behaviorAgents, behaviorScore, behaviorContent, behaviorConflicts);
         inBehavior = false;
     }
     return true;

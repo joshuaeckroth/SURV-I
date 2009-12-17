@@ -1,5 +1,5 @@
-#ifndef BEHAVIOR_H
-#define BEHAVIOR_H
+#ifndef AGENT_H
+#define AGENT_H
 
 #include <QString>
 #include <QStringList>
@@ -7,18 +7,18 @@
 
 #include "entity.h"
 
-class Agent;
+class Path;
 
-class Behavior : public Entity
+class Agent : public Entity
 {
 public:
-    Behavior(int _id, std::vector<Agent*> _agents, QString _score, QString _content, QString _conflicts);
-    ~Behavior();
+    Agent(int _id, std::vector<Path*> _paths, QString _score, QString _content, QString _conflicts);
+    ~Agent();
 
     int getId() const;
-    void agents_begin();
-    bool agents_end() const;
-    Agent *agents_next();
+    void paths_begin();
+    bool paths_end() const;
+    Path *paths_next();
     void setAccepted(bool);
     bool isAccepted() const;
     QString getScore() const;
@@ -27,16 +27,15 @@ public:
     void setHighlighted(bool h);
     bool isHighlighted() const;
 
-
 private:
     int id;
     bool accepted;
-    std::vector<Agent*> agents;
-    std::vector<Agent*>::const_iterator agents_iter;
+    std::vector<Path*> paths;
+    std::vector<Path*>::const_iterator paths_iter;
     QString score;
     QString content;
     QString conflicts;
     bool highlighted;
 };
 
-#endif // BEHAVIOR_H
+#endif // AGENT_H

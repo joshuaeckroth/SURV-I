@@ -1,9 +1,9 @@
 #include "behavior.h"
-#include "path.h"
+#include "agent.h"
 #include "entity.h"
 
-Behavior::Behavior(int _id, std::vector<Path*> _paths, QString _score, QString _content, QString _conflicts)
-        : Entity(), id(_id), paths(_paths), score(_score), content(_content), conflicts(_conflicts), highlighted(false)
+Behavior::Behavior(int _id, std::vector<Agent*> _agents, QString _score, QString _content, QString _conflicts)
+        : Entity(), id(_id), agents(_agents), score(_score), content(_content), conflicts(_conflicts), highlighted(false)
 { }
 
 Behavior::~Behavior()
@@ -14,19 +14,19 @@ int Behavior::getId() const
     return id;
 }
 
-void Behavior::paths_begin()
+void Behavior::agents_begin()
 {
-    paths_iter = paths.begin();
+    agents_iter = agents.begin();
 }
 
-bool Behavior::paths_end() const
+bool Behavior::agents_end() const
 {
-    return paths_iter == paths.end();
+    return agents_iter == agents.end();
 }
 
-Path *Behavior::paths_next()
+Agent *Behavior::agents_next()
 {
-    return *(paths_iter++);
+    return *(agents_iter++);
 }
 
 QString Behavior::getContent() const

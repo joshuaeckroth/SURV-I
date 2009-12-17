@@ -1,4 +1,4 @@
-<!ELEMENT Context     (Cameras,Map,Regions,PointsOfInterest,Agents)>
+<!ELEMENT Context     (Cameras,Map,Regions,PointsOfInterest,AgentTemplates)>
 
 <!ELEMENT Cameras     (CameraInput*,FileInput*)>
 
@@ -33,10 +33,10 @@
                           lon  CDATA #REQUIRED
 	                  range CDATA #REQUIRED>
 
-<!ELEMENT Agents          (Agent*)>
+<!ELEMENT AgentTemplates  (AgentTemplate*)>
 
-<!ELEMENT Agent           EMPTY>
-<!ATTLIST Agent           name    CDATA #REQUIRED
+<!ELEMENT AgentTemplate   EMPTY>
+<!ATTLIST AgentTemplate   name    CDATA #REQUIRED
                           area    CDATA #REQUIRED
 	                  speed   CDATA #REQUIRED>
 

@@ -12,7 +12,7 @@ loadContext file = do
 
 {-Type decls-}
 
-data Context = Context Cameras Map Regions PointsOfInterest Agents
+data Context = Context Cameras Map Regions PointsOfInterest AgentTemplates
              deriving (Eq,Show)
 data Cameras = Cameras [CameraInput] [FileInput]
              deriving (Eq,Show)
@@ -49,9 +49,9 @@ data PointOfInterest = PointOfInterest
     , pointOfInterestLon :: Longitude
     , pointOfInterestRange :: Double
     } deriving (Eq,Show)
-newtype Agents = Agents [Agent]
+newtype AgentTemplates = AgentTemplates [AgentTemplate]
     deriving (Eq,Show)
-data Agent = Agent
+data AgentTemplate = AgentTemplate
     { agentName :: String
     , agentArea :: Double
     , agentSpeed :: Double
@@ -231,31 +231,31 @@ instance XmlAttributes PointOfInterest where
         , toAttrFrStr "range" (show $ pointOfInterestRange v)
         ]
 
-instance HTypeable Agents where
-    toHType x = Defined "Agents" [] []
-instance XmlContent Agents where
-    toContents (Agents a) =
-        [CElem (Elem "Agents" [] (concatMap toContents a)) ()]
+instance HTypeable AgentTemplates where
+    toHType x = Defined "AgentTemplates" [] []
+instance XmlContent AgentTemplates where
+    toContents (AgentTemplates a) =
+        [CElem (Elem "AgentTemplates" [] (concatMap toContents a)) ()]
     parseContents = do
-        { e@(Elem _ [] _) <- element ["Agents"]
-        ; interior e $ return (Agents) `apply` many parseContents
-        } `adjustErr` ("in <Agents>, "++)
+        { e@(Elem _ [] _) <- element ["AgentTemplates"]
+        ; interior e $ return (AgentTemplates) `apply` many parseContents
+        } `adjustErr` ("in <AgentTemplates>, "++)
 
-instance HTypeable Agent where
-    toHType x = Defined "Agent" [] []
-instance XmlContent Agent where
+instance HTypeable AgentTemplate where
+    toHType x = Defined "AgentTemplate" [] []
+instance XmlContent AgentTemplate where
     toContents as =
-        [CElem (Elem "Agent" (toAttrs as) []) ()]
+        [CElem (Elem "AgentTemplate" (toAttrs as) []) ()]
     parseContents = do
-        { (Elem _ as []) <- element ["Agent"]
+        { (Elem _ as []) <- element ["AgentTemplate"]
         ; return (fromAttrs as)
-        } `adjustErr` ("in <Agent>, "++)
-instance XmlAttributes Agent where
+        } `adjustErr` ("in <AgentTemplate>, "++)
+instance XmlAttributes AgentTemplate where
     fromAttrs as =
-        Agent
-          { agentName = definiteA fromAttrToStr "Agent" "name" as
-          , agentArea = read $ definiteA fromAttrToStr "Agent" "area" as
-          , agentSpeed = read $ definiteA fromAttrToStr "Agent" "speed" as
+        AgentTemplate
+          { agentName = definiteA fromAttrToStr "AgentTemplate" "name" as
+          , agentArea = read $ definiteA fromAttrToStr "AgentTemplate" "area" as
+          , agentSpeed = read $ definiteA fromAttrToStr "AgentTemplate" "speed" as
           }
     toAttrs v = catMaybes 
         [ toAttrFrStr "name" (agentName v)

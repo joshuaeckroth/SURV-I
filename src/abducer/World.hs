@@ -49,7 +49,10 @@ cleanWorld world =
         allRejPathHypIds   = map extractPathHypId $ gatherEntities (entityMap world) (rejectedHypotheses world)
         newerRejPathHypIds = newerPaths (entityMap world) (rejectedHypotheses world)
         oldRejPathHypIds   = allRejPathHypIds \\ newerRejPathHypIds
-        -- find behaviors that reference paths that no longer exist or are rejected
+        -- find agents that reference paths that no longer exist or are rejected
+        invalidAgentHypIds = invalidAgents (gatherEntities (entityMap world) (allHypotheses world))
+                             (gatherEntities (entityMap world) (acceptedHypotheses world))
+        -- find behaviors that reference agents that no longer exist or are rejected
         invalidBehavHypIds = invalidBehaviors (gatherEntities (entityMap world) (allHypotheses world))
                              (gatherEntities (entityMap world) (acceptedHypotheses world))
 
@@ -60,7 +63,7 @@ cleanWorld world =
                              \\ oldRejPathHypIds
         removableMovHypIds = invalidMovHypIds \\ pathMovHypIds
 
-        removable          = oldDetHypIds ++ removableMovHypIds ++ oldRejPathHypIds ++ invalidBehavHypIds
+        removable          = oldDetHypIds ++ removableMovHypIds ++ oldRejPathHypIds ++ invalidAgentHypIds
     in foldr removeHypothesis world removable
 
 newerDetections :: HypothesisMap Entity
@@ -112,18 +115,25 @@ invalidPaths movHypIds entityMap hypIds =
         (not $ null $ intersect (map (\(MovementRef movId) -> movId) movRefs) movHypIds))
     (gatherEntities entityMap hypIds :: [Path])
 
--- | Find behaviors that reference paths that no longer exist
-invalidBehaviors :: [Behavior] -> [Path] -> [HypothesisID]
-invalidBehaviors [] _ = []
-invalidBehaviors ((Behavior (Behavior_Attrs hypId _ _ _) (NonEmpty ((PathRef pathRef):[]))):behaviors) paths =
+-- | Find agents that reference paths that no longer exist
+invalidAgents :: [Agent] -> [Path] -> [HypothesisID]
+invalidAgents [] _ = []
+invalidAgents ((Agent (Agent_Attrs hypId _ _ _) (NonEmpty ((PathRef pathRef):[]))):agents) paths =
     let pathExists = elem pathRef (map extractPathHypId paths)
-    in if pathExists then invalidBehaviors behaviors paths else [hypId] ++ (invalidBehaviors behaviors paths)
+    in if pathExists then invalidAgents agents paths else [hypId] ++ (invalidAgents agents paths)
 
-removeInvalidBehaviors :: World -> World
-removeInvalidBehaviors world = foldr removeHypothesis world invalid
-    where behaviors = gatherEntities (entityMap world) (allHypotheses world)
-          paths     = gatherEntities (entityMap world) (allHypotheses world)
-          invalid   = invalidBehaviors behaviors paths
+-- | Find behaviors that reference agents that no longer exist
+invalidBehaviors :: [Behavior] -> [Agent] -> [HypothesisID]
+invalidBehaviors [] _ = []
+invalidBehaviors ((Behavior (Behavior_Attrs hypId _ _ _) (NonEmpty ((AgentRef agentRef):[]))):behaviors) agents =
+    let agentExists = elem agentRef (map extractAgentHypId agents)
+    in if agentExists then invalidBehaviors behaviors agents else [hypId] ++ (invalidBehaviors behaviors agents)
+
+removeInvalidAgents :: World -> World
+removeInvalidAgents world = foldr removeHypothesis world invalid
+    where agents  = gatherEntities (entityMap world) (allHypotheses world)
+          paths   = gatherEntities (entityMap world) (allHypotheses world)
+          invalid = invalidAgents agents paths
 
 -- | Remove paths that are nearly entirely contained in other paths.
 -- 
@@ -313,47 +323,69 @@ gatherEntities entityMap hypIds =
 
 buildResults :: World -> Results
 buildResults world =
-    let accepted = R.acceptedHypotheses (mind world)
-        rejected = R.refutedHypotheses (mind world)
+    let accepted   = R.acceptedHypotheses (mind world)
+        rejected   = R.refutedHypotheses (mind world)
 
         -- include detections referred to by current movements but have been removed
         -- from the known hypotheses (because they are old)
-        movDets  = gatherEntities (entityMap world) $ IDSet.fromList $
-                   nub $ concat $ map (\(Movement _ hdet1 hdet2 _) -> [hdet1, hdet2])
-                   (gatherEntities (entityMap world) (allHypotheses world))
+        movDets    = gatherEntities (entityMap world) $ IDSet.fromList $
+                     nub $ concat $ map (\(Movement _ hdet1 hdet2 _) -> [hdet1, hdet2])
+                     (gatherEntities (entityMap world) (allHypotheses world))
 
         -- include movements and detections referred to by current paths but that have been
         -- removed from the known hypotheses (because they are old)
-        pathMovs = gatherEntities (entityMap world) $ IDSet.fromList $
-                   nub $ concat $ map (\(Path _ (NonEmpty movRefs)) -> map movementRefMovId movRefs)
-                   (gatherEntities (entityMap world) (allHypotheses world))
+        pathMovs   = gatherEntities (entityMap world) $ IDSet.fromList $
+                     nub $ concat $ map (\(Path _ (NonEmpty movRefs)) -> map movementRefMovId movRefs)
+                     (gatherEntities (entityMap world) (allHypotheses world))
 
-        pathDets = gatherEntities (entityMap world) $ IDSet.fromList $
-                   nub $ concat $ map (\(Movement _ det1 det2 _) -> [det1, det2]) pathMovs
+        pathDets   = gatherEntities (entityMap world) $ IDSet.fromList $
+                     nub $ concat $ map (\(Movement _ det1 det2 _) -> [det1, det2]) pathMovs
 
-        -- include paths and movements and detections referred to by current behaviors
+        -- include paths and movements and detections referred to by current agents
         -- but that have been removed from the known hypotheses (because they are old)
-        behaviorPaths = gatherEntities (entityMap world) $ IDSet.fromList $
-                        nub $ concat $ map (\(Behavior _ (NonEmpty pathRefs)) -> map pathRefPathId pathRefs)
-                        (gatherEntities (entityMap world) (allHypotheses world))
+        agentPaths = gatherEntities (entityMap world) $ IDSet.fromList $
+                     nub $ concat $ map (\(Agent _ (NonEmpty pathRefs)) -> map pathRefPathId pathRefs)
+                     (gatherEntities (entityMap world) (allHypotheses world))
 
-        behaviorMovs  = gatherEntities (entityMap world) $ IDSet.fromList $
-                        nub $ concat $ map (\(Path _ (NonEmpty movRefs)) -> map movementRefMovId movRefs) behaviorPaths
+        agentMovs  = gatherEntities (entityMap world) $ IDSet.fromList $
+                     nub $ concat $ map (\(Path _ (NonEmpty movRefs)) -> map movementRefMovId movRefs) agentPaths
 
-        behaviorDets  = gatherEntities (entityMap world) $ IDSet.fromList $
-                        nub $ concat $ map (\(Movement _ det1 det2 _) -> [det1, det2]) behaviorMovs
+        agentDets  = gatherEntities (entityMap world) $ IDSet.fromList $
+                     nub $ concat $ map (\(Movement _ det1 det2 _) -> [det1, det2]) agentMovs
+
+        -- include agents and paths and movements and detections referred to by current behaviors
+        -- but have been removed from the known hypotheses (because they are old)
+        behavAgents = gatherEntities (entityMap world) $ IDSet.fromList $
+                      nub $ concat $ map (\(Behavior _ (NonEmpty agentRefs)) -> map agentRefAgentId agentRefs)
+                      (gatherEntities (entityMap world) (allHypotheses world))
+
+        behavPaths  = gatherEntities (entityMap world) $ IDSet.fromList $
+                      nub $ concat $ map (\(Agent _ (NonEmpty pathRefs)) -> map pathRefPathId pathRefs) behavAgents
+
+        behavMovs   = gatherEntities (entityMap world) $ IDSet.fromList $
+                      nub $ concat $ map (\(Path _ (NonEmpty movRefs)) -> map movementRefMovId movRefs) behavPaths
+
+        behavDets   = gatherEntities (entityMap world) $ IDSet.fromList $
+                      nub $ concat $ map (\(Movement _ det1 det2 _) -> [det1, det2]) behavMovs
     in
-      Results (Entities (nub $ behaviorDets ++ pathDets ++ movDets ++ (gatherEntities (entityMap world) (allHypotheses world)))
-                        (nub $ behaviorMovs ++ pathMovs ++ (gatherEntities (entityMap world) (allHypotheses world)))
-                        (nub $ behaviorPaths ++ (gatherEntities (entityMap world) (allHypotheses world)))
+      Results (Entities (nub $ behavDets ++ agentDets ++ pathDets ++ movDets ++
+                         (gatherEntities (entityMap world) (allHypotheses world)))
+                        (nub $ behavMovs ++ agentMovs ++ pathMovs ++
+                         (gatherEntities (entityMap world) (allHypotheses world)))
+                        (nub $ behavPaths ++ agentPaths ++
+                         (gatherEntities (entityMap world) (allHypotheses world)))
+                        (nub $ behavAgents ++
+                         (gatherEntities (entityMap world) (allHypotheses world)))
                         (gatherEntities (entityMap world) (allHypotheses world)))
                   (Accepted (map (mkDetectionRef . extractDetHypId) $ gatherEntities (entityMap world) accepted)
                             (map (mkMovementRef . extractMovHypId) $ gatherEntities (entityMap world) accepted)
                             (map (mkPathRef . extractPathHypId) $ gatherEntities (entityMap world) accepted)
+                            (map (mkAgentRef . extractAgentHypId) $ gatherEntities (entityMap world) accepted)
                             (map (mkBehaviorRef . extractBehaviorHypId) $ gatherEntities (entityMap world) accepted))
                   (Rejected (map (mkDetectionRef . extractDetHypId) $ gatherEntities (entityMap world) rejected)
                             (map (mkMovementRef . extractMovHypId) $ gatherEntities (entityMap world) rejected)
                             (map (mkPathRef . extractPathHypId) $ gatherEntities (entityMap world) rejected)
+                            (map (mkAgentRef . extractAgentHypId) $ gatherEntities (entityMap world) rejected)
                             (map (mkBehaviorRef . extractBehaviorHypId) $ gatherEntities (entityMap world) rejected))
 
 outputLog :: World -> String

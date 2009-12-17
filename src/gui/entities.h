@@ -10,6 +10,7 @@
 class Detection;
 class Movement;
 class Path;
+class Agent;
 class Behavior;
 class Entity;
 class EntitiesTreeItem;
@@ -22,6 +23,7 @@ public:
     Entities(std::map<int,Detection*>,
              std::map<int,Movement*>,
              std::map<int,Path*>,
+             std::map<int,Agent*>,
              std::map<int,Behavior*>);
     ~Entities();
 
@@ -36,6 +38,10 @@ public:
     void paths_begin();
     bool paths_end() const;
     Path *paths_next();
+
+    void agents_begin();
+    bool agents_end() const;
+    Agent *agents_next();
 
     void behaviors_begin();
     bool behaviors_end() const;
@@ -62,6 +68,9 @@ private:
 
     std::map<int,Path*> paths;
     std::map<int,Path*>::const_iterator paths_iter;
+
+    std::map<int,Agent*> agents;
+    std::map<int,Agent*>::const_iterator agents_iter;
 
     std::map<int,Behavior*> behaviors;
     std::map<int,Behavior*>::const_iterator behaviors_iter;

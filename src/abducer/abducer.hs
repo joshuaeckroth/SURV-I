@@ -16,6 +16,7 @@ import World
 import Detection
 import Movement
 import Path
+import Agent
 import Behavior
 import qualified WrappedInts.IDMap as IDMap
 import qualified WrappedInts.IDSet as IDSet
@@ -80,16 +81,18 @@ getCameraDetections s = do
 
 logStatistics :: World -> World -> IO ()
 logStatistics world world' =
-    let (Results _ (Accepted dets movs paths behavs)
-                     (Rejected rdets rmovs rpaths rbehavs)) = buildResults world
-        (Results _ (Accepted dets' movs' paths' behavs')
-                     (Rejected rdets' rmovs' rpaths' rbehavs')) = buildResults world'
+    let (Results _ (Accepted dets movs paths agents behavs)
+                     (Rejected rdets rmovs rpaths ragents rbehavs)) = buildResults world
+        (Results _ (Accepted dets' movs' paths' agents' behavs')
+                     (Rejected rdets' rmovs' rpaths' ragents' rbehavs')) = buildResults world'
         detsDiff    = (length dets') - (length dets)
         rdetsDiff   = (length rdets') - (length rdets)
         movsDiff    = (length movs') - (length movs)
         rmovsDiff   = (length rmovs') - (length rmovs)
         pathsDiff   = (length paths') - (length paths)
         rpathsDiff  = (length rpaths') - (length rpaths)
+        agentsDiff  = (length agents') - (length agents)
+        ragentsDiff = (length ragents') - (length ragents)
         behavsDiff  = (length behavs') - (length behavs)
         rbehavsDiff = (length rbehavs') - (length rbehavs)
         numEntities = IDMap.size (entityMap world')
@@ -102,7 +105,7 @@ logStatistics world world' =
       putStr (show $ length rdets')
       putStr "("
       putStr (if (rdetsDiff > 0) then ("+" ++ (show rdetsDiff)) else (show rdetsDiff))
-      putStr ") rej; "
+      putStr ") r; "
       putStr (show $ length movs')
       putStr "("
       putStr (if (movsDiff > 0) then ("+" ++ (show movsDiff)) else (show movsDiff))
@@ -110,7 +113,7 @@ logStatistics world world' =
       putStr (show $ length rmovs')
       putStr "("
       putStr (if (rmovsDiff > 0) then ("+" ++ (show rmovsDiff)) else (show rmovsDiff))
-      putStr ") rej; "
+      putStr ") r; "
       putStr (show $ length paths')
       putStr "("
       putStr (if (pathsDiff > 0) then ("+" ++ (show pathsDiff)) else (show pathsDiff))
@@ -118,7 +121,15 @@ logStatistics world world' =
       putStr (show $ length rpaths')
       putStr "("
       putStr (if (rpathsDiff > 0) then ("+" ++ (show rpathsDiff)) else (show rpathsDiff))
-      putStr ") rej; "
+      putStr ") r; "
+      putStr (show $ length agents')
+      putStr "("
+      putStr (if (agentsDiff > 0) then ("+" ++ (show agentsDiff)) else (show agentsDiff))
+      putStr ") agents - "
+      putStr (show $ length ragents')
+      putStr "("
+      putStr (if (ragentsDiff > 0) then ("+" ++ (show ragentsDiff)) else (show ragentsDiff))
+      putStr ") r; "
       putStr (show $ length behavs')
       putStr "("
       putStr (if (behavsDiff > 0) then ("+" ++ (show behavsDiff)) else (show behavsDiff))
@@ -126,7 +137,7 @@ logStatistics world world' =
       putStr (show $ length rbehavs')
       putStr "("
       putStr (if (rbehavsDiff > 0) then ("+" ++ (show rbehavsDiff)) else (show rbehavsDiff))
-      putStrLn ") rej"
+      putStrLn ") r"
       putStrLn ("Number of entities in entity map: " ++ (show numEntities))
 
 respondWithResults :: Socket -> World -> IO ()
@@ -137,45 +148,51 @@ runAbducer :: CameraDetections
            -> World
            -> World
 runAbducer cameraDetections world =
-    let cleanedWorld   = cleanWorld world
-        emap           = entityMap cleanedWorld
-        allHyps        = allHypotheses cleanedWorld
-        existingDets   = gatherEntities emap allHyps :: [Detection]
-        existingMovs   = gatherEntities emap allHyps :: [Movement]
-        existingPaths  = gatherEntities emap allHyps :: [Path]
+    let cleanedWorld    = cleanWorld world
+        emap            = entityMap cleanedWorld
+        allHyps         = allHypotheses cleanedWorld
+        existingDets    = gatherEntities emap allHyps :: [Detection]
+        existingMovs    = gatherEntities emap allHyps :: [Movement]
+        existingPaths   = gatherEntities emap allHyps :: [Path]
 
-        dets           = mkDetections cameraDetections
+        dets            = mkDetections cameraDetections
         -- keep only new dets that are not identical to existing ones and are not likely
         -- the same detection (close in time and space) as existing ones
-        newDets        = filter (\(Hyp {hypId = hypId, entity = det}) ->
-                                 (not $ IDMap.member hypId emap)
-                                 && (not $ or $ map (likelySameDet det) existingDets)) dets
+        newDets         = filter (\(Hyp {hypId = hypId, entity = det}) ->
+                                  (not $ IDMap.member hypId emap)
+                                  && (not $ or $ map (likelySameDet det) existingDets)) dets
 
-        emap'          = foldl addToEntityMap emap (map (\(Hyp {entity = det}) ->
-                                                         (extractDetHypId det, det)) newDets)
+        emap'           = foldl addToEntityMap emap (map (\(Hyp {entity = det}) ->
+                                                          (extractDetHypId det, det)) newDets)
 
-        movs           = mkMovements (existingDets ++ (extractEntities newDets))
+        movs            = mkMovements (existingDets ++ (extractEntities newDets))
         -- filter out movement hyps that have already been posed
         -- (note that a hyp's ID hash uniquely identifies the hyp by hashing its components)
-        newMovs        = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) movs
-        emap''         = foldl addToEntityMap emap' (map (\(Hyp {entity = mov}) ->
-                                                          (extractMovHypId mov, mov)) newMovs)
-        paths          = mkPaths emap'' existingPaths (existingMovs ++ (extractEntities newMovs))
+        newMovs         = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) movs
+        emap''          = foldl addToEntityMap emap' (map (\(Hyp {entity = mov}) ->
+                                                           (extractMovHypId mov, mov)) newMovs)
+        paths           = mkPaths emap'' existingPaths (existingMovs ++ (extractEntities newMovs))
         -- filter out duplicate paths
-        newPaths       = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) paths
+        newPaths        = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId emap) paths
         -- filter out subpaths among newPaths and existing paths
-        nonSubPaths    = let allPaths = (extractEntities newPaths) ++ (gatherEntities emap allHyps)
-                             subPaths = findSubPaths (extractEntities newPaths) allPaths
-                         in filter (\(Hyp {entity = path}) -> not $ elem path subPaths) newPaths
+        nonSubPaths     = let allPaths = (extractEntities newPaths) ++ (gatherEntities emap allHyps)
+                              subPaths = findSubPaths (extractEntities newPaths) allPaths
+                          in filter (\(Hyp {entity = path}) -> not $ elem path subPaths) newPaths
 
-        worldWithPaths = updateConflictingPaths $ removeSubPaths $ hypothesize nonSubPaths $
-                         hypothesize newMovs $ hypothesize newDets cleanedWorld
+        worldWithPaths  = updateConflictingPaths $ removeSubPaths $ hypothesize nonSubPaths $
+                          hypothesize newMovs $ hypothesize newDets cleanedWorld
 
-        behaviors      = mkBehaviors (context worldWithPaths) (entityMap worldWithPaths)
-                         (gatherEntities (entityMap worldWithPaths) (allHypotheses worldWithPaths))
-        newBehaviors   = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId (entityMap worldWithPaths)) behaviors
+        agents          = mkAgents (context worldWithPaths) (entityMap worldWithPaths)
+                          (gatherEntities (entityMap worldWithPaths) (allHypotheses worldWithPaths))
+        newAgents       = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId (entityMap worldWithPaths)) agents
 
-        -- hypothesize behaviors; then remove behaviors that reference paths that have been removed (by removeSubPaths)
-        newWorld       = removeInvalidBehaviors $ hypothesize newBehaviors worldWithPaths
+        -- hypothesize agents, then remove agents that reference paths that have been removed by removeSubPaths;
+        worldWithAgents = removeInvalidAgents $ hypothesize newAgents worldWithPaths
+
+        behaviors       = mkBehaviors (context worldWithAgents) (entityMap worldWithAgents)
+                          (gatherEntities (entityMap worldWithAgents) (allHypotheses worldWithAgents))
+        newBehaviors    = filter (\(Hyp {hypId = hypId}) -> not $ IDMap.member hypId (entityMap worldWithAgents)) behaviors
+
+        worldWithBehavs = hypothesize newBehaviors worldWithAgents
     in
-      reason newWorld
+      reason worldWithBehavs
