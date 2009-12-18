@@ -26,6 +26,8 @@ MainWindow::MainWindow() : QMainWindow(0)
     entitiesTree = new EntitiesTree(this, renderArea);
     connect(ui.entitiesButton, SIGNAL(clicked()), entitiesTree, SLOT(show()));
     connect(ui.entitiesButton, SIGNAL(clicked()), entitiesTree, SLOT(raise()));
+    connect(ui.showDetails, SIGNAL(stateChanged(int)), entitiesTree, SLOT(showDetails(int)));
+    connect(ui.showDetails, SIGNAL(stateChanged(int)), renderArea, SLOT(showDetails(int)));
 
     processingController = new ProcessingController(numCameras);
 

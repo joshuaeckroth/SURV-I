@@ -19,11 +19,13 @@ public:
 public slots:
     void updateEntities(Entities *entities);
     void clicked(QModelIndex index);
+    void showDetails(int state);
 
 private:
     Ui::EntitiesTree ui;
     MainWindow *mainWindow;
     RenderArea *renderer;
+    int showDetailsState;
 };
 
 #endif // ENTITIESTREE_H

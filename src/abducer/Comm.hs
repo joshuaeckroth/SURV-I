@@ -57,7 +57,6 @@ getResults s = do
 
 sendResults :: Socket -> String -> IO ()
 sendResults s msg = do
-  putStrLn msg
   send s $ B.pack ("NEW RESULTS\n" ++ ((show $ 1 + (length msg)) ++ "\n")){- 1+ because of newline after msg is sent -}
   sendResultChunk s (B.pack msg)
   send s (B.pack "\n")

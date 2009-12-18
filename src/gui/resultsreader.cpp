@@ -11,7 +11,7 @@
 #include "entities.h"
 
 ResultsReader::ResultsReader()
-        : entities(NULL), inPath(false), inAgent(false), inBehavior(false)
+        : detailedEntities(NULL), notDetailedEntities(NULL), inPath(false), inAgent(false), inBehavior(false)
 { }
 
 bool ResultsReader::startElement(const QString&, const QString&,
@@ -129,7 +129,14 @@ bool ResultsReader::endElement(const QString&, const QString&, const QString& qN
 {
     if(qName == "Results")
     {
-        entities = new Entities(detections, movements, paths, agents, behaviors);
+        detailedEntities = new Entities(detections, movements, paths, agents, behaviors, true);
+        notDetailedEntities = new Entities(detections, movements, paths, agents, behaviors, false);
+
+        detailedEntities->setDetailedEntities(detailedEntities);
+        detailedEntities->setNotDetailedEntities(notDetailedEntities);
+
+        notDetailedEntities->setNotDetailedEntities(notDetailedEntities);
+        notDetailedEntities->setDetailedEntities(detailedEntities);
     }
     else if(qName == "Path")
     {
@@ -171,5 +178,5 @@ QString ResultsReader::errorString() const
 
 Entities* ResultsReader::getEntities() const
 {
-    return entities;
+    return notDetailedEntities;
 }

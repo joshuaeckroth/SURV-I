@@ -30,6 +30,7 @@ public slots:
   void newFrame(Frame* frame);
   void onFrameSizeChanged(int width, int height, int camera);
   void updateEntities(Entities *e);
+  void showDetails(int state);
 
 signals:
   void frameSizeChanged(int width, int height, int camera);
@@ -64,6 +65,7 @@ private:
   double pointDistance(QPoint p1, QPoint p2);
   void drawArrowHead(QPainter &painter, QPoint p1, QPoint p2);
   Entity *highlighted;
+  int showDetailsState;
 };
 
 #endif

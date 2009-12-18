@@ -27,7 +27,7 @@ public:
   Entities* getEntities() const;
 
 private:
-  Entities *entities;
+  Entities *detailedEntities, *notDetailedEntities;
   bool accepted;
   QString currentText;
   QString errorStr;

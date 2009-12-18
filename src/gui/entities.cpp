@@ -15,70 +15,46 @@ Entities::Entities(std::map<int,Detection*> _detections,
                    std::map<int,Movement*> _movements,
                    std::map<int,Path*> _paths,
                    std::map<int,Agent*> _agents,
-                   std::map<int,Behavior*> _behaviors)
+                   std::map<int,Behavior*> _behaviors,
+                   bool detailed)
 : QAbstractItemModel(0), detections(_detections), movements(_movements),
     paths(_paths), agents(_agents), behaviors(_behaviors)
 {
     rootEntitiesTreeItem = new EntitiesTreeItem(NULL, 0);
-    for(std::map<int,Detection*>::const_iterator it = detections.begin();
-        it != detections.end(); it++)
-    {
-        EntitiesTreeItem *e = new EntitiesTreeItem((*it).second, rootEntitiesTreeItem);
-        rootEntitiesTreeItem->appendChild(e);
-    }
-    for(std::map<int,Movement*>::const_iterator it = movements.begin();
-        it != movements.end(); it++)
-    {
-        EntitiesTreeItem *e = new EntitiesTreeItem((*it).second, rootEntitiesTreeItem);
-        rootEntitiesTreeItem->appendChild(e);
 
-        EntitiesTreeItem *e1 = new EntitiesTreeItem(((*it).second)->getDet1(), e);
-        e->appendChild(e1);
-
-        EntitiesTreeItem *e2 = new EntitiesTreeItem(((*it).second)->getDet2(), e);
-        e->appendChild(e2);
-    }
-    for(std::map<int,Path*>::const_iterator it = paths.begin();
-        it != paths.end(); it++)
+    if(detailed)
     {
-        Path *p = (*it).second;
-        EntitiesTreeItem *e = new EntitiesTreeItem(p, rootEntitiesTreeItem);
-        rootEntitiesTreeItem->appendChild(e);
-
-        p->movements_begin();
-        while(!p->movements_end())
+        for(std::map<int,Detection*>::const_iterator it = detections.begin();
+            it != detections.end(); it++)
         {
-            Movement *m = p->movements_next();
-            EntitiesTreeItem *em = new EntitiesTreeItem(m, e);
-            e->appendChild(em);
-
-            EntitiesTreeItem *ed1 = new EntitiesTreeItem(m->getDet1(), em);
-            em->appendChild(ed1);
-
-            EntitiesTreeItem *ed2 = new EntitiesTreeItem(m->getDet2() ,em);
-            em->appendChild(ed2);
+            EntitiesTreeItem *e = new EntitiesTreeItem((*it).second, rootEntitiesTreeItem);
+            rootEntitiesTreeItem->appendChild(e);
         }
-    }
-    for(std::map<int,Agent*>::const_iterator it = agents.begin();
-        it != agents.end(); it++)
-    {
-        Agent *a = (*it).second;
-        EntitiesTreeItem *e = new EntitiesTreeItem(a, rootEntitiesTreeItem);
-        rootEntitiesTreeItem->appendChild(e);
-
-        a->paths_begin();
-        while(!a->paths_end())
+        for(std::map<int,Movement*>::const_iterator it = movements.begin();
+            it != movements.end(); it++)
         {
-            Path *p = a->paths_next();
-            EntitiesTreeItem *ep = new EntitiesTreeItem(p, e);
-            e->appendChild(ep);
+            EntitiesTreeItem *e = new EntitiesTreeItem((*it).second, rootEntitiesTreeItem);
+            rootEntitiesTreeItem->appendChild(e);
+
+            EntitiesTreeItem *e1 = new EntitiesTreeItem(((*it).second)->getDet1(), e);
+            e->appendChild(e1);
+
+            EntitiesTreeItem *e2 = new EntitiesTreeItem(((*it).second)->getDet2(), e);
+            e->appendChild(e2);
+        }
+        for(std::map<int,Path*>::const_iterator it = paths.begin();
+            it != paths.end(); it++)
+        {
+            Path *p = (*it).second;
+            EntitiesTreeItem *e = new EntitiesTreeItem(p, rootEntitiesTreeItem);
+            rootEntitiesTreeItem->appendChild(e);
 
             p->movements_begin();
             while(!p->movements_end())
             {
                 Movement *m = p->movements_next();
-                EntitiesTreeItem *em = new EntitiesTreeItem(m, ep);
-                ep->appendChild(em);
+                EntitiesTreeItem *em = new EntitiesTreeItem(m, e);
+                e->appendChild(em);
 
                 EntitiesTreeItem *ed1 = new EntitiesTreeItem(m->getDet1(), em);
                 em->appendChild(ed1);
@@ -87,7 +63,37 @@ Entities::Entities(std::map<int,Detection*> _detections,
                 em->appendChild(ed2);
             }
         }
-    }
+        for(std::map<int,Agent*>::const_iterator it = agents.begin();
+            it != agents.end(); it++)
+        {
+            Agent *a = (*it).second;
+            EntitiesTreeItem *e = new EntitiesTreeItem(a, rootEntitiesTreeItem);
+            rootEntitiesTreeItem->appendChild(e);
+
+            a->paths_begin();
+            while(!a->paths_end())
+            {
+                Path *p = a->paths_next();
+                EntitiesTreeItem *ep = new EntitiesTreeItem(p, e);
+                e->appendChild(ep);
+
+                p->movements_begin();
+                while(!p->movements_end())
+                {
+                    Movement *m = p->movements_next();
+                    EntitiesTreeItem *em = new EntitiesTreeItem(m, ep);
+                    ep->appendChild(em);
+
+                    EntitiesTreeItem *ed1 = new EntitiesTreeItem(m->getDet1(), em);
+                    em->appendChild(ed1);
+
+                    EntitiesTreeItem *ed2 = new EntitiesTreeItem(m->getDet2() ,em);
+                    em->appendChild(ed2);
+                }
+            }
+        }
+    } // if(detailed)
+
     for(std::map<int,Behavior*>::const_iterator it = behaviors.begin();
         it != behaviors.end(); it++)
     {
@@ -109,18 +115,21 @@ Entities::Entities(std::map<int,Detection*> _detections,
                 EntitiesTreeItem *ep = new EntitiesTreeItem(p, ea);
                 ea->appendChild(ep);
 
-                p->movements_begin();
-                while(!p->movements_end())
+                if(detailed)
                 {
-                    Movement *m = p->movements_next();
-                    EntitiesTreeItem *em = new EntitiesTreeItem(m, ep);
-                    ep->appendChild(em);
+                    p->movements_begin();
+                    while(!p->movements_end())
+                    {
+                        Movement *m = p->movements_next();
+                        EntitiesTreeItem *em = new EntitiesTreeItem(m, ep);
+                        ep->appendChild(em);
 
-                    EntitiesTreeItem *ed1 = new EntitiesTreeItem(m->getDet1(), em);
-                    em->appendChild(ed1);
+                        EntitiesTreeItem *ed1 = new EntitiesTreeItem(m->getDet1(), em);
+                        em->appendChild(ed1);
 
-                    EntitiesTreeItem *ed2 = new EntitiesTreeItem(m->getDet2() ,em);
-                    em->appendChild(ed2);
+                        EntitiesTreeItem *ed2 = new EntitiesTreeItem(m->getDet2() ,em);
+                        em->appendChild(ed2);
+                    }
                 }
             }
         }

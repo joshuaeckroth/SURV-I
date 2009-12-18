@@ -25,7 +25,7 @@
 #include "infobox.h"
 
 RenderArea::RenderArea(QWidget* parent)
-        : QWidget(parent), clear(true), entities(NULL)
+        : QWidget(parent), clear(true), entities(NULL), showDetailsState(Qt::Unchecked)
 {
     for(int i = 0; i < 10; i++)
     {
@@ -186,139 +186,142 @@ void RenderArea::paintEvent(QPaintEvent*)
         {
             int radius;
 
-            entities->detections_begin();
-            while(!entities->detections_end())
+            if(showDetailsState == Qt::Checked)
             {
-                Detection* d = entities->detections_next();
-                for(int i = 0; i < numCameras; i++)
+                entities->detections_begin();
+                while(!entities->detections_end())
                 {
-                    painter.setClipRegion(cameraRegion[i]);
-                    QPoint detCenter = warpToCameraRegion(i, d->getLat(), d->getLon());
-
-                    // draw pixel at center
-                    if(d == highlighted)
-                        painter.setPen(highlightedPen);
-                    else if(d->isAccepted())
-                        painter.setPen(detectionPen);
-                    else
-                        painter.setPen(detectionUnacceptedPen);
-
-                    painter.drawLine(detCenter, detCenter);
-
-                    radius = (int)(5.0 * scaleFactor[i]);
-                    painter.drawEllipse(detCenter, radius, radius);
-                }
-            }
-
-            entities->movements_begin();
-            while(!entities->movements_end())
-            {
-                Movement* m = entities->movements_next();
-
-                if(m == highlighted)
-                    painter.setPen(highlightedPen);
-                else if(m->isAccepted())
-                    painter.setPen(movementPen);
-                else
-                    painter.setPen(movementUnacceptedPen);
-
-                QPoint points[2][numCameras];
-
-                Detection *d;
-                d = m->getDet1();
-                for(int i = 0; i < numCameras; i++)
-                    points[0][i] = warpToCameraRegion(i, d->getLat(), d->getLon());
-                d = m->getDet2();
-                for(int i = 0; i < numCameras; i++)
-                    points[1][i] = warpToCameraRegion(i, d->getLat(), d->getLon());
-
-                for(int i = 0; i < numCameras; i++)
-                {
-                    painter.setClipRegion(cameraRegion[i]);
-                    painter.drawLine(points[0][i], points[1][i]);
-                }
-            }
-
-            // unaccepted first, then accepted (so that accepted are drawn over unaccepted)
-            int ordering = 0;
-            while(ordering < 2)
-            {
-                entities->paths_begin();
-                while(!entities->paths_end())
-                {
-                    std::vector<QPair<double,double> > points;
-                    std::vector<QPair<double,double> >::const_iterator points_iter;
-
-                    Path *p = entities->paths_next();
-
-                    if(ordering == 0 && p->isAccepted())
-                        continue;
-                    if(ordering == 1 && !p->isAccepted())
-                        continue;
-
-                    if(p == highlighted)
-                        painter.setPen(highlightedPen);
-                    else if(p->isAccepted())
-                        painter.setPen(pathPen);
-                    else
-                        painter.setPen(pathUnacceptedPen);
-
-                    p->movements_begin();
-                    while(!p->movements_end())
-                    {
-                        Movement *m = p->movements_next();
-                        Detection *d;
-                        d = m->getDet1();
-                        points.push_back(QPair<double,double>(d->getLat(), d->getLon()));
-                        d = m->getDet2();
-                        points.push_back(QPair<double,double>(d->getLat(), d->getLon()));
-                    }
-
-                    QPair<double,double> point1, point2;
+                    Detection* d = entities->detections_next();
                     for(int i = 0; i < numCameras; i++)
                     {
                         painter.setClipRegion(cameraRegion[i]);
-                        for(points_iter = points.begin(); points_iter != points.end(); points_iter++)
-                        {
-                            point1 = *points_iter;
-                            if((points_iter + 1) != points.end())
-                                point2 = *(points_iter + 1);
-                            else
-                                point2 = point1;
+                        QPoint detCenter = warpToCameraRegion(i, d->getLat(), d->getLon());
 
-                            QPoint p1 = warpToCameraRegion(i, point1.first, point1.second);
-                            QPoint p2 = warpToCameraRegion(i, point2.first, point2.second);
-                            painter.drawLine(p1, p2);
+                        // draw pixel at center
+                        if(d == highlighted)
+                            painter.setPen(highlightedPen);
+                        else if(d->isAccepted())
+                            painter.setPen(detectionPen);
+                        else
+                            painter.setPen(detectionUnacceptedPen);
 
-                            // draw arrowhead on last pair
-                            if(p1 != p2 && (points_iter + 1) != points.end() && (points_iter + 2) == points.end())
-                                drawArrowHead(painter, p1, p2);
-                        }
-                    }
-                    // draw on map only if accepted
-                    if(p->isAccepted())
-                    {
-                        painter.setClipRegion(mapRegion);
-                        for(points_iter = points.begin(); points_iter != points.end(); points_iter++)
-                        {
-                            point1 = *points_iter;
-                            if((points_iter + 1) != points.end())
-                                point2 = *(points_iter + 1);
-                            else
-                                point2 = point1;
+                        painter.drawLine(detCenter, detCenter);
 
-                            QPoint p1 = warpToMapRegion(point1.first, point1.second);
-                            QPoint p2 = warpToMapRegion(point2.first, point2.second);
-                            painter.drawLine(p1, p2);
-
-                            // draw arrowhead on last pair
-                            if(p1 != p2 && (points_iter + 1) != points.end() && (points_iter + 2) == points.end())
-                                drawArrowHead(painter, p1, p2);
-                        }
+                        radius = (int)(5.0 * scaleFactor[i]);
+                        painter.drawEllipse(detCenter, radius, radius);
                     }
                 }
 
-                ordering++;
+                entities->movements_begin();
+                while(!entities->movements_end())
+                {
+                    Movement* m = entities->movements_next();
+
+                    if(m == highlighted)
+                        painter.setPen(highlightedPen);
+                    else if(m->isAccepted())
+                        painter.setPen(movementPen);
+                    else
+                        painter.setPen(movementUnacceptedPen);
+
+                    QPoint points[2][numCameras];
+
+                    Detection *d;
+                    d = m->getDet1();
+                    for(int i = 0; i < numCameras; i++)
+                        points[0][i] = warpToCameraRegion(i, d->getLat(), d->getLon());
+                    d = m->getDet2();
+                    for(int i = 0; i < numCameras; i++)
+                        points[1][i] = warpToCameraRegion(i, d->getLat(), d->getLon());
+
+                    for(int i = 0; i < numCameras; i++)
+                    {
+                        painter.setClipRegion(cameraRegion[i]);
+                        painter.drawLine(points[0][i], points[1][i]);
+                    }
+                }
+
+                // unaccepted first, then accepted (so that accepted are drawn over unaccepted)
+                int ordering = 0;
+                while(ordering < 2)
+                {
+                    entities->paths_begin();
+                    while(!entities->paths_end())
+                    {
+                        std::vector<QPair<double,double> > points;
+                        std::vector<QPair<double,double> >::const_iterator points_iter;
+
+                        Path *p = entities->paths_next();
+
+                        if(ordering == 0 && p->isAccepted())
+                            continue;
+                        if(ordering == 1 && !p->isAccepted())
+                            continue;
+
+                        if(p == highlighted)
+                            painter.setPen(highlightedPen);
+                        else if(p->isAccepted())
+                            painter.setPen(pathPen);
+                        else
+                            painter.setPen(pathUnacceptedPen);
+
+                        p->movements_begin();
+                        while(!p->movements_end())
+                        {
+                            Movement *m = p->movements_next();
+                            Detection *d;
+                            d = m->getDet1();
+                            points.push_back(QPair<double,double>(d->getLat(), d->getLon()));
+                            d = m->getDet2();
+                            points.push_back(QPair<double,double>(d->getLat(), d->getLon()));
+                        }
+
+                        QPair<double,double> point1, point2;
+                        for(int i = 0; i < numCameras; i++)
+                        {
+                            painter.setClipRegion(cameraRegion[i]);
+                            for(points_iter = points.begin(); points_iter != points.end(); points_iter++)
+                            {
+                                point1 = *points_iter;
+                                if((points_iter + 1) != points.end())
+                                    point2 = *(points_iter + 1);
+                                else
+                                    point2 = point1;
+
+                                QPoint p1 = warpToCameraRegion(i, point1.first, point1.second);
+                                QPoint p2 = warpToCameraRegion(i, point2.first, point2.second);
+                                painter.drawLine(p1, p2);
+
+                                // draw arrowhead on last pair
+                                if(p1 != p2 && (points_iter + 1) != points.end() && (points_iter + 2) == points.end())
+                                    drawArrowHead(painter, p1, p2);
+                            }
+                        }
+                        // draw on map only if accepted
+                        if(p->isAccepted())
+                        {
+                            painter.setClipRegion(mapRegion);
+                            for(points_iter = points.begin(); points_iter != points.end(); points_iter++)
+                            {
+                                point1 = *points_iter;
+                                if((points_iter + 1) != points.end())
+                                    point2 = *(points_iter + 1);
+                                else
+                                    point2 = point1;
+
+                                QPoint p1 = warpToMapRegion(point1.first, point1.second);
+                                QPoint p2 = warpToMapRegion(point2.first, point2.second);
+                                painter.drawLine(p1, p2);
+
+                                // draw arrowhead on last pair
+                                if(p1 != p2 && (points_iter + 1) != points.end() && (points_iter + 2) == points.end())
+                                    drawArrowHead(painter, p1, p2);
+                            }
+                        }
+                    }
+
+                    ordering++;
+                }
             }
 
             entities->behaviors_begin();
@@ -339,6 +342,74 @@ void RenderArea::paintEvent(QPaintEvent*)
                 if(!p->isAccepted())
                     continue;
 
+                // draw path if not already drawn by showing details
+                if(showDetailsState == Qt::Unchecked)
+                {
+                    a->paths_begin();
+                    while(!a->paths_end())
+                    {
+                        std::vector<QPair<double,double> > points;
+                        std::vector<QPair<double,double> >::const_iterator points_iter;
+
+                        Path *p = a->paths_next();
+
+                        if(p == highlighted)
+                            painter.setPen(highlightedPen);
+                        else
+                            painter.setPen(pathPen);
+
+                        p->movements_begin();
+                        while(!p->movements_end())
+                        {
+                            Movement *m = p->movements_next();
+                            Detection *d;
+                            d = m->getDet1();
+                            points.push_back(QPair<double,double>(d->getLat(), d->getLon()));
+                            d = m->getDet2();
+                            points.push_back(QPair<double,double>(d->getLat(), d->getLon()));
+                        }
+
+                        QPair<double,double> point1, point2;
+                        for(int i = 0; i < numCameras; i++)
+                        {
+                            painter.setClipRegion(cameraRegion[i]);
+                            for(points_iter = points.begin(); points_iter != points.end(); points_iter++)
+                            {
+                                point1 = *points_iter;
+                                if((points_iter + 1) != points.end())
+                                    point2 = *(points_iter + 1);
+                                else
+                                    point2 = point1;
+
+                                QPoint p1 = warpToCameraRegion(i, point1.first, point1.second);
+                                QPoint p2 = warpToCameraRegion(i, point2.first, point2.second);
+                                painter.drawLine(p1, p2);
+
+                                // draw arrowhead on last pair
+                                if(p1 != p2 && (points_iter + 1) != points.end() && (points_iter + 2) == points.end())
+                                    drawArrowHead(painter, p1, p2);
+                            }
+                        }
+                        // draw path on map
+                        painter.setClipRegion(mapRegion);
+                        for(points_iter = points.begin(); points_iter != points.end(); points_iter++)
+                        {
+                            point1 = *points_iter;
+                            if((points_iter + 1) != points.end())
+                                point2 = *(points_iter + 1);
+                            else
+                                point2 = point1;
+
+                            QPoint p1 = warpToMapRegion(point1.first, point1.second);
+                            QPoint p2 = warpToMapRegion(point2.first, point2.second);
+                            painter.drawLine(p1, p2);
+
+                            // draw arrowhead on last pair
+                            if(p1 != p2 && (points_iter + 1) != points.end() && (points_iter + 2) == points.end())
+                                drawArrowHead(painter, p1, p2);
+                        }
+                    }
+                }
                 // get last movement
                 p->movements_begin();
                 Movement *m = NULL;
@@ -617,5 +688,11 @@ void RenderArea::drawArrowHead(QPainter &painter, QPoint p1, QPoint p2)
 void RenderArea::highlightEntity(Entity *e)
 {
     highlighted = e;
+    update();
+}
+
+void RenderArea::showDetails(int state)
+{
+    showDetailsState = state;
     update();
 }

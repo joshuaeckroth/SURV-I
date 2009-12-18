@@ -24,7 +24,8 @@ public:
              std::map<int,Movement*>,
              std::map<int,Path*>,
              std::map<int,Agent*>,
-             std::map<int,Behavior*>);
+             std::map<int,Behavior*>,
+             bool detailed);
     ~Entities();
 
     void detections_begin();
@@ -59,6 +60,11 @@ public:
 
     void updateHighlights();
 
+    Entities *getNotDetailedEntities() const { return notDetailed; }
+    void setNotDetailedEntities(Entities *e) { notDetailed = e; }
+    Entities *getDetailedEntities() const { return detailed; }
+    void setDetailedEntities(Entities *e) { detailed = e; }
+
 private:
     std::map<int,Detection*> detections;
     std::map<int,Detection*>::const_iterator detections_iter;
@@ -76,6 +82,9 @@ private:
     std::map<int,Behavior*>::const_iterator behaviors_iter;
 
     EntitiesTreeItem *rootEntitiesTreeItem;
+
+    Entities *notDetailed;
+    Entities *detailed;
 };
 
 #endif
