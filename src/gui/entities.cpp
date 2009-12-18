@@ -242,8 +242,7 @@ QVariant Entities::data(const QModelIndex &index, int role) const
     if(role == Qt::FontRole)
     {
         QFont font;
-        EntitiesTreeItem *e = static_cast<EntitiesTreeItem*>(index.internalPointer());
-        if(e->getEntity()->isHighlighted()) font.setBold(true);
+        if(anyChildHighlighted(index)) font.setBold(true);
         return font;
     }
     else if(role == Qt::DisplayRole)
@@ -254,6 +253,22 @@ QVariant Entities::data(const QModelIndex &index, int role) const
     }
     else
         return QVariant();
+}
+
+bool Entities::anyChildHighlighted(QModelIndex index) const
+{
+    EntitiesTreeItem *e = static_cast<EntitiesTreeItem*>(index.internalPointer());
+    if(e->getEntity()->isHighlighted())
+        return true;
+
+    int row = 0;
+    index = index.child(row++, 0);
+    while(index.isValid())
+    {
+        if(anyChildHighlighted(index)) return true;
+        index = index.child(row++, 0);
+    }
+    return false;
 }
 
 Qt::ItemFlags Entities::flags(const QModelIndex &index) const

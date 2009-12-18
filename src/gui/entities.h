@@ -85,6 +85,8 @@ private:
 
     Entities *notDetailed;
     Entities *detailed;
+
+    bool anyChildHighlighted(QModelIndex index) const;
 };
 
 #endif
