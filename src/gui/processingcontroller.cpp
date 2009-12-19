@@ -12,6 +12,7 @@
 #include "decoder.h"
 #include "frame.h"
 #include "cameramodel.h"
+#include "context.h"
 
 ProcessingController::ProcessingController(int n)
         : QThread(), numCameras(n), detectionsCount(1)
@@ -79,7 +80,8 @@ void ProcessingController::stopProcessing()
         captureThread[i]->stopCapture();
     }
 
-    abducerTimer->stop();
+    if(abducerTimer != NULL)
+        abducerTimer->stop();
     isProcessing = false;
     mutex.unlock();
 }
@@ -92,12 +94,12 @@ QString ProcessingController::getCameraTimes() const
         if(curFrame[i] == NULL)
         {
             times.append(QString("Camera %1 not active")
-                         .arg(i));
+                         .arg(Context::getCamera(i).name));
         }
         else
         {
             times.append(QString("Camera %1: Frame %2 / %3s (%4 FPS)")
-                         .arg(i)
+                         .arg(Context::getCamera(i).name)
                          .arg(curFrame[i]->getNumber())
                          .arg(curFrame[i]->getTime(), 0, 'f', 1)
                          .arg(captureThread[i]->getCalculatedFPS(), 0, 'f', 1));
@@ -213,7 +215,7 @@ void ProcessingController::timeoutDetections()
     QString file_name = QString("detections/detection-chunk-%1.xml").arg(detectionsCount);
     if(QFile::exists(file_name))
     {
-        qDebug() << "Sending Chunk File: " << file_name;
+        //qDebug() << "Sending Chunk File: " << file_name;
 
         QDomDocument doc("mydocument");
         QFile file(file_name);

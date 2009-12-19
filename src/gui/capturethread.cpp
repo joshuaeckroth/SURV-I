@@ -10,16 +10,15 @@
 #include "capturethread.h"
 #include "decoder.h"
 #include "frame.h"
+#include "context.h"
 
 CaptureThread::CaptureThread(Decoder* d, int c)
         : QThread(), decoder(d), captureActive(false),
         calculatedFps(0.0), fps(0.0), frameNum(0), camera(c),
         error(false)
 {
-    char filename[20];
-    sprintf(filename, "camera-%d.avi", camera);
-    QFile file(filename);
-    if(!file.exists() || !(capture = cvCaptureFromFile(filename)))
+    QFile file(Context::getCamera(camera).file);
+    if(!file.exists() || !(capture = cvCaptureFromFile(Context::getCamera(camera).file.toAscii())))
     {
 
         error = true;

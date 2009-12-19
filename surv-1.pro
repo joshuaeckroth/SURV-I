@@ -33,7 +33,9 @@ HEADERS += src/gui/cameramodel.h \
     src/gui/entitiestreeitem.h \
     src/gui/behavior.h \
     src/gui/infobox.h \
-    src/gui/agent.h
+    src/gui/agent.h \
+    src/gui/context.h \
+    src/gui/contextreader.h
 FORMS += src/gui/mainwindow.ui \
     src/gui/settings.ui \
     src/gui/entitiesTree.ui \
@@ -59,5 +61,7 @@ SOURCES += src/gui/cameramodel.cpp \
     src/gui/entitiestreeitem.cpp \
     src/gui/behavior.cpp \
     src/gui/infobox.cpp \
-    src/gui/agent.cpp
+    src/gui/agent.cpp \
+    src/gui/context.cpp \
+    src/gui/contextreader.cpp
 OTHER_FILES += 

@@ -23,6 +23,7 @@
 #include "frame.h"
 #include "cameramodel.h"
 #include "infobox.h"
+#include "context.h"
 
 RenderArea::RenderArea(QWidget* parent)
         : QWidget(parent), clear(true), entities(NULL), showDetailsState(Qt::Unchecked)
@@ -40,7 +41,7 @@ RenderArea::RenderArea(QWidget* parent)
     setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding));
     time = framesShown = 0;
 
-    map = QImage("ARL1-with-lines.jpg");
+    map = QImage(Context::getMap().file);
     if(map.isNull())
         qDebug() << "Unable to load map image.";
 
@@ -455,11 +456,6 @@ QPoint RenderArea::warpToMapRegion(double lat, double lon)
 
 void RenderArea::mousePressEvent(QMouseEvent *e)
 {
-    if(entities == NULL)
-        return;
-
-    double maxClickDist = 5.0;
-
     int camera = -1;
     // find the camera that the user clicked on
     for(int i = 0; i < numCameras; i++)
@@ -472,7 +468,9 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
     }
     // if camera == -1, map was clicked
 
-    /*
+
+    // this code helps us define regions and points of interest;
+    // locations clicked on the map are shown in the debug log (using qDebug)
     if(camera == -1)
     {
         QPair<int,int> mapPoint = QPair<int,int>(e->pos().x() + mapTopLeftX, e->pos().y() - maxHeight + mapTopLeftY);
@@ -481,7 +479,11 @@ void RenderArea::mousePressEvent(QMouseEvent *e)
                 .arg(mapPoint.first).arg(mapPoint.second)
                 .arg(groundPoint.first).arg(groundPoint.second);
     }
-    */
+
+    if(entities == NULL)
+        return;
+
+    double maxClickDist = 5.0;
 
     // unhighlight everything
     entities->detections_begin();
