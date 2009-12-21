@@ -29,6 +29,7 @@ MainWindow::MainWindow() : QMainWindow(0)
     connect(ui.showDetails, SIGNAL(stateChanged(int)), entitiesTree, SLOT(showDetails(int)));
     connect(ui.showDetails, SIGNAL(stateChanged(int)), renderArea, SLOT(showDetails(int)));
     connect(ui.showRegions, SIGNAL(stateChanged(int)), renderArea, SLOT(showRegions(int)));
+    connect(ui.showPois, SIGNAL(stateChanged(int)), renderArea, SLOT(showPois(int)));
 
     processingController = new ProcessingController(numCameras);
 

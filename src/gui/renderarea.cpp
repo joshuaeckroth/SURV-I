@@ -28,7 +28,7 @@
 
 RenderArea::RenderArea(QWidget* parent)
         : QWidget(parent), clear(true), entities(NULL),
-        showDetailsState(Qt::Unchecked), showRegionsState(Qt::Unchecked)
+        showDetailsState(Qt::Unchecked), showRegionsState(Qt::Unchecked), showPoisState(Qt::Unchecked)
 {
     for(int i = 0; i < 10; i++)
     {
@@ -67,6 +67,9 @@ RenderArea::RenderArea(QWidget* parent)
 
     regionColor = QColor(200, 0, 0, 40);
     regionOutline = QColor(200, 0, 0, 150);
+
+    poiColor = QColor(0, 0, 200, 40);
+    poiOutline = QColor(0, 0, 200, 150);
 
     highlightedPen.setColor(Qt::white);
     highlightedPen.setWidth(3);
@@ -463,6 +466,36 @@ void RenderArea::paintEvent(QPaintEvent*)
             }
         }
 
+        if(showPoisState == Qt::Checked)
+        {
+            // paint points of interest
+            painter.setPen(poiOutline);
+            painter.setBrush(poiColor);
+            for(int poiIndex = 0; poiIndex < Context::pointOfInterestCount(); poiIndex++)
+            {
+                ContextElements::PointOfInterest poi = Context::getPointOfInterest(poiIndex);
+
+                for(int i = 0; i < numCameras; i++)
+                {
+                    QPoint center = warpToCameraRegion(i, poi.point.rx(), poi.point.ry());
+                    int rangeX = center.x() - (warpToCameraRegion(i, poi.point.rx() + poi.range, poi.point.ry()).x());
+                    int rangeY = center.y() - (warpToCameraRegion(i, poi.point.rx(), poi.point.ry() + poi.range).y());
+                    painter.setClipRegion(cameraRegion[i]);
+                    painter.drawEllipse(center, rangeX, rangeY);
+
+                    painter.drawEllipse(center, 2, 2);
+                }
+
+                QPoint center = warpToMapRegion(poi.point.rx(), poi.point.ry());
+                int rangeX = center.x() - (warpToMapRegion(poi.point.rx() + poi.range, poi.point.ry()).x());
+                int rangeY = center.y() - (warpToMapRegion(poi.point.rx(), poi.point.ry() + poi.range).y());
+                painter.setClipRegion(mapRegion);
+                painter.drawEllipse(center, rangeX, rangeY);
+
+                painter.drawEllipse(center, 2, 2);
+            }
+        }
+
         mutex.unlock();
     }
     else
@@ -739,5 +772,11 @@ void RenderArea::showDetails(int state)
 void RenderArea::showRegions(int state)
 {
     showRegionsState = state;
+    update();
+}
+
+void RenderArea::showPois(int state)
+{
+    showPoisState = state;
     update();
 }

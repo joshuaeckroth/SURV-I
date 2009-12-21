@@ -33,6 +33,7 @@ public slots:
   void updateEntities(Entities *e);
   void showDetails(int state);
   void showRegions(int state);
+  void showPois(int state);
 
 signals:
   void frameSizeChanged(int width, int height, int camera);
@@ -59,7 +60,7 @@ private:
   QPen detectionPen, detectionUnacceptedPen,
     movementPen, movementUnacceptedPen,
     pathPen, pathUnacceptedPen, highlightedPen;
-  QColor regionColor, regionOutline;
+  QColor regionColor, regionOutline, poiColor, poiOutline;
   QImage behaviorIcon;
   int maxHeight, mapTopLeftX, mapTopLeftY;
   QPoint warpToCameraRegion(int camera, double lat, double lon);
@@ -68,7 +69,7 @@ private:
   double pointDistance(QPoint p1, QPoint p2);
   void drawArrowHead(QPainter &painter, QPoint p1, QPoint p2);
   Entity *highlighted;
-  int showDetailsState, showRegionsState;
+  int showDetailsState, showRegionsState, showPoisState;
 };
 
 #endif
