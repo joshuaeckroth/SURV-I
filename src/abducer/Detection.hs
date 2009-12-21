@@ -55,12 +55,13 @@ mergeMultCameraDets (hdet@(Hyp {entity = det}):hdets) =
         avgStartTime = sum (map detectionStartTime sameDets) / avgDiv
         avgEndTime   = sum (map detectionEndTime sameDets) / avgDiv
         avgArea      = sum (map detectionArea sameDets) / avgDiv
-        avgDet       = det { detectionLat       = avgLat,
-                             detectionLon       = avgLon,
-                             detectionStartTime = avgStartTime,
-                             detectionEndTime   = avgEndTime,
-                             detectionArea      = avgArea
-                           }
+        avgDet       = if (length sameDets) == 0 then det
+                       else det { detectionLat       = avgLat,
+                                  detectionLon       = avgLon,
+                                  detectionStartTime = avgStartTime,
+                                  detectionEndTime   = avgEndTime,
+                                  detectionArea      = avgArea
+                                }
         avgHDet      = hdet {entity = avgDet}
     in [avgHDet] ++ (mergeMultCameraDets $ hdets \\ sameHDets)
 

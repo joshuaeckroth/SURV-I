@@ -198,7 +198,6 @@ updateConflictingPaths world = mergeIntoWorld world $ findConflictingPaths (enti
 -- | Find path with longest duration
 findBestPath :: HypothesisMap Entity -> [Path] -> Path
 findBestPath _    []         = error "No path in list"
-findBestPath _    (path:[])  = path
 findBestPath emap paths      = last $ sortBy (\path path' -> compare (pathDuration path) (pathDuration path')) paths
     where
       pathDuration :: Path -> Double
