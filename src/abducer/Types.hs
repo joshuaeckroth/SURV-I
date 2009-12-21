@@ -89,10 +89,7 @@ detDelta (Detection { detectionStartTime = start1
          start2 - end1
 
 detAscOrdering :: Detection -> Detection -> Ordering
-detAscOrdering det1 det2
-    | (avgDetTime det1) <  (avgDetTime det2) = LT
-    | (avgDetTime det1) == (avgDetTime det2) = EQ
-    | (avgDetTime det1) >  (avgDetTime det2) = GT
+detAscOrdering det1 det2 = compare (avgDetTime det1) (avgDetTime det2)
     where
       avgDetTime det = ((detectionStartTime det) + (detectionStartTime det)) / 2.0
 
