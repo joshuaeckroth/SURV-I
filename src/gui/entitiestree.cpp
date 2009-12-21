@@ -35,8 +35,11 @@ void EntitiesTree::showDetails(int state)
 
     Entities *entities = static_cast<Entities*>(ui.entitiesTreeView->model());
 
-    if(showDetailsState == Qt::Unchecked)
-        ui.entitiesTreeView->setModel(entities->getNotDetailedEntities());
-    else
-        ui.entitiesTreeView->setModel(entities->getDetailedEntities());
+    if(entities != NULL)
+    {
+        if(showDetailsState == Qt::Unchecked)
+            ui.entitiesTreeView->setModel(entities->getNotDetailedEntities());
+        else
+            ui.entitiesTreeView->setModel(entities->getDetailedEntities());
+    }
 }
