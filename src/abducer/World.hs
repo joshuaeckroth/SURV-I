@@ -15,7 +15,7 @@ import Text.XML.HaXml.XmlContent.Parser (List1(..))
 import qualified Data.Sequence as Seq
 import Data.Maybe
 import Data.Dynamic
-import Data.List (sortBy, intersect, (\\), nub, intercalate)
+import Data.List (sortBy, sort, intersect, (\\), nub, intercalate)
 import Debug.Trace
 
 data World = World { mind      :: !(R.Mind Level Level Level)
@@ -178,7 +178,14 @@ updateConflictingPaths world = mergeIntoWorld world $ findConflictingPaths (enti
                               w {entityMap = IDMap.insert subject
                                              (toDyn $ (Path (Path_Attrs hypId score (intercalate "," (map show objects))) movs))
                                              (entityMap w)}) world1 conflicts
-          in world2
+              -- then add an adjuster for the best path
+              conflictSets =  nub $ [ map (\hypId -> getEntity (entityMap world2) hypId) $
+                                      sort (subject:objects)
+                                      | (subject, objects) <- conflicts ] :: [[Path]]
+              best   = map (findBestPath (entityMap world2)) conflictSets
+              world3 = foldl (\w hypId -> w { mind = R.setAPriori hypId (\s -> Highest) (mind w) })
+                       world2 (map extractPathHypId best)
+          in world3
 
       -- remove all adjusting (conflict) relations exclusively involving paths
       -- FIXME: this is very inefficient!
@@ -187,6 +194,21 @@ updateConflictingPaths world = mergeIntoWorld world $ findConflictingPaths (enti
           foldl (\w (subject, object) ->
                  w {mind = R.removeAdjuster (mkConflictsId subject object) (mind w)})
                     world [(subject, object) | subject <- hypIds, object <- hypIds]
+
+-- | Find path with longest duration
+findBestPath :: HypothesisMap Entity -> [Path] -> Path
+findBestPath _    []         = error "No path in list"
+findBestPath _    (path:[])  = path
+findBestPath emap paths      = last $ sortBy (\path path' -> compare (pathDuration path) (pathDuration path')) paths
+    where
+      pathDuration :: Path -> Double
+      pathDuration (Path _ (NonEmpty movRefs)) =
+          let movs                         = map (\movRef -> getEntity emap (movementRefMovId movRef)) movRefs
+              (Movement _ detStartRef _ _) = head movs
+              (Movement _ _ detEndRef _)   = last movs
+              detStart                     = getEntity emap detStartRef
+              detEnd                       = getEntity emap detEndRef
+          in detDelta detStart detEnd
 
 findConflictingPaths :: HypothesisMap Entity -> [Path] -> [Path] -> [(HypothesisID, [HypothesisID])]
 findConflictingPaths _ [] _ = []
