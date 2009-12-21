@@ -11,6 +11,7 @@
 #include <QMessageBox>
 
 #include <cmath>
+#include <vector>
 
 #include "renderarea.h"
 #include "entities.h"
@@ -26,7 +27,8 @@
 #include "context.h"
 
 RenderArea::RenderArea(QWidget* parent)
-        : QWidget(parent), clear(true), entities(NULL), showDetailsState(Qt::Unchecked)
+        : QWidget(parent), clear(true), entities(NULL),
+        showDetailsState(Qt::Unchecked), showRegionsState(Qt::Unchecked)
 {
     for(int i = 0; i < 10; i++)
     {
@@ -62,6 +64,9 @@ RenderArea::RenderArea(QWidget* parent)
 
     pathUnacceptedPen.setColor(Qt::gray);
     pathUnacceptedPen.setWidth(1);
+
+    regionColor = QColor(200, 0, 0, 40);
+    regionOutline = QColor(200, 0, 0, 150);
 
     highlightedPen.setColor(Qt::white);
     highlightedPen.setWidth(3);
@@ -426,6 +431,38 @@ void RenderArea::paintEvent(QPaintEvent*)
                 }
             }
         }
+
+        if(showRegionsState == Qt::Checked)
+        {
+            // paint regions
+            painter.setPen(regionOutline);
+            painter.setBrush(regionColor);
+            QPolygon regionPolygon;
+            for(int regionIndex = 0; regionIndex < Context::regionCount(); regionIndex++)
+            {
+                ContextElements::Region region = Context::getRegion(regionIndex);
+
+                for(int i = 0; i < numCameras; i++)
+                {
+                    regionPolygon.clear();
+                    for(std::vector<QPointF>::iterator it = region.points.begin(); it != region.points.end(); it++)
+                    {
+                        regionPolygon.push_back(warpToCameraRegion(i, it->rx(), it->ry()));
+                    }
+                    painter.setClipRegion(cameraRegion[i]);
+                    painter.drawPolygon(regionPolygon);
+                }
+
+                regionPolygon.clear();
+                for(std::vector<QPointF>::iterator it = region.points.begin(); it != region.points.end(); it++)
+                {
+                    regionPolygon.push_back(warpToMapRegion(it->rx(), it->ry()));
+                }
+                painter.setClipRegion(mapRegion);
+                painter.drawPolygon(regionPolygon, Qt::WindingFill);
+            }
+        }
+
         mutex.unlock();
     }
     else
@@ -696,5 +733,11 @@ void RenderArea::highlightEntity(Entity *e)
 void RenderArea::showDetails(int state)
 {
     showDetailsState = state;
+    update();
+}
+
+void RenderArea::showRegions(int state)
+{
+    showRegionsState = state;
     update();
 }

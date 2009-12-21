@@ -84,6 +84,13 @@
         </spacer>
        </item>
        <item>
+        <widget class="QCheckBox" name="showRegions">
+         <property name="text">
+          <string>Show Regions</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QCheckBox" name="showDetails">
          <property name="text">
           <string>Show Details</string>

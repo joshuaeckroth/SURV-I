@@ -184,7 +184,7 @@ void ProcessingController::newDetections(QString ds, Frame* frame)
 
         if(end_time < frame->getTime())
         {
-            qDebug() << "Sending Chunk File: " << file_name;
+            //qDebug() << "Sending Chunk File: " << file_name;
 
             QFile detFile(file_name);
             detFile.open(QFile::ReadOnly);

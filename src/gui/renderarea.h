@@ -7,6 +7,7 @@
 #include <QImage>
 #include <QRegion>
 #include <QPen>
+#include <QBrush>
 #include <QMutex>
 #include <QPoint>
 #include <QFont>
@@ -31,6 +32,7 @@ public slots:
   void onFrameSizeChanged(int width, int height, int camera);
   void updateEntities(Entities *e);
   void showDetails(int state);
+  void showRegions(int state);
 
 signals:
   void frameSizeChanged(int width, int height, int camera);
@@ -57,6 +59,7 @@ private:
   QPen detectionPen, detectionUnacceptedPen,
     movementPen, movementUnacceptedPen,
     pathPen, pathUnacceptedPen, highlightedPen;
+  QColor regionColor, regionOutline;
   QImage behaviorIcon;
   int maxHeight, mapTopLeftX, mapTopLeftY;
   QPoint warpToCameraRegion(int camera, double lat, double lon);
@@ -65,7 +68,7 @@ private:
   double pointDistance(QPoint p1, QPoint p2);
   void drawArrowHead(QPainter &painter, QPoint p1, QPoint p2);
   Entity *highlighted;
-  int showDetailsState;
+  int showDetailsState, showRegionsState;
 };
 
 #endif
