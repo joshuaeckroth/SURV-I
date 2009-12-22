@@ -217,7 +217,9 @@ pathHeadNearPointOfInterest entityMap (PointOfInterest name lat lon range) (Path
         det2      = getEntity entityMap (movementDetId2 mov)
         det1dist  = distance (lat, detectionLat det1) (lon, detectionLon det1)
         det2dist  = distance (lat, detectionLat det2) (lon, detectionLon det2)
-        near      = range >= det2dist
+        -- require the path head is within range and the last movement was not
+        -- essentially parallel to the "point" of interest
+        near      = range >= det2dist && 20.0 < (abs $ det2dist - det1dist)
         direction = if det2dist < det1dist then "away from" else "towards"
     in (near, direction)
 

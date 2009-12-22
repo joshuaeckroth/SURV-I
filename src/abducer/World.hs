@@ -53,8 +53,11 @@ cleanWorld world =
         invalidAgentHypIds = invalidAgents (gatherEntities (entityMap world) (allHypotheses world))
                              (gatherEntities (entityMap world) (acceptedHypotheses world))
         -- find behaviors that reference agents that no longer exist or are rejected
-        invalidBehavHypIds = invalidBehaviors (gatherEntities (entityMap world) (allHypotheses world))
-                             (gatherEntities (entityMap world) (acceptedHypotheses world))
+        -- or whose agents reference paths that no longer exist or are rejected
+        invalidBehavHypIds = invalidBehaviors (entityMap world)
+                             (gatherEntities (entityMap world) (allHypotheses world))      -- behaviors
+                             (gatherEntities (entityMap world) (acceptedHypotheses world)) -- agents
+                             (gatherEntities (entityMap world) (acceptedHypotheses world)) -- paths
 
         -- find movements that "kept paths" refer to
         pathMovHypIds      = nub $ gatherPathMovHypIds (entityMap world) $
@@ -123,11 +126,14 @@ invalidAgents ((Agent (Agent_Attrs hypId _ _ _) (NonEmpty ((PathRef pathRef):[])
     in if pathExists then invalidAgents agents paths else [hypId] ++ (invalidAgents agents paths)
 
 -- | Find behaviors that reference agents that no longer exist
-invalidBehaviors :: [Behavior] -> [Agent] -> [HypothesisID]
-invalidBehaviors [] _ = []
-invalidBehaviors ((Behavior (Behavior_Attrs hypId _ _ _) (NonEmpty ((AgentRef agentRef):[]))):behaviors) agents =
+invalidBehaviors :: HypothesisMap Entity -> [Behavior] -> [Agent] -> [Path] -> [HypothesisID]
+invalidBehaviors _ [] _ _ = []
+invalidBehaviors emap ((Behavior (Behavior_Attrs hypId _ _ _) (NonEmpty ((AgentRef agentRef):[]))):behaviors) agents paths =
     let agentExists = elem agentRef (map extractAgentHypId agents)
-    in if agentExists then invalidBehaviors behaviors agents else [hypId] ++ (invalidBehaviors behaviors agents)
+        (Agent _ (NonEmpty ((PathRef pathRef):[]))) = getEntity emap agentRef
+        pathExists  = elem pathRef (map extractPathHypId paths)
+    in if agentExists && pathExists then invalidBehaviors emap behaviors agents paths
+       else [hypId] ++ (invalidBehaviors emap behaviors agents paths)
 
 removeInvalidAgents :: World -> World
 removeInvalidAgents world = foldr removeHypothesis world invalid
@@ -219,19 +225,19 @@ pathsConflict :: HypothesisMap Entity -> Path -> Path -> Bool
 pathsConflict emap (Path (Path_Attrs hypId1 _ _) (NonEmpty movRefs1))
                    (Path (Path_Attrs hypId2 _ _) (NonEmpty movRefs2))
     -- a path does not conflict with itself
-    | hypId1 == hypId2     = False
-    -- a path conflicts with another path if they do not differ by at least three movements
-    -- or if their ends are the same detection or if their first detections are the same
-    -- (note: the "three" must be less than or equal to the minimal length of paths from
-    --  the genMovChains function in the Path module)
-    | detEnd1 == detEnd2     = True
-    | detStart1 == detStart2 = True
-    | movsNotShared12 < 3    = True
-    | movsNotShared21 < 3    = True
+    | hypId1 == hypId2                      = False
+    -- a path conflicts with another path if they do not differ by at least five movements
+    -- (yet do share at least one movement) or if their ends are the same detection
+    -- or if their first detections are the same
+    | detEnd1 == detEnd2                    = True
+    | detStart1 == detStart2                = True
+    | movsShared > 0 && movsNotShared12 < 5 = True
+    | movsShared > 0 && movsNotShared21 < 5 = True
     -- otherwise there is no conflict
-    | otherwise              = False
+    | otherwise                             = False
     where movsNotShared12 = length $ movRefs1 \\ movRefs2
           movsNotShared21 = length $ movRefs2 \\ movRefs1
+          movsShared      = length $ intersect movRefs1 movRefs2
           (Movement _ _ detEnd1   _) = getEntity emap (let (MovementRef hypId) = last movRefs1 in hypId)
           (Movement _ _ detEnd2   _) = getEntity emap (let (MovementRef hypId) = last movRefs2 in hypId)
           (Movement _ detStart1 _ _) = getEntity emap (let (MovementRef hypId) = head movRefs1 in hypId)

@@ -58,8 +58,8 @@ findPossibleAgents entityMap (agentTemplate@(AgentTemplate agentName _ _):agentT
 
 pathMatchesAgent :: HypothesisMap Entity -> Path -> AgentTemplate -> Level
 pathMatchesAgent entityMap path (AgentTemplate _ area speed)
-    | ratio >= 0.5  && ratio <= 2.0 = SlightlyHigh
-    | ratio >= 0.25 && ratio <= 4.0 = Medium
+    | ratio >= 0.5  && ratio <= 2.0 = High
+    | ratio >= 0.25 && ratio <= 4.0 = SlightlyHigh
     | otherwise                     = Low
     where areaRatio  = area / pathAverageArea entityMap path
           speedRatio = speed / pathAverageSpeed entityMap path
