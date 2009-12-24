@@ -66,7 +66,7 @@ cleanWorld world =
                              \\ oldRejPathHypIds
         removableMovHypIds = invalidMovHypIds \\ pathMovHypIds
 
-        removable          = oldDetHypIds ++ removableMovHypIds ++ oldRejPathHypIds ++ invalidAgentHypIds
+        removable          = oldDetHypIds ++ removableMovHypIds ++ oldRejPathHypIds ++ invalidAgentHypIds ++ invalidBehavHypIds
     in foldr removeHypothesis world removable
 
 newerDetections :: HypothesisMap Entity
@@ -125,7 +125,8 @@ invalidAgents ((Agent (Agent_Attrs hypId _ _ _) (NonEmpty ((PathRef pathRef):[])
     let pathExists = elem pathRef (map extractPathHypId paths)
     in if pathExists then invalidAgents agents paths else [hypId] ++ (invalidAgents agents paths)
 
--- | Find behaviors that reference agents that no longer exist
+-- | Find behaviors that reference agents that no longer exist or are not accepted
+--   or whose agents reference paths that no longer exist or are not accepted
 invalidBehaviors :: HypothesisMap Entity -> [Behavior] -> [Agent] -> [Path] -> [HypothesisID]
 invalidBehaviors _ [] _ _ = []
 invalidBehaviors emap ((Behavior (Behavior_Attrs hypId _ _ _) (NonEmpty ((AgentRef agentRef):[]))):behaviors) agents paths =

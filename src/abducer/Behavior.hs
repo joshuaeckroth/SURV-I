@@ -19,7 +19,8 @@ mkBehaviors context entityMap agents =
 mkBehavior :: Context -> HypothesisMap Entity -> (Agent, [String]) -> Hypothesis Behavior
 mkBehavior (Context _ _ _ (PointsOfInterest pois) _) entityMap (agent@(Agent agentAttrs _), regions) =
     let content         = (agentContent agentAttrs) ++ " in " ++ (intercalate "/" $ sort regions)
-        contentWithPois = content ++ ", heading " ++ (intercalate ", " $ findPointsOfInterest entityMap pois agent)
+        nearPois        = findPointsOfInterest entityMap pois agent
+        contentWithPois = content ++ (if null nearPois then "" else ", heading " ++ (intercalate ", " nearPois))
         hypId           = mkBehaviorHypId content [agent]
         agentRef        = extractAgentHypId agent
         score           = \_ -> High
