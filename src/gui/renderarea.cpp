@@ -9,6 +9,8 @@
 #include <QWidget>
 #include <QMouseEvent>
 #include <QMessageBox>
+#include <QPaintEvent>
+#include <QPixmap>
 
 #include <cmath>
 #include <vector>
@@ -157,8 +159,8 @@ void RenderArea::updatePixmap(const IplImage* frameImg, int camera)
 
 void RenderArea::paintEvent(QPaintEvent*)
 {
-    QPainter painter;
-    painter.begin(this);
+    QPixmap *doubleBuffer = new QPixmap(width(), height());
+    QPainter painter(doubleBuffer);
     painter.setRenderHint(QPainter::Antialiasing);
 
     if(!clear)
@@ -506,7 +508,10 @@ void RenderArea::paintEvent(QPaintEvent*)
         painter.setBrush(Qt::black);
         painter.drawRect(rect());
     }
-    painter.end();
+    QPainter realPainter;
+    realPainter.begin(this);
+    realPainter.drawPixmap(rect(), *doubleBuffer);
+    realPainter.end();
 }
 
 QPoint RenderArea::warpToCameraRegion(int camera, double lat, double lon)
