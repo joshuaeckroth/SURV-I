@@ -4,6 +4,7 @@ import System.IO
 import Types
 import Text.XML.HaXml.XmlContent
 import Text.XML.HaXml.OneOfN
+import Text.XML.HaXml.Types
 
 loadContext :: String -> IO Context
 loadContext file = do
@@ -64,7 +65,7 @@ instance HTypeable Context where
     toHType x = Defined "Context" [] []
 instance XmlContent Context where
     toContents (Context a b c d e) =
-        [CElem (Elem "Context" [] (toContents a ++ toContents b ++
+        [CElem (Elem (N "Context") [] (toContents a ++ toContents b ++
                                    toContents c ++ toContents d ++ toContents e)) ()]
     parseContents = do
         { e@(Elem _ [] _) <- element ["Context"]
@@ -77,7 +78,7 @@ instance HTypeable Cameras where
     toHType x = Defined "Cameras" [] []
 instance XmlContent Cameras where
     toContents (Cameras a b) =
-        [CElem (Elem "Cameras" [] (concatMap toContents a ++
+        [CElem (Elem (N "Cameras") [] (concatMap toContents a ++
                                    concatMap toContents b)) ()]
     parseContents = do
         { e@(Elem _ [] _) <- element ["Cameras"]
@@ -89,7 +90,7 @@ instance HTypeable CameraInput where
     toHType x = Defined "CameraInput" [] []
 instance XmlContent CameraInput where
     toContents as =
-        [CElem (Elem "CameraInput" (toAttrs as) []) ()]
+        [CElem (Elem (N "CameraInput") (toAttrs as) []) ()]
     parseContents = do
         { (Elem _ as []) <- element ["CameraInput"]
         ; return (fromAttrs as)
@@ -111,7 +112,7 @@ instance HTypeable FileInput where
     toHType x = Defined "FileInput" [] []
 instance XmlContent FileInput where
     toContents as =
-        [CElem (Elem "FileInput" (toAttrs as) []) ()]
+        [CElem (Elem (N "FileInput") (toAttrs as) []) ()]
     parseContents = do
         { (Elem _ as []) <- element ["FileInput"]
         ; return (fromAttrs as)
@@ -133,7 +134,7 @@ instance HTypeable Map where
     toHType x = Defined "Map" [] []
 instance XmlContent Map where
     toContents as =
-        [CElem (Elem "Map" (toAttrs as) []) ()]
+        [CElem (Elem (N "Map") (toAttrs as) []) ()]
     parseContents = do
         { (Elem _ as []) <- element ["Map"]
         ; return (fromAttrs as)
@@ -153,7 +154,7 @@ instance HTypeable Regions where
     toHType x = Defined "Regions" [] []
 instance XmlContent Regions where
     toContents (Regions a) =
-        [CElem (Elem "Regions" [] (concatMap toContents a)) ()]
+        [CElem (Elem (N "Regions") [] (concatMap toContents a)) ()]
     parseContents = do
         { e@(Elem _ [] _) <- element ["Regions"]
         ; interior e $ return (Regions) `apply` many parseContents
@@ -163,7 +164,7 @@ instance HTypeable Region where
     toHType x = Defined "Region" [] []
 instance XmlContent Region where
     toContents (Region as a) =
-        [CElem (Elem "Region" (toAttrs as) (toContents a)) ()]
+        [CElem (Elem (N "Region") (toAttrs as) (toContents a)) ()]
     parseContents = do
         { e@(Elem _ as _) <- element ["Region"]
         ; interior e $ return (Region (fromAttrs as)) `apply` parseContents
@@ -181,7 +182,7 @@ instance HTypeable RegionPoint where
     toHType x = Defined "RegionPoint" [] []
 instance XmlContent RegionPoint where
     toContents as =
-        [CElem (Elem "RegionPoint" (toAttrs as) []) ()]
+        [CElem (Elem (N "RegionPoint") (toAttrs as) []) ()]
     parseContents = do
         { (Elem _ as []) <- element ["RegionPoint"]
         ; return (fromAttrs as)
@@ -201,7 +202,7 @@ instance HTypeable PointsOfInterest where
     toHType x = Defined "PointsOfInterest" [] []
 instance XmlContent PointsOfInterest where
     toContents (PointsOfInterest a) =
-        [CElem (Elem "PointsOfInterest" [] (concatMap toContents a)) ()]
+        [CElem (Elem (N "PointsOfInterest") [] (concatMap toContents a)) ()]
     parseContents = do
         { e@(Elem _ [] _) <- element ["PointsOfInterest"]
         ; interior e $ return (PointsOfInterest) `apply` many parseContents
@@ -211,7 +212,7 @@ instance HTypeable PointOfInterest where
     toHType x = Defined "PointOfInterest" [] []
 instance XmlContent PointOfInterest where
     toContents as =
-        [CElem (Elem "PointOfInterest" (toAttrs as) []) ()]
+        [CElem (Elem (N "PointOfInterest") (toAttrs as) []) ()]
     parseContents = do
         { (Elem _ as []) <- element ["PointOfInterest"]
         ; return (fromAttrs as)
@@ -235,7 +236,7 @@ instance HTypeable AgentTemplates where
     toHType x = Defined "AgentTemplates" [] []
 instance XmlContent AgentTemplates where
     toContents (AgentTemplates a) =
-        [CElem (Elem "AgentTemplates" [] (concatMap toContents a)) ()]
+        [CElem (Elem (N "AgentTemplates") [] (concatMap toContents a)) ()]
     parseContents = do
         { e@(Elem _ [] _) <- element ["AgentTemplates"]
         ; interior e $ return (AgentTemplates) `apply` many parseContents
@@ -245,7 +246,7 @@ instance HTypeable AgentTemplate where
     toHType x = Defined "AgentTemplate" [] []
 instance XmlContent AgentTemplate where
     toContents as =
-        [CElem (Elem "AgentTemplate" (toAttrs as) []) ()]
+        [CElem (Elem (N "AgentTemplate") (toAttrs as) []) ()]
     parseContents = do
         { (Elem _ as []) <- element ["AgentTemplate"]
         ; return (fromAttrs as)

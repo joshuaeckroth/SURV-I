@@ -9,7 +9,7 @@
 
 class AbducerWriter : public QThread
 {
-  Q_OBJECT;
+  Q_OBJECT
 
 public:
   AbducerWriter();

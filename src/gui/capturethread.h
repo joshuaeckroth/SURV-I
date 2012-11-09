@@ -6,8 +6,9 @@
 #include <QWaitCondition>
 #include <QQueue>
 
+#include <opencv2/opencv.hpp>
+
 class Decoder;
-class CvCapture;
 class Frame;
 
 class CaptureThread : public QThread
@@ -37,7 +38,7 @@ private:
   QWaitCondition captureWait;
   Decoder* decoder;
   bool captureActive;
-  CvCapture* capture;
+  cv::VideoCapture* capture;
   double calculatedFps;
   double fps;
   int frameNum;

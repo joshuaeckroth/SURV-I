@@ -11,7 +11,7 @@ class Entities;
 
 class AbducerReader : public QThread
 {
-  Q_OBJECT;
+  Q_OBJECT
 
 public:
   AbducerReader();

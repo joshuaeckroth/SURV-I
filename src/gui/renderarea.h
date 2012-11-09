@@ -12,7 +12,7 @@
 #include <QPoint>
 #include <QFont>
 
-#include "highgui.h"
+#include <opencv2/opencv.hpp>
 
 class Entities;
 class Entity;
@@ -20,7 +20,7 @@ class Frame;
 
 class RenderArea : public QWidget
 {
-  Q_OBJECT;
+  Q_OBJECT
 
 public:
   RenderArea(QWidget* parent);

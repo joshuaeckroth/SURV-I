@@ -15,7 +15,7 @@ class Entities;
 
 class ProcessingController : public QThread
 {
-  Q_OBJECT;
+  Q_OBJECT
   
 public:
   ProcessingController(int n);

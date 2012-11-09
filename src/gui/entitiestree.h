@@ -11,7 +11,7 @@ class Entities;
 
 class EntitiesTree : public QDialog
 {
-    Q_OBJECT;
+    Q_OBJECT
 
 public:
     EntitiesTree(MainWindow *m, RenderArea *r);

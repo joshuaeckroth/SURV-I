@@ -175,7 +175,7 @@ instance HTypeable CameraDetections where
     toHType x = Defined "CameraDetections" [] []
 instance XmlContent CameraDetections where
     toContents (CameraDetections a) =
-        [CElem (Elem "CameraDetections" [] (concatMap toContents a)) ()]
+        [CElem (Elem (N "CameraDetections") [] (concatMap toContents a)) ()]
     parseContents = do
         { e@(Elem _ [] _) <- element ["CameraDetections"]
         ; interior e $ return (CameraDetections) `apply` many parseContents
@@ -186,7 +186,7 @@ instance HTypeable CameraDetection where
     toHType x = Defined "CameraDetection" [] []
 instance XmlContent CameraDetection where
     toContents as =
-        [CElem (Elem "CameraDetection" (toAttrs as) []) ()]
+        [CElem (Elem (N "CameraDetection") (toAttrs as) []) ()]
     parseContents = do
         { (Elem _ as []) <- element ["CameraDetection"]
         ; return (fromAttrs as)
@@ -290,7 +290,7 @@ instance HTypeable Results where
     toHType x = Defined "Results" [] []
 instance XmlContent Results where
     toContents (Results a b c) =
-        [CElem (Elem "Results" [] (toContents a ++
+        [CElem (Elem (N "Results") [] (toContents a ++
                                    toContents b ++
                                    toContents c)) ()]
     parseContents = do
@@ -305,7 +305,7 @@ instance HTypeable Entities where
     toHType x = Defined "Entities" [] []
 instance XmlContent Entities where
     toContents (Entities a b c d e) =
-        [CElem (Elem "Entities" [] (concatMap toContents a ++
+        [CElem (Elem (N "Entities") [] (concatMap toContents a ++
                                     concatMap toContents b ++
                                     concatMap toContents c ++
                                     concatMap toContents d ++
@@ -324,7 +324,7 @@ instance HTypeable Accepted where
     toHType x = Defined "Accepted" [] []
 instance XmlContent Accepted where
     toContents (Accepted a b c d e) =
-        [CElem (Elem "Accepted" [] (concatMap toContents a ++
+        [CElem (Elem (N "Accepted") [] (concatMap toContents a ++
                                     concatMap toContents b ++
                                     concatMap toContents c ++
                                     concatMap toContents d ++
@@ -343,7 +343,7 @@ instance HTypeable Rejected where
     toHType x = Defined "Rejected" [] []
 instance XmlContent Rejected where
     toContents (Rejected a b c d e) =
-        [CElem (Elem "Rejected" [] (concatMap toContents a ++
+        [CElem (Elem (N "Rejected") [] (concatMap toContents a ++
                                     concatMap toContents b ++
                                     concatMap toContents c ++
                                     concatMap toContents d ++
@@ -362,7 +362,7 @@ instance HTypeable Detection where
     toHType x = Defined "Detection" [] []
 instance XmlContent Detection where
     toContents as =
-        [CElem (Elem "Detection" (toAttrs as) []) ()]
+        [CElem (Elem (N "Detection") (toAttrs as) []) ()]
     parseContents = do
         { (Elem _ as []) <- element ["Detection"]
         ; return (fromAttrs as)
@@ -393,7 +393,7 @@ instance HTypeable DetectionRef where
     toHType x = Defined "DetectionRef" [] []
 instance XmlContent DetectionRef where
     toContents as =
-        [CElem (Elem "DetectionRef" (toAttrs as) []) ()]
+        [CElem (Elem (N "DetectionRef") (toAttrs as) []) ()]
     parseContents = do
         { (Elem _ as []) <- element ["DetectionRef"]
         ; return (fromAttrs as)
@@ -411,7 +411,7 @@ instance HTypeable Movement where
     toHType x = Defined "Movement" [] []
 instance XmlContent Movement where
     toContents as =
-        [CElem (Elem "Movement" (toAttrs as) []) ()]
+        [CElem (Elem (N "Movement") (toAttrs as) []) ()]
     parseContents = do
         { (Elem _ as []) <- element ["Movement"]
         ; return (fromAttrs as)
@@ -435,7 +435,7 @@ instance HTypeable MovementRef where
     toHType x = Defined "MovementRef" [] []
 instance XmlContent MovementRef where
     toContents as =
-        [CElem (Elem "MovementRef" (toAttrs as) []) ()]
+        [CElem (Elem (N "MovementRef") (toAttrs as) []) ()]
     parseContents = do
         { (Elem _ as []) <- element ["MovementRef"]
         ; return (fromAttrs as)
@@ -453,7 +453,7 @@ instance HTypeable Path where
     toHType x = Defined "Path" [] []
 instance XmlContent Path where
     toContents (Path as a) =
-        [CElem (Elem "Path" (toAttrs as) (toContents a)) ()]
+        [CElem (Elem (N "Path") (toAttrs as) (toContents a)) ()]
     parseContents = do
         { e@(Elem _ as _) <- element ["Path"]
         ; interior e $ return (Path (fromAttrs as)) `apply` parseContents
@@ -475,7 +475,7 @@ instance HTypeable PathRef where
     toHType x = Defined "PathRef" [] []
 instance XmlContent PathRef where
     toContents as =
-        [CElem (Elem "PathRef" (toAttrs as) []) ()]
+        [CElem (Elem (N "PathRef") (toAttrs as) []) ()]
     parseContents = do
         { (Elem _ as []) <- element ["PathRef"]
         ; return (fromAttrs as)
@@ -493,7 +493,7 @@ instance HTypeable Agent where
     toHType x = Defined "Agent" [] []
 instance XmlContent Agent where
     toContents (Agent as a) =
-        [CElem (Elem "Agent" (toAttrs as) (toContents a)) ()]
+        [CElem (Elem (N "Agent") (toAttrs as) (toContents a)) ()]
     parseContents = do
       { e@(Elem _ as _) <- element ["Agent"]
       ; interior e $ return (Agent (fromAttrs as)) `apply` parseContents
@@ -517,7 +517,7 @@ instance HTypeable AgentRef where
     toHType x = Defined "AgentRef" [] []
 instance XmlContent AgentRef where
     toContents as =
-        [CElem (Elem "AgentRef" (toAttrs as) []) ()]
+        [CElem (Elem (N "AgentRef") (toAttrs as) []) ()]
     parseContents = do
       { (Elem _ as []) <- element ["AgentRef"]
       ; return (fromAttrs as)
@@ -535,7 +535,7 @@ instance HTypeable Behavior where
     toHType x = Defined "Behavior" [] []
 instance XmlContent Behavior where
     toContents (Behavior as a) =
-        [CElem (Elem "Behavior" (toAttrs as) (toContents a)) ()]
+        [CElem (Elem (N "Behavior") (toAttrs as) (toContents a)) ()]
     parseContents = do
       { e@(Elem _ as _) <- element ["Behavior"]
       ; interior e $ return (Behavior (fromAttrs as)) `apply` parseContents
@@ -559,7 +559,7 @@ instance HTypeable BehaviorRef where
     toHType x = Defined "BehaviorRef" [] []
 instance XmlContent BehaviorRef where
     toContents as =
-        [CElem (Elem "BehaviorRef" (toAttrs as) []) ()]
+        [CElem (Elem (N "BehaviorRef") (toAttrs as) []) ()]
     parseContents = do
       { (Elem _ as []) <- element ["BehaviorRef"]
       ; return (fromAttrs as)

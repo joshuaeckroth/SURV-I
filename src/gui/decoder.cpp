@@ -8,7 +8,8 @@
 #include <math.h>
 #include <vector>
 
-#include "highgui.h"
+#include <opencv2/opencv.hpp>
+using namespace cv;
 
 #include "decoder.h"
 #include "frame.h"
@@ -16,23 +17,7 @@
 
 Decoder::Decoder()
         : bg_model(0)
-{
-    // see http://opencv.willowgarage.com/wiki/VideoSurveillance
-    modelParams.Lc = 32;
-    modelParams.N1c = 15;
-    modelParams.N2c = 25;
-    modelParams.Lcc = 32;
-    modelParams.N1cc = 25;
-    modelParams.N2cc = 40;
-    modelParams.is_obj_without_holes = 1;
-    modelParams.perform_morphing = 1;
-    modelParams.alpha1 = 0.5f;
-    modelParams.alpha2 = 0.02f;
-    modelParams.alpha3 = 0.2f;
-    modelParams.delta = 2;
-    modelParams.T = 0.7f;
-    modelParams.minArea = 10.0f;
-}
+{}
 
 QString Decoder::decodeFrame(Frame *frame)
 {
@@ -42,13 +27,14 @@ QString Decoder::decodeFrame(Frame *frame)
 
     if(!bg_model)
     {
-        bg_model = cvCreateFGDStatModel(image, &modelParams);
+        bg_model = new BackgroundSubtractorMOG;
     }
-    else
-    {
-        cvUpdateBGStatModel(image, bg_model);
-        result = findBlobs(frame, true);
-    }
+    fgmask = cvCloneImage(image);
+    Mat tmp_fgmask = cvarrToMat(fgmask);
+    Mat tmp_image = cvarrToMat(image);
+    (*bg_model)(tmp_image, tmp_fgmask, 0.1);
+    *fgmask = tmp_fgmask.operator IplImage();
+    result = findBlobs(frame, true);
 
     return result;
 }
@@ -93,7 +79,7 @@ void Decoder::findBlobsByCCClasters(CvSeq** clasters, int&
     *cnt_list = cvCreateSeq(0, sizeof(CvSeq), sizeof(CvSeq*), storage);
     *clasters = NULL;
 
-    pIB = cvCloneImage(bg_model->foreground);
+    pIB = cvCloneImage(fgmask);
     cvThreshold(pIB, pIB, 128, 255, CV_THRESH_BINARY);
     cvFindContours(pIB, storage, &cnt, sizeof(CvContour), CV_RETR_EXTERNAL);
     cvReleaseImage(&pIB);
@@ -144,7 +130,7 @@ QString Decoder::findBlobs(Frame *frame, bool drawContours)
             while((cnt = (CvSeq*)cvNextTreeNode(&iterator)) != 0)
             {
                 CvMoments moments;
-                cvContourMoments(cnt, &moments);
+                cvMoments(cnt, &moments);
 
                 m00 = cvGetSpatialMoment(&moments, 0, 0);
                 m01 = cvGetSpatialMoment(&moments, 0, 1);

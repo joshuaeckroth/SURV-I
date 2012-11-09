@@ -1,11 +1,10 @@
 module Main
 where
 
-import IO
 import System.Environment
 import System.Console.GetOpt
 import Network.Socket
-import System.Win32.Process (sleep)
+--import System.Win32.Process (sleep)
 import Text.XML.HaXml.Parse
 import Text.XML.HaXml.XmlContent
 import Data.List (nub)
@@ -72,7 +71,7 @@ waitForCommands (outSocket, inSocket) world = do
                             putStrLn "Waiting for command."
                             waitForCommands (outSocket, inSocket) world'
     CmdQuit          -> do { return () }
-    _                -> do { sleep 500 ; waitForCommands (outSocket, inSocket) world }
+    _                -> do { waitForCommands (outSocket, inSocket) world }
 
 getCameraDetections :: Socket -> IO (Either String CameraDetections)
 getCameraDetections s = do

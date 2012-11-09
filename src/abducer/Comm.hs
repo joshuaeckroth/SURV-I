@@ -6,7 +6,6 @@ import Network.Socket hiding (recv, send)
 import Network.Socket.ByteString
 import Network.BSD
 import Data.Word
-import IO
 
 data Command = CmdNewDetections | CmdQuit | CmdUnknown
 

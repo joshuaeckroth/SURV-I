@@ -3,6 +3,8 @@
 
 #include <QPoint>
 
+#include <opencv2/opencv.hpp>
+
 class CameraModel
 {
 public:

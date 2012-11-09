@@ -3,7 +3,8 @@
 #include <QDebug>
 #include <QPair>
 
-#include "highgui.h"
+#include <opencv2/opencv.hpp>
+using namespace cv;
 
 #include "cameramodel.h"
 #include "context.h"

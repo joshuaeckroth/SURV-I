@@ -1,7 +1,7 @@
 <!ELEMENT Results      (Entities,Accepted,Rejected)>
 
 <!ELEMENT Entities     (Detection*,Movement*,Path*,Agent*,Behavior*)>
-<!ELEMENT Accepted     (DetectionRef*,MovementRef*,PathRef*,AgentRef*.BehaviorRef*)>
+<!ELEMENT Accepted     (DetectionRef*,MovementRef*,PathRef*,AgentRef*,BehaviorRef*)>
 <!ELEMENT Rejected     (DetectionRef*,MovementRef*,PathRef*,AgentRef*,BehaviorRef*)>
 
 <!ELEMENT Detection    EMPTY>

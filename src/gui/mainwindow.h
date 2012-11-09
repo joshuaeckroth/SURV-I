@@ -17,7 +17,7 @@ class AbducerWriter;
 
 class MainWindow : public QMainWindow
 {
-    Q_OBJECT;
+    Q_OBJECT
 
 public:
     MainWindow();

@@ -5,7 +5,8 @@
 
 #include <unistd.h>
 
-#include "highgui.h"
+#include <opencv2/opencv.hpp>
+using namespace cv;
 
 #include "capturethread.h"
 #include "decoder.h"
@@ -18,13 +19,18 @@ CaptureThread::CaptureThread(Decoder* d, int c)
         error(false)
 {
     QFile file(Context::getCamera(camera).file);
-    if(!file.exists() || !(capture = cvCaptureFromFile(Context::getCamera(camera).file.toAscii())))
+    if(!file.exists())
     {
-
         error = true;
+    } else {
+        capture = new VideoCapture(Context::getCamera(camera).file.toStdString());
+        if(!capture)
+        {
+            error = true;
+        }
     }
 
-    fps = cvGetCaptureProperty(capture, CV_CAP_PROP_FPS);
+    fps = capture->get(CV_CAP_PROP_FPS);
 }
 
 void CaptureThread::run()
@@ -49,7 +55,10 @@ void CaptureThread::run()
             updateFPS(time.elapsed());
             captureLock.unlock();
         }
-        image = cvQueryFrame(capture);
+        Mat img_mat;
+        *capture >> img_mat;
+        IplImage img = img_mat.operator IplImage();
+        image = cvCloneImage(&img);
         if(image)
         {
             frameNum++;

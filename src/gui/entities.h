@@ -17,7 +17,7 @@ class EntitiesTreeItem;
 
 class Entities : public QAbstractItemModel
 {
-    Q_OBJECT;
+    Q_OBJECT
 
 public:
     Entities(std::map<int,Detection*>,
